@@ -1,0 +1,51 @@
+export interface LayerNode {
+  id: string
+  title: string
+  children?: LayerNode[]
+  parentLayer?: string
+}
+
+export interface LayerState {
+  id: string
+  visible: boolean
+  opacity: number
+  parentLayer?: string
+  params?: Partial<TimeParams> // para temporales
+}
+
+export interface TimeParams {
+  time: string
+  step: number
+}
+
+interface GroupBy {
+  field: string
+  parentLayer: string
+}
+
+interface BaseLayerConfig {
+  id: string
+  name: string
+  url: string
+  opacity?: number
+  zIndex?: number
+  groupBy?: GroupBy
+}
+
+export interface WMSLayerConfig extends BaseLayerConfig {
+  type: 'WMS'
+  layers: string
+}
+
+export interface WFSLayerConfig extends BaseLayerConfig {
+  type: 'WFS'
+  typeName: string
+  cql?: string
+  style?: L.PathOptions
+}
+
+export interface TMSLayerConfig extends BaseLayerConfig {
+  type: 'TMS'
+}
+
+export type LayerConfig = WMSLayerConfig | WFSLayerConfig | TMSLayerConfig

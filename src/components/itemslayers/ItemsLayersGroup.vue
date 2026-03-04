@@ -1,0 +1,162 @@
+<template>
+  <v-card elevation="1" class="layers-card" color="primary">
+    <v-card-title
+      class="layers-title d-flex justify-space-between align-center cursor-pointer"
+      @click="isOpen = !isOpen"
+    >
+      <span>{{ title }}</span>
+
+      <v-icon>
+        {{ isOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+      </v-icon>
+    </v-card-title>
+
+    <v-expand-transition>
+      <div v-show="isOpen">
+        <v-list
+          v-model:selected="selectedLayers"
+          active-strategy="independent"
+          :select-strategy="componentProps.multiple ? 'independent' : 'single-independent'"
+          :mandatory="false"
+          bg-color="background"
+          density="compact"
+        >
+          <template v-for="group in layers" :key="group.id">
+            <!-- Si tiene hijos -->
+            <v-list-group v-if="group.children" :value="group.id">
+              <template #activator="{ props }">
+                <v-list-item
+                  v-bind="props"
+                  class="d-flex justify-space-between align-center border"
+                >
+                  <!-- Título -->
+                  <v-list-item-title class="d-flex align-center">
+                    <v-checkbox
+                      density="compact"
+                      hide-details
+                      class="mr-6"
+                      color="success"
+                      :model-value="isGroupChecked(group)"
+                      :indeterminate="isGroupIndeterminate(group)"
+                      @click.stop="toggleGroup(group)"
+                    />
+                    <span>{{ group.title }}</span>
+                  </v-list-item-title>
+                </v-list-item>
+              </template>
+
+              <template v-for="child in group.children" :key="child.id">
+                <!-- Subgrupo -->
+                <v-list-group v-if="child.children" :value="child.id">
+                  <template #activator="{ props }">
+                    <v-list-item
+                      v-bind="props"
+                      :title="child.title"
+                      class="border"
+                      @click.stop="toggleGroup(child)"
+                    />
+                  </template>
+
+                  <v-list-item
+                    v-for="sub in child.children"
+                    :key="sub.id"
+                    :value="sub.id"
+                    class="border"
+                    selectable
+                    :title="sub.title"
+                  />
+                </v-list-group>
+
+                <!-- Hoja -->
+                <v-list-item
+                  v-else
+                  :value="child.id"
+                  :title="child.title"
+                  class="border"
+                  selectable
+                />
+              </template>
+            </v-list-group>
+
+            <!-- Si NO tiene hijos -->
+            <v-list-item v-else :value="group.id" :title="group.title" class="border" />
+          </template>
+        </v-list>
+      </div>
+    </v-expand-transition>
+  </v-card>
+</template>
+
+<script setup lang="ts">
+  import type { LayerNode } from '@/types/Layers'
+  import { ref } from 'vue'
+  import { computed } from 'vue'
+  import { useLayersStore } from '@/stores/layers'
+
+  const componentProps = defineProps<{
+    layers: LayerNode[]
+    title: string
+    multiple: boolean
+  }>()
+
+  const store = useLayersStore()
+
+  const isOpen = ref(true)
+
+  const groupLeafIds = computed(() => getAllLeafIds(componentProps.layers))
+
+  const selectedLayers = computed<string[]>({
+    get: () => groupLeafIds.value.filter((id) => store.layers[id]?.visible),
+
+    set: (newIds: string[]) => {
+      // Solo afectar a los ids de ESTE grupo
+      groupLeafIds.value.forEach((id) => {
+        const shouldBeVisible = newIds.includes(id)
+        const isVisible = store.layers[id]?.visible
+
+        if (shouldBeVisible !== isVisible) {
+          store.toggleLayer(id)
+        }
+      })
+    },
+  })
+
+  function getLeafIds(node: LayerNode): string[] {
+    if (!node.children) return [node.id]
+
+    return node.children.flatMap(getLeafIds)
+  }
+
+  function toggleGroup(group: LayerNode) {
+    const leafIds = getLeafIds(group)
+
+    const allSelected = leafIds.every((id) => selectedLayers.value.includes(id))
+
+    if (allSelected) {
+      // Quitar todos
+      selectedLayers.value = selectedLayers.value.filter((id) => !leafIds.includes(id))
+    } else {
+      // Añadir los que falten
+      selectedLayers.value = [...new Set([...selectedLayers.value, ...leafIds])]
+    }
+  }
+
+  function isGroupChecked(group: LayerNode) {
+    const leafIds = getLeafIds(group)
+    return leafIds.every((id) => selectedLayers.value.includes(id))
+  }
+
+  function isGroupIndeterminate(group: LayerNode) {
+    const leafIds = getLeafIds(group)
+
+    const selectedCount = leafIds.filter((id) => selectedLayers.value.includes(id)).length
+
+    return selectedCount > 0 && selectedCount < leafIds.length
+  }
+
+  function getAllLeafIds(nodes: LayerNode[]): string[] {
+    return nodes.flatMap((node) => (node.children ? getAllLeafIds(node.children) : node.id))
+  }
+</script>
+
+<style scoped></style>

@@ -1,0 +1,36 @@
+
+html{
+    overflow-y: hidden !important;
+}
+
+.map.dark-theme {
+    .leaflet-layer,
+    .leaflet-control-attribution {
+      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    }
+    .leaflet-control-zoom-in,
+    .leaflet-control-zoom-out{
+      background: #333 !important;
+      color: white !important;
+    }
+  }
+
+
+.dark-theme {
+    background: #333 !important;
+    color: white !important;
+  }
+
+  .dark-theme .layer-menu {
+    background: #222 !important;
+    color: white;
+  }
+
+  .dark-theme .map-button {
+    background: #444 !important;
+    border: 1px solid #666;
+  }
+
+  .dark-theme .map-label {
+    color: white !important;
+  }
