@@ -41,24 +41,38 @@ export async function createWFSLayer(
   config: WFSLayerConfig,
   extraParams?: Record<string, string>
 ): Promise<L.GeoJSON | null> {
-  const params = new URLSearchParams({
-    service: 'WFS',
-    version: '1.0.0',
-    request: 'GetFeature',
-    typeName: config.typeName,
-    outputFormat: 'application/json',
-    srsName: 'EPSG:4326',
-    ...extraParams,
-  })
+  try {
+    // Asegurarnos que no haya ? en la URL base
+    const baseUrl = config.url.split('?')[0]
 
-  const response = await fetch(`${config.url}?${params.toString()}`)
-  if (!response.ok) return null
+    const params = new URLSearchParams({
+      service: 'WFS',
+      version: '1.0.0',
+      request: 'GetFeature',
+      typeName: config.typeName,
+      outputFormat: 'application/json',
+      srsName: 'EPSG:4326',
+      ...extraParams, // Aquí van filtros como CQL_FILTER
+    })
 
-  const geojson = await response.json()
+    const finalUrl = `${baseUrl}?${params.toString()}`
 
-  return L.geoJSON(geojson, {
-    style: config.style,
-  })
+    const response = await fetch(finalUrl)
+    if (!response.ok) {
+      console.error('Error WFS:', response.statusText, finalUrl)
+      return null
+    }
+
+    const geojson = await response.json()
+
+    return L.geoJSON(geojson, {
+      style: config.style,
+      pointToLayer: config.pointToLayer,
+    })
+  } catch (err) {
+    console.error('Error creando capa WFS', err)
+    return null
+  }
 }
 
 // ==============================
