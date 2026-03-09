@@ -28,8 +28,8 @@ interface BaseLayerConfig {
   name: string
   url: string
   opacity?: number
-  zIndex?: number
   groupBy?: GroupBy
+  pane?: string
 }
 
 export interface WMSLayerConfig extends BaseLayerConfig {
@@ -42,6 +42,7 @@ export interface WFSLayerConfig extends BaseLayerConfig {
   typeName: string
   cql?: string
   style?: L.PathOptions
+  pointToLayer?: (feature: GeoJSON.Feature, latlng: L.LatLng) => L.Layer
 }
 
 export interface TMSLayerConfig extends BaseLayerConfig {

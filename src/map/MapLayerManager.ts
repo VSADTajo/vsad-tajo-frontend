@@ -19,6 +19,8 @@ export class MapLayerManager {
   async sync(layersState: Record<string, LayerState>) {
     await this.handleGroupedLayers(layersState)
     await this.handleStandardLayers(layersState)
+
+    this.normalizePaneOrder()
   }
 
   // ==============================
@@ -47,7 +49,11 @@ export class MapLayerManager {
         continue
       }
 
+      console.log('activeChildren', activeChildren)
+
       const cql = `${field} IN (${activeChildren.map((v) => `'${v}'`).join(',')})`
+
+      console.log('cql', cql)
 
       const newLayer = await createLayer(config, {
         CQL_FILTER: cql,
@@ -174,5 +180,13 @@ export class MapLayerManager {
       default:
         console.log('Capa sin comportamiento')
     }
+  }
+
+  private normalizePaneOrder() {
+    Object.values(this.activeLayers).forEach((layer) => {
+      if (layer instanceof L.GeoJSON) {
+        layer.bringToBack()
+      }
+    })
   }
 }
