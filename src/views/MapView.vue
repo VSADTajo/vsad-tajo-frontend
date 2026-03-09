@@ -13,7 +13,7 @@
   import { watch } from 'vue'
   import { useBaseLayers } from '@/composables/useBaseLayers'
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
-  import { center, defaultZoom } from '@/constants/mapConfig'
+  import { center, defaultZoom, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
 
   // Referencias
@@ -44,7 +44,10 @@
 
     if (!mapContainer.value) return
 
-    map = L.map(mapContainer.value, { zoomControl: true }).setView(center, defaultZoom)
+    map = L.map(mapContainer.value, {
+      zoomControl: true,
+      minZoom,
+    }).setView(center, defaultZoom)
 
     createMapPanes(map)
 
@@ -58,7 +61,7 @@
 
     const { initBaseLayers } = useBaseLayers(map)
 
-    initBaseLayers()
+    await initBaseLayers()
     useDynamicLayers(map)
 
     // Resize map

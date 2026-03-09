@@ -2,10 +2,6 @@ import type { LayerNode } from '@/types/Layers'
 
 export const zonasLayers: LayerNode[] = [
   {
-    id: 'rios',
-    title: 'Ríos',
-  },
-  {
     id: 'subcuencas',
     title: 'Subcuencas',
   },

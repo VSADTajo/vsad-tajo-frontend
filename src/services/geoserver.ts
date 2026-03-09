@@ -17,7 +17,7 @@ export function createWMSLayer(config: WMSLayerConfig): L.TileLayer.WMS {
     transparent: true,
     tiled: true,
     opacity: config.opacity ?? 1,
-    zIndex: config.zIndex ?? 1,
+    pane: config.pane,
   } as WMSOptionsExtended)
 }
 
@@ -29,7 +29,7 @@ export function createTMSLayer(config: TMSLayerConfig): L.TileLayer {
   return L.tileLayer(config.url, {
     tms: true,
     opacity: config.opacity ?? 1,
-    zIndex: config.zIndex ?? 1,
+    pane: config.pane,
   })
 }
 
@@ -42,32 +42,24 @@ export async function createWFSLayer(
   extraParams?: Record<string, string>
 ): Promise<L.GeoJSON | null> {
   try {
-    // Asegurarnos que no haya ? en la URL base
     const baseUrl = config.url.split('?')[0]
 
-    const params = new URLSearchParams({
+    const params = {
       service: 'WFS',
       version: '1.0.0',
       request: 'GetFeature',
       typeName: config.typeName,
       outputFormat: 'application/json',
       srsName: 'EPSG:4326',
-      ...extraParams, // Aquí van filtros como CQL_FILTER
-    })
-
-    const finalUrl = `${baseUrl}?${params.toString()}`
-
-    const response = await fetch(finalUrl)
-    if (!response.ok) {
-      console.error('Error WFS:', response.statusText, finalUrl)
-      return null
+      ...extraParams,
     }
 
-    const geojson = await response.json()
+    const geojson = await ky.get(baseUrl, { searchParams: params }).json()
 
-    return L.geoJSON(geojson, {
+    return L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
       style: config.style,
       pointToLayer: config.pointToLayer,
+      pane: config.pane,
     })
   } catch (err) {
     console.error('Error creando capa WFS', err)

@@ -9,6 +9,15 @@ import { MAP_PANES } from '@/config/panes/mapPanes'
 
 export const baseLayersConfig: LayerConfig[] = [
   {
+    id: 'rios',
+    name: 'Ríos',
+    type: 'WMS',
+    url: 'http://localhost:8080/geoserver/Tajo/wms',
+    layers: 'Tajo:cht_rios',
+    opacity: 1,
+    pane: MAP_PANES.LINES,
+  },
+  {
     id: 'cuenca',
     name: 'Cuenca',
     type: 'WMS',
@@ -20,15 +29,6 @@ export const baseLayersConfig: LayerConfig[] = [
 ]
 
 export const dynamicLayersConfig: LayerConfig[] = [
-  {
-    id: 'rios',
-    name: 'Ríos',
-    type: 'WMS',
-    url: 'http://localhost:8080/geoserver/Tajo/wms',
-    layers: 'Tajo:cht_rios',
-    opacity: 1,
-    pane: MAP_PANES.LINES,
-  },
   {
     id: 'subcuencas',
     name: 'Subcuencas',
