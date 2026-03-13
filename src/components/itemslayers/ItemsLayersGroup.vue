@@ -18,7 +18,7 @@
           active-strategy="independent"
           :select-strategy="componentProps.multiple ? 'independent' : 'single-independent'"
           :mandatory="false"
-          bg-color="background"
+          bg-color="surface_variant"
           density="compact"
         >
           <template v-for="group in layers" :key="group.id">
@@ -75,11 +75,45 @@
                   class="border"
                   selectable
                 />
+
+                <v-expand-transition>
+                  <div
+                    v-if="child.opacityEnabled && selectedLayers.includes(child.id)"
+                    class="px-6 pb-2"
+                  >
+                    <v-slider
+                      v-model="store.layers[child.id].opacity"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      density="compact"
+                      hide-details
+                      @update:model-value="store.setOpacity(child.id, $event)"
+                    />
+                  </div>
+                </v-expand-transition>
               </template>
             </v-list-group>
 
             <!-- Si NO tiene hijos -->
             <v-list-item v-else :value="group.id" :title="group.title" class="border" />
+
+            <v-expand-transition>
+              <div
+                v-if="group.opacityEnabled && selectedLayers.includes(group.id)"
+                class="px-6 pb-2"
+              >
+                <v-slider
+                  v-model="store.layers[group.id].opacity"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  density="compact"
+                  hide-details
+                  @update:model-value="store.setOpacity(group.id, $event)"
+                />
+              </div>
+            </v-expand-transition>
           </template>
         </v-list>
       </div>
@@ -97,11 +131,12 @@
     layers: LayerNode[]
     title: string
     multiple: boolean
+    defaultOpen?: boolean
   }>()
 
   const store = useLayersStore()
 
-  const isOpen = ref(true)
+  const isOpen = ref(componentProps.defaultOpen ?? true)
 
   const groupLeafIds = computed(() => getAllLeafIds(componentProps.layers))
 

@@ -4,12 +4,6 @@
     <v-row class="h-100" no-gutters>
       <v-list nav class="d-flex flex-column flex-grow-1">
         <v-list-item
-          prepend-icon="mdi-chart-line"
-          :active="activeSection === 'predicciones'"
-          @click="toggleSection('predicciones')"
-        />
-
-        <v-list-item
           prepend-icon="mdi-layers"
           :active="activeSection === 'capas'"
           @click="toggleSection('capas')"

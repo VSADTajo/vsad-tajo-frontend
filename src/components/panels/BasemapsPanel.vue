@@ -6,13 +6,17 @@
       </v-col>
     </v-row>
     <v-row class="flex-grow-1">
-      <v-col cols="12">
-        <v-list v-model:selected="selectedBasemap" class="flex-grow-1 px-2" bg-color="primary">
+      <v-col cols="12" class="px-4">
+        <v-list
+          v-model:selected="selectedBasemap"
+          class="flex-grow-1 pa-0 border"
+          bg-color="surface_variant"
+        >
           <v-list-item
             v-for="layer in basemapsLayers"
             :key="layer.id"
             :value="layer.id"
-            class="rounded pa-3 elevation-1"
+            class="rounded pa-3 elevation-2"
             @click="setBasemap(layer.id)"
           >
             <div class="d-flex align-center justify-space-between w-100">
