@@ -2,9 +2,10 @@
 import L from 'leaflet'
 import { dynamicLayersConfig } from '@/config/layers.config'
 import { createLayer } from '@/services/geoserver'
-import type { LayerState } from '@/types/Layers'
-import { useFeatureSelection } from '@/stores/features'
+import type { LayerConfig, LayerState, WMSLayerConfig } from '@/types/Layers'
 import router from '@/router'
+import { useTimeStore } from '@/stores/timeStore'
+import { getLayerTimeDimension } from '@/services/efasWmsService'
 
 export class MapLayerManager {
   private map: L.Map
@@ -49,11 +50,7 @@ export class MapLayerManager {
         continue
       }
 
-      console.log('activeChildren', activeChildren)
-
       const cql = `${field} IN (${activeChildren.map((v) => `'${v}'`).join(',')})`
-
-      console.log('cql', cql)
 
       const newLayer = await createLayer(config, {
         CQL_FILTER: cql,
@@ -108,12 +105,21 @@ export class MapLayerManager {
         this.attachVectorClick(layerState.id, layer)
         this.activeLayers[layerState.id] = layer
         this.cache[layerState.id] = layer
+
+        if (config.temporal) {
+          this.loadTemporalDimension(config)
+        }
       }
 
       // Desactivar
       if (!layerState.visible && existing) {
         this.map.removeLayer(existing)
         delete this.activeLayers[layerState.id]
+
+        if (config.temporal) {
+          const timeStore = useTimeStore()
+          timeStore.removeLayerTime(layerState.id)
+        }
       }
 
       this.updateVisualState(layerState)
@@ -147,24 +153,13 @@ export class MapLayerManager {
       const feature = e.layer.feature as GeoJSON.Feature | undefined
       if (!feature) return
 
-      console.log('feature', feature)
-
       this.handleFeatureClick(layerId, feature)
     })
   }
 
   private handleFeatureClick(layerId: string, feature: GeoJSON.Feature) {
-    const store = useFeatureSelection()
-    // Aquí decides comportamiento según capa
     switch (layerId) {
       case 'saih':
-        store.select({
-          type: feature.type,
-          id: feature.id,
-          geometry: feature.geometry,
-          properties: feature.properties,
-        })
-
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -188,5 +183,25 @@ export class MapLayerManager {
         layer.bringToBack()
       }
     })
+  }
+
+  private async loadTemporalDimension(config: LayerConfig) {
+    try {
+      const timeStore = useTimeStore()
+
+      if (timeStore.layers[config.id]) return
+
+      if (config.type !== 'WMS') return
+
+      const layerName = (config as WMSLayerConfig).layers
+
+      const time = await getLayerTimeDimension(layerName)
+
+      if (time) {
+        timeStore.setLayerTime(config.id, time)
+      }
+    } catch (err) {
+      console.error('Error loading temporal dimension', err)
+    }
   }
 }

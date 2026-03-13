@@ -39,3 +39,46 @@ export const stationLayers: LayerNode[] = [
     ],
   },
 ]
+
+export const efasLayers: LayerNode[] = [
+  {
+    id: 'reportingpoints',
+    title: 'Reporting Points',
+  },
+  {
+    id: 'rainDWD',
+    title: 'Acc. Precip. Det. DWD',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+  {
+    id: 'rainEUD',
+    title: 'Acc. Precip. Det. AIFS Single',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+  {
+    id: 'soilMoisture',
+    title: 'Soil Moisture',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+  {
+    id: 'scWB',
+    title: 'Snow Water Equivalent',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+  {
+    id: 'alDWD',
+    title: 'Det. DWD',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+  {
+    id: 'alEUD',
+    title: 'AIFS Single',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+]

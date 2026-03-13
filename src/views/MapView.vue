@@ -1,11 +1,13 @@
 <template>
   <div class="map-wrapper">
     <div ref="mapContainer" class="map-container"></div>
+
+    <MapTimeControls v-if="hasTemporalLayers" />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, nextTick } from 'vue'
+  import { ref, onMounted, nextTick, computed } from 'vue'
   import L from 'leaflet'
   import 'leaflet/dist/leaflet.css'
   import { basemapsLayers } from '@/constants/basemaps'
@@ -15,12 +17,17 @@
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
   import { center, defaultZoom, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
+  import MapTimeControls from '@/components/map/MapTimeControls.vue'
+  import { useTimeStore } from '@/stores/timeStore'
 
   // Referencias
   const mapContainer = ref<HTMLElement | null>(null)
   let map: L.Map
 
   const { selectedBasemap } = useBasemap()
+  const timeStore = useTimeStore()
+
+  const hasTemporalLayers = computed(() => Object.keys(timeStore.layers).length > 0)
 
   let currentTileLayer: L.TileLayer
 

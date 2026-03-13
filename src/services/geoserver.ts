@@ -97,24 +97,20 @@ export async function createLayer(
   return await factory(config, extraParams)
 }
 
-export async function getWFSFeature(
+export async function getWFSFeatureById(
   config: WFSLayerConfig,
-  filter: string
-): Promise<GeoJSON.FeatureCollection | null> {
+  fid: string
+): Promise<GeoJSON.Feature | null> {
   const params = {
     service: 'WFS',
     version: '1.0.0',
     request: 'GetFeature',
     typeName: config.typeName,
     outputFormat: 'application/json',
-    srsName: 'EPSG:4326',
-    CQL_FILTER: filter,
+    featureID: fid,
   }
 
-  try {
-    return await ky.get(config.url, { searchParams: params }).json<GeoJSON.FeatureCollection>()
-  } catch (error) {
-    console.error('WFS feature error', error)
-    return null
-  }
+  const fc = await ky.get(config.url, { searchParams: params }).json<GeoJSON.FeatureCollection>()
+
+  return fc.features?.[0] ?? null
 }

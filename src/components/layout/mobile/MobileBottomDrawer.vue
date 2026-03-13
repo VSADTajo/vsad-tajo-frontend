@@ -16,7 +16,6 @@
   import { useNavigation } from '@/composables/useNavigation'
 
   import ItemsLayersPanel from '@/components/panels/ItemsLayersPanel.vue'
-  import PredictionsPanel from '@/components/panels/PredictionsPanel.vue'
   import AlertsPanel from '@/components/panels/AlertsPanel.vue'
   import SettingsPanel from '@/components/panels/SettingsPanel.vue'
   import ReportsPanel from '@/components/panels/ReportsPanel.vue'
@@ -27,8 +26,6 @@
 
   const activeComponent = computed(() => {
     switch (activeSection.value) {
-      case 'predicciones':
-        return PredictionsPanel
       case 'capas':
         return ItemsLayersPanel
       case 'avisos':

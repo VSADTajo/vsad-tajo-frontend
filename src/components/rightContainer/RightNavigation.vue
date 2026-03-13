@@ -1,62 +1,51 @@
 <template>
   <v-navigation-drawer
     :model-value="drawerOpen"
+    class="bg-background"
     location="right"
     :width="drawerWidth"
     transition="slide-x-reverse-transition"
     :scrim="true"
     temporary
-    @update:model-value="onDrawerUpdate"
+    @update:model-value="onDrawerChange"
   >
-    <template v-if="selectedFeatureId">
-      <right-content-card />
-    </template>
+    <right-content-card v-if="station" />
   </v-navigation-drawer>
 </template>
 
 <script lang="ts" setup>
-  import { computed } from 'vue'
+  import { computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
-  import { useFeatureSelection } from '@/stores/features'
   import RightContentCard from './RightContentCard.vue'
 
   const route = useRoute()
   const router = useRouter()
+  const { mdAndUp, width } = useDisplay()
 
-  const { mdAndUp } = useDisplay()
+  // station seleccionada
+  const station = computed(() => route.query.station as string | undefined)
 
-  const featureStore = useFeatureSelection()
+  // drawer abierto si hay station
+  const drawerOpen = computed(() => !!station.value)
 
-  const selectedFeatureId = computed(() => route.query.station)
+  // ignorar cierre inmediato por scrim
+  let ignoreNextClose = false
 
-  const drawerOpen = computed({
-    get: () => !!route.query.station,
-    set: (val: boolean) => {
-      if (!val) {
-        router.replace({
-          query: {
-            ...route.query,
-            station: undefined,
-          },
-        })
-      }
-    },
+  watch(station, (val, oldVal) => {
+    if (val && !oldVal) {
+      ignoreNextClose = true
+      setTimeout(() => (ignoreNextClose = false), 150)
+    }
   })
 
-  const onDrawerUpdate = () => {
-    if (!featureStore.selected) {
-      console.log('PPPPPPPPPPPPPPP')
-      router.replace({
-        query: {
-          ...route.query,
-          station: undefined,
-        },
-      })
+  function onDrawerChange(val: boolean) {
+    if (!val && station.value && !ignoreNextClose) {
+      const { station, ...query } = route.query
+      router.replace({ query })
     }
   }
 
-  const drawerWidth = computed(() => {
-    return mdAndUp.value ? window.innerWidth * 0.8 : window.innerWidth
-  })
+  // ancho responsive
+  const drawerWidth = computed(() => (mdAndUp.value ? width.value * 0.8 : width.value))
 </script>

@@ -18,7 +18,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
       children: [
         { path: '', component: MapView },
-        { path: 'predicciones', component: MapView },
         { path: 'capas', component: MapView },
         { path: 'avisos', component: MapView },
         { path: 'simulaciones', component: MapView },
