@@ -18,16 +18,19 @@
   import { center, defaultZoom, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
-  import { useTimeStore } from '@/stores/timeStore'
+  import { useLayersStore } from '@/stores/layersStore'
+
+  const layersStore = useLayersStore()
 
   // Referencias
   const mapContainer = ref<HTMLElement | null>(null)
   let map: L.Map
 
   const { selectedBasemap } = useBasemap()
-  const timeStore = useTimeStore()
 
-  const hasTemporalLayers = computed(() => Object.keys(timeStore.layers).length > 0)
+  const hasTemporalLayers = computed(() =>
+    Object.values(layersStore.layers).some((layer) => layer.visible && layer.temporal)
+  )
 
   let currentTileLayer: L.TileLayer
 

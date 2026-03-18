@@ -173,7 +173,7 @@
   const error = ref<string | null>(null)
 
   // station desde la URL
-  const stationId = computed(() => route.query.station as string | undefined)
+  const stationCode = computed(() => route.query.station as string | undefined)
 
   // config de la capa SAIH
   const saihConfig = computed<WFSLayerConfig | undefined>(
@@ -181,7 +181,7 @@
   )
 
   // cargar feature
-  async function loadFeature(fid: string) {
+  async function loadFeature(code: string) {
     if (!saihConfig.value) {
       console.warn('SAIH layer config not found')
       return
@@ -190,8 +190,10 @@
     loading.value = true
     error.value = null
 
+    console.log('saihConfig.value', saihConfig.value)
+
     try {
-      const result = await getWFSFeatureById(saihConfig.value, fid)
+      const result = await getWFSFeatureById(saihConfig.value, 'codigo', code)
 
       if (!result) {
         error.value = 'Feature not found'
@@ -211,14 +213,14 @@
 
   // reaccionar al cambio de URL
   watch(
-    stationId,
-    (id) => {
-      if (!id) {
+    stationCode,
+    (code) => {
+      if (!code) {
         feature.value = null
         return
       }
 
-      loadFeature(id)
+      loadFeature(code)
     },
     { immediate: true }
   )

@@ -12,7 +12,12 @@ export interface LayerState {
   visible: boolean
   opacity: number
   parentLayer?: string
-  params?: Partial<TimeParams> // para temporales
+  params?: Partial<TimeParams>
+  temporal?: {
+    start: string
+    end: string
+    stepHours: number
+  }
 }
 
 export interface TimeParams {
@@ -33,6 +38,8 @@ interface BaseLayerConfig {
   groupBy?: GroupBy
   pane?: string
   temporal?: boolean
+  start?: string
+  legend?: string
 }
 
 export interface WMSLayerConfig extends BaseLayerConfig {
@@ -45,7 +52,8 @@ export interface WMSLayerConfig extends BaseLayerConfig {
   crs?: L.CRS
   token?: string
   crossOrigin?: boolean
-  bbox?: L.LatLngBoundsExpression
+  bbox?: [[number, number], [number, number]]
+  mask?: string
 }
 
 export interface WFSLayerConfig extends BaseLayerConfig {
