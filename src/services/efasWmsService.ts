@@ -1,4 +1,6 @@
+import { efas_token, efas_url } from '@/config/efasConfig'
 import ky from 'ky'
+import L from 'leaflet'
 
 export interface WmsLayerTime {
   layerName: string
@@ -7,15 +9,13 @@ export interface WmsLayerTime {
   stepHours: number
 }
 
-const EFAS_WMS = 'https://european-flood.emergency.copernicus.eu/api/wms/'
-
 let cachedCapabilities: Document | null = null
 
 async function getEFASCapabilities(): Promise<Document> {
   if (cachedCapabilities) return cachedCapabilities
 
   const xmlText = await ky
-    .get(EFAS_WMS, {
+    .get(efas_url, {
       searchParams: {
         service: 'WMS',
         request: 'GetCapabilities',
@@ -32,8 +32,6 @@ async function getEFASCapabilities(): Promise<Document> {
 
 export async function getLayerTimeDimension(layerName: string): Promise<WmsLayerTime | null> {
   const xml = await getEFASCapabilities()
-
-  console.log('xmlxml', xml)
 
   const layers = xml.querySelectorAll('Layer')
 
@@ -61,4 +59,51 @@ export async function getLayerTimeDimension(layerName: string): Promise<WmsLayer
   }
 
   return null
+}
+
+export function getLayerLegendUrl(layerName: string): string {
+  const params = new URLSearchParams({
+    SERVICE: 'WMS',
+    VERSION: '1.3.0',
+    REQUEST: 'GetLegendGraphic',
+    LAYER: layerName,
+    TOKEN: efas_token,
+    FORMAT: 'image/png',
+  })
+
+  return `${efas_url}?${params.toString()}`
+}
+
+// Helper para construir la URL GetFeatureInfo
+export function buildFeatureInfoUrl(map: L.Map, layer: L.TileLayer.WMS, latlng: L.LatLng): string {
+  const point = map.latLngToContainerPoint(latlng)
+  const size = map.getSize()
+  const bounds = map.getBounds()
+
+  const bbox = [
+    bounds.getSouthWest().lat,
+    bounds.getSouthWest().lng,
+    bounds.getNorthEast().lat,
+    bounds.getNorthEast().lng,
+  ].join(',')
+
+  const params = {
+    request: 'GetFeatureInfo',
+    service: 'WMS',
+    version: '1.3.0',
+    crs: 'EPSG:4326',
+    layers: 'mapserver:ReportingPoints',
+    query_layers: 'mapserver:ReportingPoints',
+    info_format: 'text/html',
+    i: String(Math.floor(point.x)),
+    j: String(Math.floor(point.y)),
+    width: String(size.x),
+    height: String(size.y),
+    bbox,
+    styles: '',
+    format: 'image/png',
+    token: efas_token,
+  }
+
+  return efas_url + '?' + new URLSearchParams(params)
 }

@@ -6,6 +6,7 @@ export const MAP_PANES = {
   POLYGONS: 'polygonsPane',
   LINES: 'linesPane',
   POINTS: 'pointsPane',
+  REPORTING: 'reportingPane',
   HIGHLIGHT: 'highlightPane',
 } as const
 
@@ -16,7 +17,8 @@ export function createMapPanes(map: L.Map) {
     { name: MAP_PANES.POLYGONS, zIndex: 300 },
     { name: MAP_PANES.LINES, zIndex: 400 },
     { name: MAP_PANES.POINTS, zIndex: 500 },
-    { name: MAP_PANES.HIGHLIGHT, zIndex: 600 },
+    { name: MAP_PANES.REPORTING, zIndex: 600 },
+    { name: MAP_PANES.HIGHLIGHT, zIndex: 700 },
   ]
 
   panes.forEach(({ name, zIndex }) => {

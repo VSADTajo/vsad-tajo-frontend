@@ -4,12 +4,11 @@
 
 <script setup lang="ts">
   import { computed } from 'vue'
-  import { format } from 'date-fns'
-  import { es } from 'date-fns/locale'
   import type { ApexOptions } from 'apexcharts'
   import type { ApexTooltipContext, ForecastNAM, TimeseriePoint } from '@/types/Forecast'
   import { buildForecastSeries } from '@/utils/forecastCharts'
   import type { TelemetryRecord } from '@/types/Precipitation'
+  import { dateFormattedWithHours, dateFormattedWithHoursAndMinutes } from '@/utils/dates'
 
   const props = defineProps<{
     forecastDet: ForecastNAM
@@ -71,7 +70,7 @@
 
       custom({ seriesIndex, dataPointIndex, w }: ApexTooltipContext) {
         const x = w.globals.seriesX[seriesIndex][dataPointIndex]
-        const date = format(new Date(x), 'dd MMM yyyy HH:mm', { locale: es })
+        const date = dateFormattedWithHoursAndMinutes(x)
 
         let html = `
       <div style="font-size:12px;min-width:180px">
@@ -110,7 +109,7 @@
       tooltip: { enabled: false },
       labels: {
         formatter: (value: string) => {
-          return format(new Date(Number(value)), 'dd MMM HH', { locale: es })
+          return dateFormattedWithHours(Number(value))
         },
       },
     },

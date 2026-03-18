@@ -1,24 +1,37 @@
 import L from 'leaflet'
 import type { LayerConfig, WFSLayerConfig, WMSLayerConfig, TMSLayerConfig } from '@/types/Layers'
 import ky from 'ky'
+import { boundaryStore } from '@/stores/boundaryStore'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
 }
 
-// ==============================
-// 🟦 WMS
-// ==============================
+export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, string>): L.Layer {
+  const paneName = config.pane ?? 'overlayPane'
+  let bounds: L.LatLngBounds | undefined
 
-export function createWMSLayer(config: WMSLayerConfig): L.TileLayer.WMS {
-  return L.tileLayer.wms(config.url, {
+  if (config.bbox) {
+    bounds = L.latLngBounds(config.bbox)
+  } else if (config.mask && boundaryStore[config.mask]) {
+    bounds = L.latLngBounds(boundaryStore[config.mask].bbox)
+  }
+
+  const wms = L.tileLayer.wms(config.url, {
     layers: config.layers,
     format: 'image/png',
     transparent: true,
     tiled: true,
     opacity: config.opacity ?? 1,
-    pane: config.pane,
+    pane: paneName,
+    bounds,
+    updateWhenZooming: false,
+    updateWhenIdle: true,
+    keepBuffer: 2,
+    ...params,
   } as WMSOptionsExtended)
+
+  return wms
 }
 
 // ==============================
@@ -51,6 +64,9 @@ export async function createWFSLayer(
       typeName: config.typeName,
       outputFormat: 'application/json',
       srsName: 'EPSG:4326',
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+      keepBuffer: 2,
       ...extraParams,
     }
 
@@ -78,8 +94,10 @@ type LayerFactory = (
 const layerFactories: {
   [K in LayerConfig['type']]: LayerFactory
 } = {
-  WMS: (config) => createWMSLayer(config as WMSLayerConfig),
+  WMS: (config, extra) => createWMSLayer(config as WMSLayerConfig, extra),
+
   TMS: (config) => createTMSLayer(config as TMSLayerConfig),
+
   WFS: (config, extra) => createWFSLayer(config as WFSLayerConfig, extra),
 }
 
@@ -99,7 +117,8 @@ export async function createLayer(
 
 export async function getWFSFeatureById(
   config: WFSLayerConfig,
-  fid: string
+  field: string,
+  value: string | number
 ): Promise<GeoJSON.Feature | null> {
   const params = {
     service: 'WFS',
@@ -107,7 +126,7 @@ export async function getWFSFeatureById(
     request: 'GetFeature',
     typeName: config.typeName,
     outputFormat: 'application/json',
-    featureID: fid,
+    CQL_FILTER: `${field}='${value}'`,
   }
 
   const fc = await ky.get(config.url, { searchParams: params }).json<GeoJSON.FeatureCollection>()

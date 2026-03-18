@@ -1,7 +1,7 @@
 // useDynamicLayers.ts
 import { watch } from 'vue'
-import { useLayersStore } from '@/stores/layers'
-import { MapLayerManager } from '@/map/MapLayerManager'
+import { useLayersStore } from '@/stores/layersStore'
+import { MapLayerManager } from '@/mapManager/MapLayerManager'
 import L from 'leaflet'
 
 export function useDynamicLayers(map: L.Map) {

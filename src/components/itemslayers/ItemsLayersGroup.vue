@@ -125,7 +125,7 @@
   import type { LayerNode } from '@/types/Layers'
   import { ref } from 'vue'
   import { computed } from 'vue'
-  import { useLayersStore } from '@/stores/layers'
+  import { useLayersStore } from '@/stores/layersStore'
 
   const componentProps = defineProps<{
     layers: LayerNode[]

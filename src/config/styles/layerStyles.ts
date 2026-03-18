@@ -15,22 +15,28 @@ export const saihPointStyle = (feature: Feature, latlng: L.LatLng) => {
   })
 }
 
-export const subcuencasStyle: L.PathOptions = {
-  color: '#1f78b4',
+export const contornoStyle: L.PathOptions = {
+  color: '#203d1c',
   weight: 2,
-  fill: false,
+  fillColor: '#203d1c7c',
+}
+
+export const subcuencasStyle: L.PathOptions = {
+  color: '#8d5d26',
+  weight: 2,
+  fillColor: '#ec9c417a',
 }
 
 export const sistemas10Style: L.PathOptions = {
   color: '#33a02c',
   weight: 2,
-  fillColor: '#b2df8a',
-  fillOpacity: 0.6,
+  fillColor: '#b2df8a98',
+  fillOpacity: 0.2,
 }
 
 export const zonasexplStyle: L.PathOptions = {
   color: '#1f78b4',
   weight: 2,
-  fillColor: '#a0c8e2',
-  fillOpacity: 0.6,
+  fillColor: '#a0c8e28f',
+  fillOpacity: 0.2,
 }
