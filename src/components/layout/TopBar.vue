@@ -4,9 +4,17 @@
     <mobile-navigation-menu v-if="!mdAndUp" />
 
     <v-toolbar-title class="text-h6 font-weight-bold">
-      <div class="d-flex flex-row align-center">
-        <v-img :src="logo" max-width="100" class="ml-5 mr-4" contain />
-        <v-img :src="ministerio" max-width="300" class="ml-5" contain />
+      <div class="d-flex align-center" :class="mdAndUp ? 'flex-row' : 'flex-column justify-center'">
+        <v-img
+          :src="logo"
+          :max-width="mdAndUp ? 100 : 70"
+          :width="mdAndUp ? 100 : 70"
+          :height="mdAndUp ? 40 : 32"
+          class="mr-md-4 mb-1 mb-md-0"
+          contain
+        />
+
+        <v-img v-if="mdAndUp" :src="ministerio" max-width="300" class="ml-5" contain />
       </div>
     </v-toolbar-title>
 

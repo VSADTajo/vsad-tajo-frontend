@@ -14,6 +14,7 @@ const light = {
     surface_variant: '#FFFFFF',
     dark: '#212121',
     border: '#e7e7e7',
+    white: '#ffffff',
   },
 }
 
@@ -27,6 +28,7 @@ const dark = {
     surface_variant: '#393939',
     dark: '#212121',
     border: '#393939',
+    white: '#ffffff',
   },
 }
 

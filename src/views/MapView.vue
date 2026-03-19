@@ -2,7 +2,7 @@
   <div class="map-wrapper">
     <div ref="mapContainer" class="map-container"></div>
 
-    <MapTimeControls v-if="hasTemporalLayers" />
+    <MapTimeControls v-if="hasTemporalLayers && mdAndUp" />
   </div>
 </template>
 
@@ -15,12 +15,14 @@
   import { watch } from 'vue'
   import { useBaseLayers } from '@/composables/useBaseLayers'
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
-  import { center, defaultZoom, minZoom } from '@/constants/mapConfig'
+  import { center, defaultZoom, defaultZoomForMobile, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import { useLayersStore } from '@/stores/layersStore'
+  import { useDisplay } from 'vuetify'
 
   const layersStore = useLayersStore()
+  const { mdAndUp } = useDisplay()
 
   // Referencias
   const mapContainer = ref<HTMLElement | null>(null)
@@ -57,7 +59,7 @@
     map = L.map(mapContainer.value, {
       zoomControl: true,
       minZoom,
-    }).setView(center, defaultZoom)
+    }).setView(center, mdAndUp ? defaultZoom : defaultZoomForMobile)
 
     createMapPanes(map)
 

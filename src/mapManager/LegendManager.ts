@@ -14,11 +14,10 @@ export class LegendManager {
     const legend = new L.Control({ position: 'bottomright' })
 
     legend.onAdd = () => {
-      const div = L.DomUtil.create('div', 'leaflet-control legend')
+      const div = L.DomUtil.create('div', 'leaflet-control custom-legend')
 
       const img = document.createElement('img')
       img.src = url
-      img.style.maxWidth = '300px'
 
       div.appendChild(img)
 

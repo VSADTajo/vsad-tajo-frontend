@@ -13,10 +13,6 @@
 
     <v-sheet color="primary" class="mobile-menu-sheet" elevation="4">
       <v-list :selected="activeSection ? [activeSection] : []" bg-color="primary" nav>
-        <v-list-item value="predicciones" @click="toggleSection('predicciones')">
-          <v-list-item-title>Predicciones</v-list-item-title>
-        </v-list-item>
-
         <v-list-item value="capas" @click="toggleSection('capas')">
           <v-list-item-title>Capas</v-list-item-title>
         </v-list-item>
