@@ -32,6 +32,7 @@
                   <!-- Título -->
                   <v-list-item-title class="d-flex align-center">
                     <v-checkbox
+                      v-if="componentProps.multiple"
                       density="compact"
                       hide-details
                       class="mr-6"

@@ -30,13 +30,49 @@ export const stationLayers: LayerNode[] = [
       { id: 'PN', title: 'Pluvinimómetro', parentLayer: 'saih' },
     ],
   },
+  // {
+  //   id: 'saica',
+  //   title: 'SAICA',
+  //   children: [
+  //     { id: 'estacionCalidad', title: 'Estación de Calidad SAICA', parentLayer: 'saica' },
+  //     { id: 'vertidos', title: 'Vertidos', parentLayer: 'saica' },
+  //   ],
+  // },
+]
+
+export const meteoMaps: LayerNode[] = [
   {
-    id: 'saica',
-    title: 'SAICA',
+    id: 'eps',
+    title: 'EPS',
     children: [
-      { id: 'estacionCalidad', title: 'Estación de Calidad SAICA', parentLayer: 'saica' },
-      { id: 'vertidos', title: 'Vertidos', parentLayer: 'saica' },
+      { id: 'nieve_agua', title: 'Nieve-Agua Media', parentLayer: 'eps' },
+      { id: 'precip_25', title: 'Precipitaciones 25', parentLayer: 'eps' },
+      { id: 'precip_75', title: 'Precipitaciones 75', parentLayer: 'eps' },
+      { id: 'precip_media', title: 'Precipitaciones Media', parentLayer: 'eps' },
+      { id: 'temp_media', title: 'Temperatura Media', parentLayer: 'eps' },
     ],
+  },
+  {
+    id: 'harmonie',
+    title: 'HARMONIE',
+    children: [
+      { id: 'coberturanieve', title: 'Cobertura Nieve', parentLayer: 'harmonie' },
+      { id: 'nubosidad', title: 'Nubosidad', parentLayer: 'harmonie' },
+      { id: 'precipitacion', title: 'Precipitaciones', parentLayer: 'harmonie' },
+      { id: 'rayos', title: 'Rayos', parentLayer: 'harmonie' },
+      { id: 'temperatura', title: 'Temperatura', parentLayer: 'harmonie' },
+      { id: 'viento', title: 'Viento', parentLayer: 'harmonie' },
+    ],
+  },
+  {
+    id: 'radar',
+    title: 'Radar',
+    children: [{ id: 'precip_radar', title: 'Precipitaciones', parentLayer: 'radar' }],
+  },
+  {
+    id: 'meteo_saih',
+    title: 'SAIH',
+    children: [{ id: 'precip_saih', title: 'Precipitaciones', parentLayer: 'meteo_saih' }],
   },
 ]
 
