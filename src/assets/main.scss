@@ -38,3 +38,23 @@ html {
 .dark-theme .map-label {
   color: white !important;
 }
+
+
+.custom-legend {
+  background: white;
+  border: 2px solid var(--v-theme-primary);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.custom-legend img {
+  max-width: 300px;
+  display: block;
+}
+
+@media (max-width: 960px) {
+  .custom-legend {
+    display: none;
+  }
+}

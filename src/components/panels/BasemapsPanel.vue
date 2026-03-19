@@ -1,8 +1,12 @@
 <template>
   <div class="d-flex flex-column">
     <v-row class="flex-grow-1">
-      <v-col cols="12">
+      <v-col cols="12" class="d-flex align-center justify-space-between">
         <h2 class="pl-4 pt-4">Mapas Base</h2>
+
+        <v-btn icon class="mr-4 mt-4" color="primary" density="comfortable" @click="goBack">
+          <v-icon>{{ mdAndUp ? 'mdi-arrow-left' : 'mdi-arrow-down' }}</v-icon>
+        </v-btn>
       </v-col>
     </v-row>
     <v-row class="flex-grow-1">
@@ -17,6 +21,9 @@
             :key="layer.id"
             :value="layer.id"
             class="rounded pa-3 elevation-2"
+            :class="{
+              'basemap-active': selectedBasemap.includes(layer.id),
+            }"
             @click="setBasemap(layer.id)"
           >
             <div class="d-flex align-center justify-space-between w-100">
@@ -41,6 +48,23 @@
   import { basemapsLayers } from '@/constants/basemaps'
 
   import { useBasemap } from '@/composables/useBasemaps'
+  import { useRouter } from 'vue-router'
+  import { useDisplay } from 'vuetify'
 
   const { selectedBasemap, setBasemap } = useBasemap()
+  const { mdAndUp } = useDisplay()
+
+  const router = useRouter()
+
+  const goBack = () => {
+    router.push('/')
+  }
 </script>
+
+<style lang="scss" scoped>
+  .basemap-active {
+    background-color: rgb(var(--v-theme-primary));
+    color: white;
+    --v-theme-primary-overlay-multiplier: 0;
+  }
+</style>
