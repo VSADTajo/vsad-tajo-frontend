@@ -14,6 +14,10 @@
         <v-card flat class="pa-4" min-width="500" max-width="800">
           <v-card-title class="text-h5">Iniciar sesión</v-card-title>
           <v-card-text>
+            <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
+              {{ error }}
+            </v-alert>
+
             <v-form @submit.prevent="login">
               <v-text-field
                 v-model="email"
@@ -32,7 +36,16 @@
                 class="mt-4"
               ></v-text-field>
 
-              <v-btn type="submit" color="primary" block class="mt-6" @click="login">Entrar</v-btn>
+              <v-btn
+                type="submit"
+                color="primary"
+                block
+                class="mt-6"
+                :loading="loading"
+                @click="login"
+              >
+                Entrar
+              </v-btn>
             </v-form>
           </v-card-text>
         </v-card>
@@ -41,16 +54,29 @@
   </v-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
   import router from '@/router'
+  import { loginService } from '@/services/auth'
   import { ref } from 'vue'
 
   const email = ref('')
   const password = ref('')
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
-  function login() {
-    localStorage.setItem('auth', 'true')
-    router.push('/')
+  async function login() {
+    error.value = null
+    loading.value = true
+
+    try {
+      await loginService(email.value, password.value)
+      router.push({ name: 'dashboard' })
+    } catch (e) {
+      error.value = 'Usuario o contraseña incorrectos'
+      console.error(e)
+    } finally {
+      loading.value = false
+    }
   }
 </script>
 

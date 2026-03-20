@@ -59,7 +59,7 @@
     map = L.map(mapContainer.value, {
       zoomControl: true,
       minZoom,
-    }).setView(center, mdAndUp ? defaultZoom : defaultZoomForMobile)
+    }).setView(center, mdAndUp.value ? defaultZoom : defaultZoomForMobile)
 
     createMapPanes(map)
 
