@@ -24,5 +24,3 @@
 
   const { mdAndUp } = useDisplay()
 </script>
-
-<style lang="scss" scoped></style>

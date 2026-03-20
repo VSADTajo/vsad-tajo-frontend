@@ -33,10 +33,18 @@
             :default-open="true"
           />
         </v-col>
+        <v-col cols="12" class="pt-1 pb-1 px-4">
+          <ItemsLayersGroup
+            :layers="meteoMaps"
+            title="Mapas Meteo"
+            :multiple="false"
+            :default-open="false"
+          />
+        </v-col>
         <v-col cols="12" class="pt-1 px-4">
           <ItemsLayersGroup
             :layers="efasLayers"
-            title="Efas"
+            title="Mapas Efas"
             :multiple="false"
             :default-open="false"
           />
@@ -50,7 +58,7 @@
   import { useRouter } from 'vue-router'
   import ItemsLayersGroup from '../itemslayers/ItemsLayersGroup.vue'
 
-  import { stationLayers, zonasLayers, efasLayers } from '@/constants/itemsLayers'
+  import { stationLayers, zonasLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
   import { useDisplay } from 'vuetify'
 
   const { mdAndUp } = useDisplay()
