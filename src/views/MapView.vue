@@ -1,11 +1,13 @@
 <template>
   <div class="map-wrapper">
     <div ref="mapContainer" class="map-container"></div>
+
+    <MapTimeControls v-if="hasTemporalLayers && mdAndUp" />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, nextTick } from 'vue'
+  import { ref, onMounted, nextTick, computed } from 'vue'
   import L from 'leaflet'
   import 'leaflet/dist/leaflet.css'
   import { basemapsLayers } from '@/constants/basemaps'
@@ -13,13 +15,24 @@
   import { watch } from 'vue'
   import { useBaseLayers } from '@/composables/useBaseLayers'
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
-  import { center, defaultZoom } from '@/constants/mapConfig'
+  import { center, defaultZoom, defaultZoomForMobile, minZoom } from '@/constants/mapConfig'
+  import { createMapPanes } from '@/config/panes/mapPanes'
+  import MapTimeControls from '@/components/map/MapTimeControls.vue'
+  import { useLayersStore } from '@/stores/layersStore'
+  import { useDisplay } from 'vuetify'
+
+  const layersStore = useLayersStore()
+  const { mdAndUp } = useDisplay()
 
   // Referencias
   const mapContainer = ref<HTMLElement | null>(null)
   let map: L.Map
 
   const { selectedBasemap } = useBasemap()
+
+  const hasTemporalLayers = computed(() =>
+    Object.values(layersStore.layers).some((layer) => layer.visible && layer.temporal)
+  )
 
   let currentTileLayer: L.TileLayer
 
@@ -43,7 +56,12 @@
 
     if (!mapContainer.value) return
 
-    map = L.map(mapContainer.value, { zoomControl: true }).setView(center, defaultZoom)
+    map = L.map(mapContainer.value, {
+      zoomControl: true,
+      minZoom,
+    }).setView(center, mdAndUp.value ? defaultZoom : defaultZoomForMobile)
+
+    createMapPanes(map)
 
     const basemap = basemapsLayers.find((b) => b.id === selectedBasemap.value[0])
 
@@ -55,7 +73,7 @@
 
     const { initBaseLayers } = useBaseLayers(map)
 
-    initBaseLayers()
+    await initBaseLayers()
     useDynamicLayers(map)
 
     // Resize map
@@ -76,26 +94,5 @@
     flex: 1;
     width: 100%;
     height: 100%;
-  }
-
-  /* Marker custom */
-  .custom-marker .marker-circle {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background-color: #1976d2; /* Vuetify primary */
-    border: 2px solid white;
-    transition: all 0.2s ease;
-  }
-
-  .custom-marker .marker-circle.selected {
-    transform: scale(1.5);
-    background-color: #ff9800; /* color de selección */
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  }
-
-  .custom-marker .marker-circle:hover {
-    transform: scale(1.3);
-    cursor: pointer;
   }
 </style>

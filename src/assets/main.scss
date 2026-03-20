@@ -1,36 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
-html{
-    overflow-y: hidden !important;
+html {
+  overflow-y: hidden !important;
+}
+
+.v-application {
+  font-family: 'Montserrat', sans-serif !important;
 }
 
 .map.dark-theme {
-    .leaflet-layer,
-    .leaflet-control-attribution {
-      filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-    }
-    .leaflet-control-zoom-in,
-    .leaflet-control-zoom-out{
-      background: #333 !important;
-      color: white !important;
-    }
+  .leaflet-layer,
+  .leaflet-control-attribution {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
   }
-
-
-.dark-theme {
+  .leaflet-control-zoom-in,
+  .leaflet-control-zoom-out {
     background: #333 !important;
     color: white !important;
   }
+}
 
-  .dark-theme .layer-menu {
-    background: #222 !important;
-    color: white;
-  }
+.dark-theme {
+  background: #333 !important;
+  color: white !important;
+}
 
-  .dark-theme .map-button {
-    background: #444 !important;
-    border: 1px solid #666;
-  }
+.dark-theme .layer-menu {
+  background: #222 !important;
+  color: white;
+}
 
-  .dark-theme .map-label {
-    color: white !important;
+.dark-theme .map-button {
+  background: #444 !important;
+  border: 1px solid #666;
+}
+
+.dark-theme .map-label {
+  color: white !important;
+}
+
+
+.custom-legend {
+  background: white;
+  border: 2px solid var(--v-theme-primary);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.custom-legend img {
+  max-width: 300px;
+  display: block;
+}
+
+@media (max-width: 960px) {
+  .custom-legend {
+    display: none;
   }
+}

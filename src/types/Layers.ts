@@ -3,6 +3,8 @@ export interface LayerNode {
   title: string
   children?: LayerNode[]
   parentLayer?: string
+  opacityEnabled?: boolean
+  opacity?: number
 }
 
 export interface LayerState {
@@ -10,7 +12,12 @@ export interface LayerState {
   visible: boolean
   opacity: number
   parentLayer?: string
-  params?: Partial<TimeParams> // para temporales
+  params?: Partial<TimeParams>
+  temporal?: {
+    start: string
+    end: string
+    stepHours: number
+  }
 }
 
 export interface TimeParams {
@@ -28,13 +35,25 @@ interface BaseLayerConfig {
   name: string
   url: string
   opacity?: number
-  zIndex?: number
   groupBy?: GroupBy
+  pane?: string
+  temporal?: boolean
+  start?: string
+  legend?: string
 }
 
 export interface WMSLayerConfig extends BaseLayerConfig {
   type: 'WMS'
   layers: string
+  format?: string
+  styles?: string
+  transparent?: boolean
+  version?: string
+  crs?: L.CRS
+  token?: string
+  crossOrigin?: boolean
+  bbox?: [[number, number], [number, number]]
+  mask?: string
 }
 
 export interface WFSLayerConfig extends BaseLayerConfig {
@@ -42,6 +61,7 @@ export interface WFSLayerConfig extends BaseLayerConfig {
   typeName: string
   cql?: string
   style?: L.PathOptions
+  pointToLayer?: (feature: GeoJSON.Feature, latlng: L.LatLng) => L.Layer
 }
 
 export interface TMSLayerConfig extends BaseLayerConfig {

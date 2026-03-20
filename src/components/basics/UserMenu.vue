@@ -1,46 +1,57 @@
 <template>
-  <v-menu location="bottom end" transition="scale-transition">
+  <v-menu location="bottom end" transition="scale-transition" :close-on-content-click="false">
     <template #activator="{ props }">
       <v-btn v-bind="props" icon variant="text">
-        <v-avatar size="36" color="white">
-          <v-icon>mdi-account-circle</v-icon>
+        <v-avatar size="38" color="white">
+          <v-icon color="primary">mdi-account-circle</v-icon>
         </v-avatar>
       </v-btn>
     </template>
 
-    <v-card min-width="260">
-      <!-- USER INFO -->
-      <v-card-text class="d-flex align-center">
-        <v-avatar size="40" class="mr-3">
-          <v-icon size="40">mdi-account</v-icon>
-        </v-avatar>
-        <div>
-          <div class="font-weight-bold">{{ userName }}</div>
+    <v-card min-width="300" rounded="xl" elevation="8">
+      <div class="pa-4 bg-primary text-white">
+        <div class="d-flex align-center">
+          <v-avatar size="48" color="white" class="mr-3">
+            <v-icon color="primary" size="32">mdi-account</v-icon>
+          </v-avatar>
+
+          <div class="overflow-hidden">
+            <div class="text-subtitle-1 font-weight-bold">Bienvenido</div>
+            <div class="text-body-2 text-truncate">{{ userEmail }}</div>
+          </div>
         </div>
-      </v-card-text>
+      </div>
 
-      <v-divider />
-
-      <!-- DARK MODE -->
-      <v-list density="compact">
+      <v-list density="comfortable" class="py-2">
         <v-list-item>
           <template #prepend>
             <v-icon>
-              {{ theme === 'dark' ? 'mdi-weather-night' : 'mdi-weather-sunny' }}
+              {{ isDark ? 'mdi-weather-night' : 'mdi-weather-sunny' }}
             </v-icon>
           </template>
 
-          <v-list-item-title>Modo oscuro</v-list-item-title>
+          <v-list-item-title>Tema oscuro</v-list-item-title>
 
           <template #append>
-            <v-switch v-model="isDark" inset hide-details />
+            <v-switch v-model="isDark" inset hide-details color="primary" />
           </template>
         </v-list-item>
 
         <v-divider class="my-2" />
 
-        <!-- LOGOUT -->
-        <v-list-item prepend-icon="mdi-logout" title="Cerrar sesión" @click="logout" />
+        <v-list-item prepend-icon="mdi-email-outline">
+          <v-list-item-title>Correo</v-list-item-title>
+          <v-list-item-subtitle>{{ userEmail }}</v-list-item-subtitle>
+        </v-list-item>
+
+        <v-divider class="my-2" />
+
+        <v-list-item
+          prepend-icon="mdi-logout"
+          title="Cerrar sesión"
+          class="text-error"
+          @click="logout"
+        />
       </v-list>
     </v-card>
   </v-menu>
@@ -54,10 +65,7 @@
 
   const router = useRouter()
 
-  // 🔹 Nombre del usuario (puedes traerlo del login o localStorage)
-  const userName = useStorage('userName', 'Usuario')
-
-  // 🔹 Theme (el mismo que usas en App.vue)
+  const userEmail = useStorage('email', 'usuario@correo.com')
   const theme = useStorage<Theme>('theme', 'light')
 
   const isDark = computed({
@@ -68,7 +76,14 @@
   })
 
   function logout() {
-    localStorage.removeItem('auth')
-    router.push('/login')
+    localStorage.removeItem('token')
+    localStorage.removeItem('email')
+    router.push({ name: 'login' })
   }
 </script>
+
+<style scoped>
+  .overflow-hidden {
+    overflow: hidden;
+  }
+</style>

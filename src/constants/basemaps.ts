@@ -1,13 +1,13 @@
 export const basemapsLayers = [
   {
-    id: '2',
-    name: 'Open Street Map',
+    id: 'osm',
+    name: 'OpenStreetMap',
     preview: 'https://tile.openstreetmap.org/10/511/340.png',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenStreetMap contributors',
   },
   {
-    id: '3',
+    id: 'esri',
     name: 'Satélite',
     preview:
       'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/340/511',
@@ -15,10 +15,24 @@ export const basemapsLayers = [
     attribution: 'Tiles &copy; Esri',
   },
   {
-    id: '4',
-    name: 'Modo Oscuro',
-    preview: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/10/511/340.png',
-    url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png',
-    attribution: '&copy; Stadia Maps',
+    id: 'carto-dark',
+    name: 'Oscuro',
+    preview: 'https://a.basemaps.cartocdn.com/dark_all/10/511/340.png',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; CARTO',
+  },
+  {
+    id: 'carto-light',
+    name: 'Claro',
+    preview: 'https://a.basemaps.cartocdn.com/light_all/10/511/340.png',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; CARTO',
+  },
+  {
+    id: 'wikimedia',
+    name: 'Wikimedia',
+    preview: 'https://maps.wikimedia.org/osm-intl/10/511/340.png',
+    url: 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png',
+    attribution: '&copy; Wikimedia',
   },
 ]
