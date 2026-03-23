@@ -100,19 +100,10 @@
                   colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
                 }"
               />
-              <!-- <ForecastnamChart
-                :forecast-nam-harmonie="forecastNAM_Harmonie"
-                :forecast-nam-epstat="forecastNAM_Epstat"
-              /> -->
             </v-sheet>
           </v-tabs-window-item>
           <v-tabs-window-item value="precipitaciones">
             <v-sheet v-if="precipitationMockup" class="pa-5">
-              <!-- <precipitation-chart
-                :data="precipitationMockup"
-                :forecast-precip-harmonie="forecastPrecip_Harmonie"
-                :forecast-precip-eps="forecastPrecip_EPS"
-              /> -->
               <ForecastChart
                 :forecast-det="forecastPrecip_Harmonie"
                 :forecast-ens="forecastPrecip_EPS"
@@ -233,6 +224,4 @@
 
     router.replace({ query })
   }
-
-  onMounted(() => {})
 </script>
