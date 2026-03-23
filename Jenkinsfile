@@ -4,6 +4,8 @@ pipeline {
     environment {
         APP_NAME     = 'vsad-tajo-frontend'
         APP_PORT     = '8080'
+        VITE_GEOSERVER_URL='http://65.21.97.113:8085/geoserver'
+        VITE_API_URL='http://65.21.97.113:3000'
         NODE_VERSION = '22'
     }
 
