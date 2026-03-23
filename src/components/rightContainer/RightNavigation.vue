@@ -10,6 +10,7 @@
     @update:model-value="onDrawerChange"
   >
     <right-content-card v-if="station" />
+    <RightContentReporting v-if="reporting" />
   </v-navigation-drawer>
 </template>
 
@@ -18,6 +19,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import RightContentCard from './RightContentCard.vue'
+  import RightContentReporting from './RightContentReporting.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -26,8 +28,11 @@
   // station seleccionada
   const station = computed(() => route.query.station as string | undefined)
 
+  // reporting seleccionada
+  const reporting = computed(() => route.query.reportingPoint as string | undefined)
+
   // drawer abierto si hay station
-  const drawerOpen = computed(() => !!station.value)
+  const drawerOpen = computed(() => !!station.value || !!reporting.value)
 
   // ignorar cierre inmediato por scrim
   let ignoreNextClose = false
