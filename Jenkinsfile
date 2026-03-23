@@ -54,6 +54,8 @@ pipeline {
                     sh """
                         docker build \
                             --target prod \
+                            --build-arg VITE_GEOSERVER_URL=${VITE_GEOSERVER_URL} \
+                            --build-arg VITE_API_URL=${VITE_API_URL} \
                             -t ${APP_NAME}:${IMAGE_TAG} \
                             .
                     """

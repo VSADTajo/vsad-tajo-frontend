@@ -2,8 +2,8 @@ import ky from 'ky'
 import router from '@/router'
 
 export const api = ky.create({
-  //prefixUrl: import.meta.env.VITE_API_URL,
-  prefixUrl: 'http://65.21.97.113:3000',
+  prefixUrl: import.meta.env.VITE_API_URL,
+  //prefixUrl: 'http://65.21.97.113:3000',
   timeout: 30000,
   hooks: {
     beforeRequest: [

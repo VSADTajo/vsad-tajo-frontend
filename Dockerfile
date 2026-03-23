@@ -5,6 +5,12 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+ARG VITE_GEOSERVER_URL
+ARG VITE_API_URL
+
+ENV VITE_GEOSERVER_URL=$VITE_GEOSERVER_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 # Install dependencies (cached unless package*.json changes)
 COPY package*.json ./
 RUN npm ci
