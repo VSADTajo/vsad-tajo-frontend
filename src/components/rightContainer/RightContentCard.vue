@@ -67,6 +67,8 @@
       <v-sheet elevation="2">
         <v-tabs v-model="tab" color="primary">
           <v-tab value="caudal">Caudal</v-tab>
+          <v-tab value="caudalAm">Caudal AM</v-tab>
+          <v-tab value="caudalEx">Caudal EX</v-tab>
           <v-tab value="precipitaciones">Precipitaciones</v-tab>
         </v-tabs>
 
@@ -97,6 +99,64 @@
                 :extra-options="{
                   stroke: { width: [0, 0, 3, 3] },
                   fill: { type: 'solid', opacity: [0.15, 0.35, 1, 1] },
+                  colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
+                }"
+              />
+            </v-sheet>
+          </v-tabs-window-item>
+          <v-tabs-window-item value="caudalAm">
+            <v-sheet v-if="forecastNAM_Harmonie && forecastNAM_Epstat" class="pa-5">
+              <ForecastChartAmCharts
+                :forecast-det="forecastNAM_Harmonie"
+                :forecast-ens="forecastNAM_Epstat"
+                unit="m³/s"
+                chart-type="line"
+                :percentile-keys="{
+                  median: 'Q.NAM.ens.Med',
+                  p90: 'Q.NAM.ens.90',
+                  p75: 'Q.NAM.ens.75',
+                  p25: 'Q.NAM.ens.25',
+                  p10: 'Q.NAM.ens.10',
+                }"
+                :labels="{
+                  observed: 'Caudal Observado',
+                  p1090: 'Predicción P10-P90',
+                  p2575: 'Predicción P25-P75',
+                  eps: 'Predicción Det. EPS',
+                  harmonie: 'Predicción Det. Harmonie',
+                }"
+                :extra-options="{
+                  stroke: { width: [0, 0, 3, 3] },
+                  fill: { opacity: [0.15, 0.35, 1, 1] },
+                  colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
+                }"
+              />
+            </v-sheet>
+          </v-tabs-window-item>
+          <v-tabs-window-item value="caudalEx">
+            <v-sheet v-if="forecastNAM_Harmonie && forecastNAM_Epstat" class="pa-5">
+              <ForecastChartExChart
+                :forecast-det="forecastNAM_Harmonie"
+                :forecast-ens="forecastNAM_Epstat"
+                unit="m³/s"
+                chart-type="line"
+                :percentile-keys="{
+                  median: 'Q.NAM.ens.Med',
+                  p90: 'Q.NAM.ens.90',
+                  p75: 'Q.NAM.ens.75',
+                  p25: 'Q.NAM.ens.25',
+                  p10: 'Q.NAM.ens.10',
+                }"
+                :labels="{
+                  observed: 'Caudal Observado',
+                  p1090: 'Predicción P10-P90',
+                  p2575: 'Predicción P25-P75',
+                  eps: 'Predicción Det. EPS',
+                  harmonie: 'Predicción Det. Harmonie',
+                }"
+                :extra-options="{
+                  stroke: { width: [0, 0, 3, 3] },
+                  fill: { opacity: [0.15, 0.35, 1, 1] },
                   colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
                 }"
               />
@@ -152,6 +212,8 @@
   import { forecastPrecip_Harmonie } from '@/MOCKUPS/precipitaciones/forecast_Precipitacion_Harmonie'
   import { forecastPrecip_EPS } from '@/MOCKUPS/precipitaciones/forecast_Precipitation_EPS'
   import ForecastChart from '@/components/charts/ForecastChart.vue'
+  import ForecastChartAmCharts from '@/components/charts/ForecastChartAmChart.vue'
+  import ForecastChartExChart from '../charts/ForecastChartExChart.vue'
   import { telemetryExample } from '@/MOCKUPS/precipitaciones/precipitaciones_observadas'
 
   const route = useRoute()
