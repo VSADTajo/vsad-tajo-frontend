@@ -42,6 +42,7 @@
                 block
                 class="mt-6"
                 :loading="loading"
+                :disabled="!password || !email"
                 @click="login"
               >
                 Entrar

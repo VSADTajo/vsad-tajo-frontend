@@ -164,9 +164,9 @@
           </v-tabs-window-item>
           <v-tabs-window-item value="precipitaciones">
             <v-sheet v-if="precipitationMockup" class="pa-5">
-              <ForecastChart
-                :forecast-det="forecastPrecip_Harmonie"
-                :forecast-ens="forecastPrecip_EPS"
+              <PrecipitationsChart
+                :forecast-det="forecastHarmonie"
+                :forecast-ens="forecastEpstat"
                 :observed="telemetryExample"
                 unit="mm"
                 chart-type="bar"
@@ -214,7 +214,9 @@
   import ForecastChart from '@/components/charts/ForecastChart.vue'
   import ForecastChartAmCharts from '@/components/charts/ForecastChartAmChart.vue'
   import ForecastChartExChart from '../charts/ForecastChartExChart.vue'
+  import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import { telemetryExample } from '@/MOCKUPS/precipitaciones/precipitaciones_observadas'
+  import { getHistoricalPredictionsService } from '@/services/predictions'
 
   const route = useRoute()
   const router = useRouter()
@@ -224,6 +226,9 @@
   const feature = ref<GeoJSON.Feature | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  const forecastEpstat = ref()
+  const forecastHarmonie = ref()
 
   // station desde la URL
   const stationCode = computed(() => route.query.station as string | undefined)
@@ -244,6 +249,23 @@
     error.value = null
 
     console.log('saihConfig.value', saihConfig.value)
+    console.log('stationCode', stationCode.value)
+
+    const predictions = await getHistoricalPredictionsService(
+      'AC01',
+      '2026-02-01T00:00:00Z',
+      '2026-03-31T23:59:59Z'
+    )
+
+    console.log('predictions', predictions)
+
+    forecastEpstat.value = predictions.find((item) => item.predictionTypeName === 'P.ens.forecast')
+    forecastHarmonie.value = predictions.find(
+      (item) => item.predictionTypeName === 'P.harmonie.forecast'
+    )
+
+    console.log('forecastEpstat.value ', forecastEpstat.value)
+    console.log('forecastPrecip_EPS', forecastPrecip_EPS)
 
     try {
       const result = await getWFSFeatureById(saihConfig.value, 'codigo', code)
@@ -267,13 +289,13 @@
   // reaccionar al cambio de URL
   watch(
     stationCode,
-    (code) => {
+    async (code) => {
       if (!code) {
         feature.value = null
         return
       }
 
-      loadFeature(code)
+      await loadFeature(code)
     },
     { immediate: true }
   )

@@ -84,8 +84,8 @@
     return builtSeries.value.map((serie, index) => {
       const key = `series_${index}`
 
-      const data: NormalizedPoint[] = serie.data
-        .map((point) => {
+      const data = serie.data
+        .map((point): NormalizedPoint | null => {
           const x = toTimestamp(point.x)
           if (x === null) return null
 
@@ -93,11 +93,13 @@
             const low = Number(point.y[0])
             const high = Number(point.y[1])
             if (!Number.isFinite(low) || !Number.isFinite(high)) return null
-            return { x, y: [low, high] as [number, number] }
+
+            return { x, y: [low, high] }
           }
 
           const y = Number(point.y)
           if (!Number.isFinite(y)) return null
+
           return { x, y }
         })
         .filter((p): p is NormalizedPoint => p !== null)

@@ -143,11 +143,12 @@
       if (!first) return
 
       if (Array.isArray(first.y)) {
-        const lowData = serie.data.map((p) => [p.x, (p.y as [number, number])[0]])
-        const bandData = serie.data.map((p) => [
-          p.x,
-          (p.y as [number, number])[1] - (p.y as [number, number])[0],
-        ])
+        const rangeData = serie.data.filter(
+          (p): p is { x: number; y: [number, number] } => p !== null && Array.isArray(p.y)
+        )
+
+        const lowData = rangeData.map((p) => [p.x, p.y[0]] as [number, number])
+        const bandData = rangeData.map((p) => [p.x, p.y[1] - p.y[0]] as [number, number])
 
         result.push({
           name: `${serie.name}__base`,
@@ -171,13 +172,17 @@
             opacity: serie.opacity,
             color: serie.color,
           },
-          data: bandData.map(([x, y], i) => ({
+          data: bandData.map(([_x, y], i) => ({
             value: [lowData[i][0], y],
             rangeStart: lowData[i][1],
             rangeEnd: lowData[i][1] + y,
           })),
         })
       } else {
+        const lineData = serie.data.filter(
+          (p): p is { x: number; y: number } => p !== null && !Array.isArray(p.y)
+        )
+
         result.push({
           name: serie.name,
           type: props.chartType === 'bar' ? 'bar' : 'line',
@@ -191,7 +196,7 @@
           itemStyle: {
             color: serie.color,
           },
-          data: serie.data.map((p) => [p.x, p.y as number]),
+          data: lineData.map((p) => [p.x, p.y] as [number, number]),
         })
       }
     })
