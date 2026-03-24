@@ -12,6 +12,7 @@ import {
 import { LegendManager } from './LegendManager'
 import { useLayersStore } from '@/stores/layersStore'
 import { subHours, isAfter, parseISO } from 'date-fns'
+import { useReportingPointStore } from '@/stores/reportingPointsStore'
 
 export class MapLayerManager {
   private map: L.Map
@@ -323,7 +324,14 @@ export class MapLayerManager {
     if (!stationId) return
 
     switch (layerId) {
-      case 'reportingpoints':
+      case 'reportingpoints': {
+        const reportingPointStore = useReportingPointStore()
+
+        reportingPointStore.setReportingPoint({
+          stationId: layerId,
+          html: data,
+        })
+
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -331,6 +339,7 @@ export class MapLayerManager {
           },
         })
         break
+      }
     }
   }
 
