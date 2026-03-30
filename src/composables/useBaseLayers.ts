@@ -13,7 +13,7 @@ export function useBaseLayers(map: L.Map) {
 
       if (layer) {
         leafletLayers.value[config.id] = layer
-        layer.addTo(map) // siempre se añaden
+        layer.addTo(map)
       }
 
       if (config.id === 'contorno' && layer instanceof L.GeoJSON) {

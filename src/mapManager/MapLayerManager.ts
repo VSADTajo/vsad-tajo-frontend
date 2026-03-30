@@ -13,6 +13,7 @@ import { LegendManager } from './LegendManager'
 import { useLayersStore } from '@/stores/layersStore'
 import { subHours, isAfter, parseISO } from 'date-fns'
 import { useReportingPointStore } from '@/stores/reportingPointsStore'
+import { MAP_PANES } from '@/config/panes/mapPanes'
 
 export class MapLayerManager {
   private map: L.Map
@@ -96,8 +97,6 @@ export class MapLayerManager {
   private temporalLayers: Record<string, L.TileLayer.WMS[]> = {}
 
   private async handleStandardLayers(layersState: Record<string, LayerState>) {
-    console.log('layersState22', layersState)
-
     for (const layerState of Object.values(layersState)) {
       const isGroupedChild = Array.from(this.configMap.values()).some(
         (config) => config.groupBy && config.id === layerState.parentLayer
@@ -137,6 +136,17 @@ export class MapLayerManager {
         this.activeLayers[layerState.id] = layer
         this.cache[layerState.id] = layer
 
+        if (
+          layerState.id === 'subcuencas' ||
+          layerState.id === 'sistemas10' ||
+          layerState.id === 'zonasexpl'
+        ) {
+          const pane = this.map.getPane(MAP_PANES.CONTORNO)
+          if (pane) {
+            pane.style.display = 'none'
+          }
+        }
+
         if (config.type === 'WMS' && config.legend === 'efas') {
           const layerName = (config as WMSLayerConfig).layers
 
@@ -168,6 +178,17 @@ export class MapLayerManager {
         }
 
         this.legendManager.removeLegend(layerState.id)
+
+        if (
+          layerState.id === 'subcuencas' ||
+          layerState.id === 'sistemas10' ||
+          layerState.id === 'zonasexpl'
+        ) {
+          const pane = this.map.getPane(MAP_PANES.CONTORNO)
+          if (pane) {
+            pane.style.display = ''
+          }
+        }
       }
 
       this.updateOpacityState(layerState)
@@ -288,18 +309,11 @@ export class MapLayerManager {
     if (!(layer instanceof L.TileLayer.WMS)) return
 
     this.map.on('click', async (e: L.LeafletMouseEvent) => {
-      console.log('layerIdWMS', layerId)
-      console.log('llayerWMS', layer)
-
       const url = buildFeatureInfoUrl(this.map, layer, e.latlng)
-
-      console.log('url', url)
 
       try {
         const res = await fetch(url)
         const data = await res.text()
-
-        console.log('data', data)
 
         if (!data) return
 
@@ -346,12 +360,7 @@ export class MapLayerManager {
   private attachVectorClick(layerId: string, layer: L.Layer) {
     if (!(layer instanceof L.GeoJSON)) return
 
-    console.log('layerId', layerId)
-
     layer.on('click', (e: L.LeafletMouseEvent & { layer: L.GeoJSON }) => {
-      console.log('layerIdWFS', layerId)
-      console.log('llayerWFS', layer)
-
       const feature = e.layer.feature as GeoJSON.Feature | undefined
       if (!feature) return
 
@@ -360,10 +369,8 @@ export class MapLayerManager {
   }
 
   private handleFeatureClick(layerId: string, feature: GeoJSON.Feature) {
-    console.log('feature', feature)
     switch (layerId) {
       case 'saih':
-        console.log('feature.properties', feature.properties)
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -372,8 +379,31 @@ export class MapLayerManager {
         })
         break
 
-      case 'estaciones':
-        console.log('Abrir panel estaciones')
+      case 'subcuencas':
+        router.replace({
+          query: {
+            ...router.currentRoute.value.query,
+            subcuenca: feature.properties?.code,
+          },
+        })
+        break
+
+      case 'sistemas10':
+        router.replace({
+          query: {
+            ...router.currentRoute.value.query,
+            sistema: feature.properties?.sistema,
+          },
+        })
+        break
+
+      case 'zonasexpl':
+        router.replace({
+          query: {
+            ...router.currentRoute.value.query,
+            zona: feature.properties?.ogc_fid,
+          },
+        })
         break
 
       default:
@@ -402,9 +432,6 @@ export class MapLayerManager {
       const layerName = (config as WMSLayerConfig).layers
       const time = await getLayerTimeDimension(layerName)
 
-      console.log('time', time)
-      console.log('layerName', layerName)
-
       if (!time) return
 
       const startDate = config.start ? parseISO(config.start) : parseISO(time.start)
@@ -427,8 +454,6 @@ export class MapLayerManager {
         ...layer.params,
         time: safeStart.toISOString(),
       }
-
-      console.log('layer.params', layer.params)
     } catch (err) {
       console.error('Error loading temporal dimension', err)
     }
