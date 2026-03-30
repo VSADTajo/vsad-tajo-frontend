@@ -2,6 +2,7 @@ import L from 'leaflet'
 import type { LayerConfig, WFSLayerConfig, WMSLayerConfig, TMSLayerConfig } from '@/types/Layers'
 import ky from 'ky'
 import { boundaryStore } from '@/stores/boundaryStore'
+import { MAP_PANES } from '@/config/panes/mapPanes'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
@@ -72,11 +73,51 @@ export async function createWFSLayer(
 
     const geojson = await ky.get(baseUrl, { searchParams: params }).json()
 
-    return L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
-      style: config.style,
+    let highlightLayer: L.GeoJSON | null = null
+
+    const geojsonLayer = L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
+      style: config.style?.normal,
       pointToLayer: config.pointToLayer,
       pane: config.pane,
+      interactive: config.interactive ?? true,
+
+      onEachFeature: (feature, layer) => {
+        if (!config.highlight || !config.style) return
+
+        const { highlight } = config.style
+
+        layer.on({
+          mouseover: () => {
+            // eliminar anterior
+            if (highlightLayer) {
+              highlightLayer.remove()
+              highlightLayer = null
+            }
+
+            const map = (layer as any)._map as L.Map | undefined
+            if (!map) return
+
+            // crear nuevo highlight en pane superior
+            highlightLayer = L.geoJSON(feature as GeoJSON.GeoJsonObject, {
+              style: highlight,
+              pane: MAP_PANES.HIGHLIGHT,
+              interactive: false,
+            })
+
+            highlightLayer.addTo(map)
+          },
+
+          mouseout: () => {
+            if (highlightLayer) {
+              highlightLayer.remove()
+              highlightLayer = null
+            }
+          },
+        })
+      },
     })
+
+    return geojsonLayer
   } catch (err) {
     console.error('Error creando capa WFS', err)
     return null
