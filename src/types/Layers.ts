@@ -40,6 +40,7 @@ interface BaseLayerConfig {
   temporal?: boolean
   start?: string
   legend?: string
+  interactive?: boolean
 }
 
 export interface WMSLayerConfig extends BaseLayerConfig {
@@ -60,7 +61,8 @@ export interface WFSLayerConfig extends BaseLayerConfig {
   type: 'WFS'
   typeName: string
   cql?: string
-  style?: L.PathOptions
+  style?: LayerStyle
+  highlight?: boolean
   pointToLayer?: (feature: GeoJSON.Feature, latlng: L.LatLng) => L.Layer
 }
 
@@ -69,3 +71,8 @@ export interface TMSLayerConfig extends BaseLayerConfig {
 }
 
 export type LayerConfig = WMSLayerConfig | WFSLayerConfig | TMSLayerConfig
+
+export interface LayerStyle {
+  normal: L.PathOptions
+  highlight: L.PathOptions
+}

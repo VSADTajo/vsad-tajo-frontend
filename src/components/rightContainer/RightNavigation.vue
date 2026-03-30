@@ -9,8 +9,11 @@
     temporary
     @update:model-value="onDrawerChange"
   >
-    <right-content-card v-if="station" />
+    <RightContentSaih v-if="station" />
     <RightContentReporting v-if="reporting" />
+    <right-content-subcuenca v-if="subcuenca" />
+    <RightContentSistemas v-if="sistema" />
+    <RightContentZonas v-if="zona" />
   </v-navigation-drawer>
 </template>
 
@@ -18,21 +21,31 @@
   import { computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
-  import RightContentCard from './RightContentCard.vue'
+  import RightContentSaih from './RightContentSaih.vue'
   import RightContentReporting from './RightContentReporting.vue'
+  import RightContentSubcuenca from './RightContentSubcuenca.vue'
+  import RightContentSistemas from './RightContentSistemas.vue'
+  import RightContentZonas from './RightContentZonas.vue'
 
   const route = useRoute()
   const router = useRouter()
   const { mdAndUp, width } = useDisplay()
 
-  // station seleccionada
   const station = computed(() => route.query.station as string | undefined)
 
-  // reporting seleccionada
   const reporting = computed(() => route.query.reportingPoint as string | undefined)
 
+  const subcuenca = computed(() => route.query.subcuenca as string | undefined)
+
+  const sistema = computed(() => route.query.sistema as string | undefined)
+
+  const zona = computed(() => route.query.zona as string | undefined)
+
   // drawer abierto si hay station
-  const drawerOpen = computed(() => !!station.value || !!reporting.value)
+  const drawerOpen = computed(
+    () =>
+      !!station.value || !!reporting.value || !!subcuenca.value || !!sistema.value || !!zona.value
+  )
 
   // ignorar cierre inmediato por scrim
   let ignoreNextClose = false

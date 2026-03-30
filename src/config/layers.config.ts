@@ -20,6 +20,7 @@ export const baseLayersConfig: LayerConfig[] = [
     layers: 'Tajo:cht_rios',
     opacity: 0.4,
     pane: MAP_PANES.LINES,
+    interactive: false,
   },
   {
     id: 'contorno',
@@ -28,7 +29,8 @@ export const baseLayersConfig: LayerConfig[] = [
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_cuenca_simple',
     style: contornoStyle,
-    pane: MAP_PANES.POLYGONS,
+    pane: MAP_PANES.CONTORNO,
+    interactive: false,
   },
 ]
 
@@ -40,7 +42,9 @@ export const dynamicLayersConfig: LayerConfig[] = [
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_subcuencas',
     style: subcuencasStyle,
+    highlight: true,
     pane: MAP_PANES.POLYGONS,
+    interactive: true,
   },
   {
     id: 'sistemas10',
@@ -49,7 +53,9 @@ export const dynamicLayersConfig: LayerConfig[] = [
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_sistemas10_simple',
     style: sistemas10Style,
+    highlight: true,
     pane: MAP_PANES.POLYGONS,
+    interactive: true,
   },
   {
     id: 'zonasexpl',
@@ -58,7 +64,9 @@ export const dynamicLayersConfig: LayerConfig[] = [
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_zonas_expl_simple',
     style: zonasexplStyle,
+    highlight: true,
     pane: MAP_PANES.POLYGONS,
+    interactive: true,
   },
   {
     id: 'saih',
@@ -68,6 +76,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     typeName: 'Tajo:cht_puntos_saih',
     pane: MAP_PANES.POINTS,
     pointToLayer: saihPointStyle,
+    interactive: true,
     groupBy: {
       field: 'tipo_cod',
       parentLayer: 'saih',
@@ -92,6 +101,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     start: layerStartEFAS,
     pane: MAP_PANES.REPORTING,
     mask: 'contorno',
+    interactive: true,
   },
   {
     id: 'rainDWD',
@@ -115,6 +125,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     temporal: true,
     start: layerStartEFAS,
     pane: MAP_PANES.POLYGONS,
+    interactive: false,
   },
   {
     id: 'rainEUD',
@@ -138,6 +149,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     temporal: true,
     start: layerStartEFAS,
     pane: MAP_PANES.POLYGONS,
+    interactive: false,
   },
   {
     id: 'soilMoisture',
@@ -161,6 +173,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     temporal: true,
     start: layerStartEFAS,
     pane: MAP_PANES.POLYGONS,
+    interactive: false,
   },
   {
     id: 'scWB',
@@ -184,6 +197,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     temporal: true,
     start: layerStartEFAS,
     pane: MAP_PANES.POLYGONS,
+    interactive: false,
   },
   {
     id: 'alDWD',
@@ -204,6 +218,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     temporal: true,
     start: layerStartEFAS,
     pane: MAP_PANES.POLYGONS,
+    interactive: false,
   },
   {
     id: 'alEUD',
@@ -224,5 +239,6 @@ export const dynamicLayersConfig: LayerConfig[] = [
     temporal: true,
     start: layerStartEFAS,
     pane: MAP_PANES.POLYGONS,
+    interactive: false,
   },
 ]

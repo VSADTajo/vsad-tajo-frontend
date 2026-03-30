@@ -275,7 +275,6 @@
         feature.value = null
         return
       }
-
       feature.value = result
     } catch (err) {
       console.error('Error loading feature', err)

@@ -73,8 +73,8 @@
 
     const { initBaseLayers } = useBaseLayers(map)
 
-    await initBaseLayers()
     useDynamicLayers(map)
+    await initBaseLayers()
 
     // Resize map
     const resizeObserver = new ResizeObserver(() => map.invalidateSize())
