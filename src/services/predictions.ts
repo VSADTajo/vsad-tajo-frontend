@@ -1,28 +1,42 @@
-import type { ForecastNAM } from '@/types/Forecast'
 import { api } from './api'
-import type { StationPrediction } from '@/types/Predictions'
+import type {
+  DatesAvailableResponse,
+  PredictionsResponse,
+  PredictionTypeName,
+  StationPrediction,
+} from '@/types/Predictions'
 
-type HistoricalPredictionsResponse = {
-  predictions: StationPrediction[]
-}
-
-export async function getHistoricalPredictionsService(
+export async function getPredictionsService(
   stationId: string,
-  startDate: string,
-  endDate: string
-): Promise<StationPrediction[]> {
-  console.log('API URL runtime:', import.meta.env.VITE_API_URL)
-
+  predictionType: PredictionTypeName,
+  simulationDate?: string,
+  percentile?: string
+): Promise<StationPrediction | undefined> {
   const res = await api
     .get(`predictions/forecast`, {
       searchParams: {
         stationId,
+        predictionType,
+        simulationDate,
+        percentile,
       },
       headers: {
         Accept: 'application/json',
       },
     })
-    .json<HistoricalPredictionsResponse>()
+    .json<PredictionsResponse>()
 
-  return res.predictions
+  return res.predictions[0]
+}
+
+export async function getAvailablePredictionsService(): Promise<string[]> {
+  const result = await api
+    .get(`predictions/available-dates`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+    .json<DatesAvailableResponse>()
+
+  return result.dates
 }

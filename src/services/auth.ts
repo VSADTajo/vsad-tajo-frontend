@@ -17,7 +17,7 @@ export async function loginService(email: string, password: string): Promise<Log
     })
     .json<LoginResponse>()
 
-  localStorage.setItem('token', res.accessToken)
+  localStorage.setItem('token', res.refreshToken)
   localStorage.setItem('email', email)
 
   return res
