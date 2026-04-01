@@ -1,326 +1,329 @@
 <template>
-  <apexchart :type="chartType" height="550" :options="chartOptions" :series="series" />
+  <div>
+    <apexchart height="550" :options="chartOptions" :series="series" />
+  </div>
 </template>
 
 <script setup lang="ts">
   import { computed } from 'vue'
   import type { ApexOptions } from 'apexcharts'
-  import type { ApexTooltipContext } from '@/types/Forecast'
-  import type { StationPrediction } from '@/types/Predictions'
-  import type { TelemetryRecord } from '@/types/Precipitation'
-  import { dateFormattedWithHours, dateFormattedWithHoursAndMinutes } from '@/utils/dates'
-
-  type TimeseriePoint = {
-    x: number
-    y: number | [number, number]
-  }
-
-  type TooltipPoint = {
-    x: number | string | Date
-    y: number | [number, number]
-  }
-
-  type TooltipSeries = {
-    name: string
-    data: TooltipPoint[]
-  }
+  import type { Point, RangePoint, SeriesItem, StationPrediction } from '@/types/Predictions'
+  import { dateFormattedWithHours } from '@/utils/dates'
 
   const props = defineProps<{
-    forecastDet?: StationPrediction
-    forecastEns?: StationPrediction
-    observed?: TelemetryRecord[]
-    unit: string
-    chartType: 'line' | 'bar'
-    percentileKeys: {
-      median: string
-      p90: string
-      p75: string
-      p25: string
-      p10: string
-    }
-    labels: {
-      observed: string
-      p1090: string
-      p2575: string
-      eps: string
-      harmonie: string
-    }
-    extraOptions?: ApexOptions
+    forecastHarmonie?: StationPrediction
+    forecastEpsat?: StationPrediction
+    forecastEnsP10?: StationPrediction
+    forecastEnsP25?: StationPrediction
+    forecastEnsP90?: StationPrediction
+    forecastEnsP75?: StationPrediction
   }>()
 
-  function toTimestamp(date?: string | null): number | null {
-    if (!date) return null
+  // Extraer fechas y valores de det
+  const HarmonieData = computed(() => {
+    if (!props.forecastHarmonie?.results?.length) return null
+    return props.forecastHarmonie.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
 
-    const ts = new Date(date).getTime()
-    return Number.isNaN(ts) ? null : ts
-  }
+  // Extraer fechas y valores de ens
+  const epsatData = computed(() => {
+    if (!props.forecastEpsat?.results?.length) return null
+    return props.forecastEpsat.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
 
-  function normalizeObservedItem(item: any): { x: number; y: number } | null {
-    if (!item) return null
+  // Extraer fechas y valores de p10
+  const p10Data = computed(() => {
+    if (!props.forecastEnsP10?.results?.length) return null
+    return props.forecastEnsP10.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
 
-    if (Array.isArray(item)) {
-      const [date, value] = item
-      const x = toTimestamp(date)
-      const y = Number(value)
+  // Extraer fechas y valores de p75
+  const p75Data = computed(() => {
+    if (!props.forecastEnsP75?.results?.length) return null
+    return props.forecastEnsP75.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
 
-      if (x === null || Number.isNaN(y)) return null
-      return { x, y }
-    }
+  const p25Data = computed(() => {
+    if (!props.forecastEnsP25?.results?.length) return null
+    return props.forecastEnsP25.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
 
-    const x = toTimestamp(item.date)
-    const y = Number(item.value)
+  // Extraer fechas y valores de p75
+  const p90Data = computed(() => {
+    if (!props.forecastEnsP90?.results?.length) return null
+    return props.forecastEnsP90.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
 
-    if (x === null || Number.isNaN(y)) return null
-    return { x, y }
-  }
+  // Todas las fechas únicas ordenadas
+  const allDates = computed(() => {
+    const dateSet = new Set<string>()
+    HarmonieData.value?.forEach((d) => dateSet.add(d.date))
+    epsatData.value?.forEach((d) => dateSet.add(d.date))
+    p10Data.value?.forEach((d) => dateSet.add(d.date))
+    p75Data.value?.forEach((d) => dateSet.add(d.date))
+    p25Data.value?.forEach((d) => dateSet.add(d.date))
+    p90Data.value?.forEach((d) => dateSet.add(d.date))
+    return Array.from(dateSet).sort()
+  })
 
-  function buildObservedSeries(): {
-    name: string
-    type?: 'line' | 'bar'
-    data: TimeseriePoint[]
-  } | null {
-    if (!props.observed?.length) return null
+  // Categorías formateadas para el eje X (una por cada fecha)
+  const xLabels = computed(() =>
+    allDates.value.map((date) => dateFormattedWithHours(new Date(date).getTime()))
+  )
 
-    const data = props.observed
-      .map((item: any) => normalizeObservedItem(item))
-      .filter((point): point is { x: number; y: number } => point !== null)
+  const series = computed<SeriesItem[]>(() => {
+    if (allDates.value.length === 0) return []
 
-    if (!data.length) return null
+    const result: SeriesItem[] = []
+    const labels = xLabels.value
 
-    return {
-      name: props.labels.observed,
-      type: props.chartType,
-      data,
-    }
-  }
-  function buildDeterministicSeries(prediction?: StationPrediction): {
-    name: string
-    type?: 'line' | 'bar'
-    data: TimeseriePoint[]
-  } | null {
-    if (!prediction?.results?.length) return null
-
-    const data = prediction.results
-      .map((result): TimeseriePoint | null => {
-        const x = toTimestamp(result.date)
-        const y = Number(result.value)
-
-        if (x === null || Number.isNaN(y)) return null
-
-        return {
-          x,
-          y,
-        }
+    // P10-P90 RangeArea (must come before bars so it renders behind)
+    if (p10Data.value && p90Data.value) {
+      const p10Map = new Map(p10Data.value.map((d) => [d.date, d.value]))
+      const p90Map = new Map(p90Data.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Percentiles P10-P90',
+        type: 'rangeArea',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: [p10Map.get(date) ?? null, p90Map.get(date) ?? null],
+        })),
       })
-      .filter((point): point is TimeseriePoint => point !== null)
-
-    if (!data.length) return null
-
-    return {
-      name: props.labels.harmonie,
-      type: props.chartType,
-      data,
-    }
-  }
-
-  function isNotNull<T>(value: T | null): value is T {
-    return value !== null
-  }
-
-  function buildBandSeries(
-    prediction?: StationPrediction,
-    lowerFlag?: number,
-    upperFlag?: number,
-    label?: string
-  ): {
-    name: string
-    type?: 'line' | 'bar' | 'rangeArea'
-    data: TimeseriePoint[]
-  } | null {
-    if (!prediction?.results?.length || lowerFlag === undefined || upperFlag === undefined) {
-      return null
     }
 
-    const grouped = new Map<number, StationPrediction['results']>()
-
-    prediction.results.forEach((result) => {
-      const ts = toTimestamp(result.date)
-      if (ts === null) return
-
-      if (!grouped.has(ts)) grouped.set(ts, [])
-      grouped.get(ts)!.push(result)
-    })
-
-    const data: TimeseriePoint[] = []
-
-    ;[...grouped.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .forEach(([ts, results]) => {
-        const lowerResult = results.find((r) => r.flag === lowerFlag)
-        const upperResult = results.find((r) => r.flag === upperFlag)
-
-        if (!lowerResult || !upperResult) return
-
-        const lower = Number(lowerResult.value)
-        const upper = Number(upperResult.value)
-
-        if (Number.isNaN(lower) || Number.isNaN(upper)) return
-
-        data.push({
-          x: ts,
-          y: [lower, upper],
-        })
+    // P25-P75 RangeArea
+    if (p25Data.value && p75Data.value) {
+      const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
+      const p75Map = new Map(p75Data.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Percentiles P25-P75',
+        type: 'rangeArea',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: [p25Map.get(date) ?? null, p75Map.get(date) ?? null],
+        })),
       })
-
-    if (!data.length) return null
-
-    return {
-      name: label ?? '',
-      type: 'rangeArea',
-      data,
     }
-  }
 
-  function buildMedianSeries(
-    prediction?: StationPrediction,
-    medianFlag?: number
-  ): {
-    name: string
-    type?: 'line' | 'bar' | 'rangeArea'
-    data: TimeseriePoint[]
-  } | null {
-    if (!prediction?.results?.length || medianFlag === undefined) return null
-
-    const data = prediction.results
-      .filter((result) => result.flag === medianFlag)
-      .map((result): TimeseriePoint | null => {
-        const x = toTimestamp(result.date)
-        const y = Number(result.value)
-
-        if (x === null || Number.isNaN(y)) return null
-
-        return {
-          x,
-          y,
-        }
+    // Harmonie
+    if (HarmonieData.value) {
+      const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Predicción Det. Harmonie',
+        type: 'bar',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: detMap.get(date) ?? null,
+        })),
       })
-      .filter(isNotNull)
-      .sort((a, b) => Number(a.x) - Number(b.x))
-
-    if (!data.length) return null
-
-    return {
-      name: props.labels.eps,
-      type: 'line',
-      data,
     }
-  }
 
-  const percentileFlagMap = computed(() => ({
-    [props.percentileKeys.p10]: 10,
-    [props.percentileKeys.p25]: 25,
-    [props.percentileKeys.median]: 50,
-    [props.percentileKeys.p75]: 75,
-    [props.percentileKeys.p90]: 90,
-  }))
+    // EPS
+    if (epsatData.value) {
+      const epsatMap = new Map(epsatData.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Predicción Det. EPS',
+        type: 'bar',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: epsatMap.get(date) ?? null,
+        })),
+      })
+    }
 
-  const series = computed(() => {
-    const result: Array<{
-      name: string
-      type?: any
-      data: TimeseriePoint[]
-    }> = []
-
-    const observedSeries = buildObservedSeries()
-    const detSeries = buildDeterministicSeries(props.forecastDet)
-
-    const p10 = percentileFlagMap.value[props.percentileKeys.p10]
-    const p25 = percentileFlagMap.value[props.percentileKeys.p25]
-    const p50 = percentileFlagMap.value[props.percentileKeys.median]
-    const p75 = percentileFlagMap.value[props.percentileKeys.p75]
-    const p90 = percentileFlagMap.value[props.percentileKeys.p90]
-
-    const band1090 = buildBandSeries(props.forecastEns, p10, p90, props.labels.p1090)
-    const band2575 = buildBandSeries(props.forecastEns, p25, p75, props.labels.p2575)
-    const medianSeries = buildMedianSeries(props.forecastEns, p50)
-
-    if (observedSeries) result.push(observedSeries)
-    if (band1090) result.push(band1090)
-    if (band2575) result.push(band2575)
-    if (medianSeries) result.push(medianSeries)
-    if (detSeries) result.push(detSeries)
-
+    console.log('Series generadas para el gráfico:', result)
     return result
   })
 
-  const baseOptions = computed<ApexOptions>(() => ({
+  // Colores dinámicos basados en qué series existen (mismo orden que series)
+  const dynamicColors = computed(() => {
+    const colors: string[] = []
+    if (p10Data.value && p90Data.value) colors.push('#D3D3D3') // Gris claro
+    if (p25Data.value && p75Data.value) colors.push('#696969') // Gris oscuro
+    if (HarmonieData.value) colors.push('#1565C0') // Azul
+    if (epsatData.value) colors.push('#FF9800') // Amarillo
+    return colors
+  })
+
+  // Opacidad de relleno por serie (rangeArea necesita opacidad explícita)
+  const dynamicFillOpacity = computed(() => {
+    const opacity: number[] = []
+    if (p10Data.value && p90Data.value) opacity.push(0.35)
+    if (p25Data.value && p75Data.value) opacity.push(0.35)
+    if (HarmonieData.value) opacity.push(1)
+    if (epsatData.value) opacity.push(1)
+    return opacity
+  })
+
+  // Ancho de trazo por serie
+  const dynamicStrokeWidth = computed(() => {
+    const widths: number[] = []
+    if (p10Data.value && p90Data.value) widths.push(1)
+    if (p25Data.value && p75Data.value) widths.push(1)
+    if (HarmonieData.value) widths.push(0)
+    if (epsatData.value) widths.push(0)
+    return widths
+  })
+
+  const chartOptions = computed<ApexOptions>(() => ({
     chart: {
+      type: 'line',
+      stacked: false,
+      height: 550,
       zoom: { enabled: true },
       toolbar: { show: true },
-    },
-
-    stroke: {
-      curve: 'smooth',
-    },
-
-    yaxis: [
-      {
-        title: { text: props.unit },
-        decimalsInFloat: 1,
-        labels: {
-          formatter: (value: number) => value.toFixed(1),
+      events: {
+        mounted: (chartContext: { el: HTMLElement }) => {
+          try {
+            const el = chartContext.el as HTMLElement
+            // remove any SVG <title> that shows native 'Chart' tooltip
+            el.querySelectorAll('svg title').forEach((t) => t.remove())
+            // remove any nodes that contain the exact text 'Chart'
+            el.querySelectorAll('*').forEach((n) => {
+              if (n.textContent === 'Chart') n.remove()
+            })
+            // also clear title attribute if present
+            if (el.getAttribute('title')) el.removeAttribute('title')
+          } catch {
+            // ignore
+          }
         },
       },
-    ],
-
+    },
+    colors: dynamicColors.value,
+    fill: {
+      opacity: dynamicFillOpacity.value,
+    },
+    stroke: {
+      curve: 'smooth',
+      lineCap: 'round',
+      width: dynamicStrokeWidth.value,
+    },
+    legend: {
+      position: 'bottom' as const,
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    xaxis: {
+      type: 'category',
+      tickPlacement: 'on' as const,
+      tickAmount: 8,
+      labels: {
+        rotate: 0,
+        rotateAlways: false,
+        hideOverlappingLabels: true,
+      },
+    },
+    yaxis: {
+      min: 0,
+      title: { text: 'mm' },
+    },
     tooltip: {
+      enabled: true,
       shared: true,
       intersect: false,
-      custom({ seriesIndex, dataPointIndex, w }: ApexTooltipContext) {
-        const x = w.globals.seriesX?.[seriesIndex]?.[dataPointIndex]
-        if (x == null) return ''
+      // hide the small x-axis tooltip and auxiliary fixed tooltip
+      x: { show: false },
+      fixed: { enabled: false },
+      onDatasetHover: { highlightDataSeries: false },
+      custom: ({
+        dataPointIndex,
+        w,
+      }: {
+        dataPointIndex: number
+        w: { config?: { series?: SeriesItem[] }; globals?: { colors?: string[] } }
+      }) => {
+        const cfgSeries = (w.config?.series ?? []) as SeriesItem[]
+        // Try to get formatted date from any series' x value (handles hidden/disabled series)
+        let dateFormatted = ''
+        for (let si = 0; si < cfgSeries.length; si++) {
+          const pt = cfgSeries[si]?.data?.[dataPointIndex]
+          // pt can be a number or an object like Point/RangePoint — guard before accessing `x`
+          if (pt && typeof pt === 'object' && 'x' in pt) {
+            const candidate = (pt as { x?: unknown }).x
+            if (candidate !== undefined && candidate !== null) {
+              dateFormatted = String(candidate)
+              break
+            }
+          }
+        }
+        // Fallback: build from allDates if no x found
+        if (!dateFormatted) {
+          const rawDate = allDates.value?.[dataPointIndex]
+          dateFormatted = rawDate ? dateFormattedWithHours(new Date(rawDate).getTime()) : ''
+        }
 
-        const date = dateFormattedWithHoursAndMinutes(x)
+        let rows = ''
+        cfgSeries.forEach((s: SeriesItem, idx: number) => {
+          const point = s.data?.[dataPointIndex] as Point | RangePoint | number | null
+          if (point === null || point === undefined) return
+          let raw: number | [number | null, number | null] | null
+          if (typeof point === 'object' && 'y' in point) raw = (point as Point | RangePoint).y
+          else raw = point
+          if (raw === null || raw === undefined) return
 
-        let html = `
-    <div style="font-size:12px;min-width:180px">
-      <div style="background:#f2f2f2;padding:6px 8px;font-weight:600;border-bottom:1px solid #ddd">
-        ${date}
-      </div>
-  `
+          const name = s.name ?? `Serie ${idx + 1}`
+          const color = w.globals?.colors?.[idx] ?? '#ccc'
+          const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
 
-        ;(w.config.series as TooltipSeries[]).forEach((s) => {
-          const point = s.data.find((d) => Number(d.x) === Number(x))
-          if (!point) return
-
-          const text = Array.isArray(point.y)
-            ? `${point.y[0].toFixed(1)} - ${point.y[1].toFixed(1)} ${props.unit}`
-            : `${point.y.toFixed(1)} ${props.unit}`
-
-          html += `
-      <div style="display:flex;justify-content:space-between;padding:4px 8px">
-        <span>${s.name}</span>
-        <span style="font-weight:600">${text}</span>
-      </div>
-    `
+          if (Array.isArray(raw) && raw.length === 2) {
+            const a = Number(raw[0])
+            const b = Number(raw[1])
+            if (Number.isFinite(a) && Number.isFinite(b)) {
+              rows += `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
+                  <span style="display:flex;align-items:center;">${dot}${name}</span>
+                  <strong style="margin-left:16px;">${Math.min(a, b).toFixed(2)} - ${Math.max(a, b).toFixed(2)} mm</strong>
+                </div>`
+            }
+          } else {
+            const val = Number(raw)
+            if (Number.isFinite(val)) {
+              rows += `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
+                  <span style="display:flex;align-items:center;">${dot}${name}</span>
+                  <strong style="margin-left:16px;">${val.toFixed(2)} mm</strong>
+                </div>`
+            }
+          }
         })
 
-        html += `</div>`
-        return html
+        return `
+          <div style="min-width:280px;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;">
+            <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px 14px;font-weight:600;">
+              ${dateFormatted}
+            </div>
+            <div style="background:#fff;color:#333;padding:8px 14px;">
+              ${rows || '<div style="padding:4px 0;color:#999;">Sin datos</div>'}
+            </div>
+          </div>`
       },
     },
-
-    xaxis: {
-      type: 'datetime',
-      tooltip: { enabled: false },
-      labels: {
-        formatter: (value: string) => dateFormattedWithHours(Number(value)),
-      },
-    },
-  }))
-
-  const chartOptions = computed(() => ({
-    ...baseOptions.value,
-    ...props.extraOptions,
   }))
 </script>
+
+<style>
+  /* Oculta el pequeño tooltip nativo del eje X que aparece bajo el gráfico */
+  .apexcharts-xaxistooltip {
+    display: none !important;
+  }
+</style>

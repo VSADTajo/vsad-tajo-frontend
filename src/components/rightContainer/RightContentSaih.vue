@@ -1,56 +1,105 @@
 <template>
   <v-card class="pa-4 bg-background" elevation="2">
-    <v-progress-linear v-if="loading" indeterminate />
+    <v-progress-linear v-if="loadingFeature" indeterminate />
 
-    <template v-if="feature">
-      <v-card-title class="d-flex justify-space-between align-start">
+    <!-- Skeleton while loading feature -->
+    <template v-if="loadingFeature">
+      <div class="pa-4">
+        <v-skeleton-loader type="heading" height="28" class="mb-2" />
+        <v-skeleton-loader type="text" height="18" class="mb-2" />
+        <v-skeleton-loader type="list-item" class="mb-2" />
+      </div>
+    </template>
+
+    <template v-else-if="feature">
+      <v-card-title
+        class="d-flex justify-space-between align-start pa-6"
+        style="
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          margin: -16px -16px 0 -16px;
+        "
+      >
         <div>
-          <div class="text-h6 font-weight-bold">
+          <div class="text-h6 font-weight-bold" style="color: white">
             {{ feature.properties?.nombre }}
           </div>
-          <div class="text-caption">Código: {{ feature.properties?.codigo }}</div>
+          <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">
+            Código: {{ feature.properties?.codigo }}
+          </div>
         </div>
 
-        <v-btn icon="mdi-close" variant="text" size="small" @click="closeDrawer" />
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          size="small"
+          style="color: white"
+          @click="closeDrawer"
+        />
       </v-card-title>
 
-      <v-divider class="my-3" />
+      <v-divider class="mt-3" />
 
       <v-card-text>
         <!-- Tipo -->
-        <div class="mb-3">
-          <v-chip color="primary" variant="tonal" size="small">
+        <div class="mb-4">
+          <v-chip
+            :icon="feature?.properties?.tipo === 'SAIH' ? 'mdi-water' : 'mdi-map-marker'"
+            color="primary"
+            variant="tonal"
+            size="small"
+            class="font-weight-bold"
+          >
             {{ feature?.properties?.tipo }}
           </v-chip>
         </div>
 
         <!-- Información -->
-        <v-row dense>
-          <v-col cols="12" sm="3">
-            <div class="text-caption">Zona</div>
-            <div class="text-body-2 font-weight-medium">
-              {{ feature.properties?.zona }}
+        <v-row dense class="gap-3">
+          <v-col cols="6" sm="3">
+            <div class="pa-3 rounded bg-info-light" style="background: rgba(99, 125, 234, 0.08)">
+              <div class="text-caption font-weight-bold text-primary mb-1">
+                <v-icon size="small" class="me-1">mdi-map</v-icon>
+                Zona
+              </div>
+              <div class="text-body-2 font-weight-medium">
+                {{ feature.properties?.zona }}
+              </div>
             </div>
           </v-col>
 
-          <v-col cols="12" sm="3">
-            <div class="text-caption">Municipio</div>
-            <div class="text-body-2 font-weight-medium">
-              {{ feature?.properties?.municipio }}
+          <v-col cols="6" sm="3">
+            <div class="pa-3 rounded" style="background: rgba(255, 152, 0, 0.08)">
+              <div class="text-caption font-weight-bold mb-1" style="color: #ff9800">
+                <v-icon size="small" class="me-1">mdi-city</v-icon>
+                Municipio
+              </div>
+              <div class="text-body-2 font-weight-medium">
+                {{ feature?.properties?.municipio }}
+              </div>
             </div>
           </v-col>
 
-          <v-col cols="12" sm="3">
-            <div class="text-caption">Provincia</div>
-            <div class="text-body-2 font-weight-medium">
-              {{ feature?.properties?.provincia }}
+          <v-col cols="6" sm="3">
+            <div class="pa-3 rounded" style="background: rgba(76, 175, 80, 0.08)">
+              <div class="text-caption font-weight-bold mb-1" style="color: #4caf50">
+                <v-icon size="small" class="me-1">mdi-flag</v-icon>
+                Provincia
+              </div>
+              <div class="text-body-2 font-weight-medium">
+                {{ feature?.properties?.provincia }}
+              </div>
             </div>
           </v-col>
 
-          <v-col cols="12" sm="3">
-            <div class="text-caption">CCAA</div>
-            <div class="text-body-2 font-weight-medium">
-              {{ feature?.properties?.ccaa }}
+          <v-col cols="6" sm="3">
+            <div class="pa-3 rounded" style="background: rgba(233, 30, 99, 0.08)">
+              <div class="text-caption font-weight-bold mb-1" style="color: #e91e63">
+                <v-icon size="small" class="me-1">mdi-crown</v-icon>
+                CCAA
+              </div>
+              <div class="text-body-2 font-weight-medium">
+                {{ feature?.properties?.ccaa }}
+              </div>
             </div>
           </v-col>
         </v-row>
@@ -64,11 +113,32 @@
 
   <v-card class="bg-background">
     <v-card-text>
+      <v-row v-if="feature && !loadingFeature">
+        <v-col cols="4">
+          <v-select
+            v-model="selectedSimulationDate"
+            disabled
+            :items="formattedDates"
+            label="Fecha de Simulación"
+            item-title="title"
+            item-value="value"
+            variant="outlined"
+            density="compact"
+            color="primary"
+          />
+        </v-col>
+      </v-row>
+
+      <!-- skeleton for select when loading -->
+      <v-row v-else-if="loadingFeature">
+        <v-col cols="4">
+          <v-skeleton-loader type="text" height="48" />
+        </v-col>
+      </v-row>
+
       <v-sheet elevation="2">
         <v-tabs v-model="tab" color="primary">
           <v-tab value="caudal">Caudal</v-tab>
-          <v-tab value="caudalAm">Caudal AM</v-tab>
-          <v-tab value="caudalEx">Caudal EX</v-tab>
           <v-tab value="precipitaciones">Precipitaciones</v-tab>
         </v-tabs>
 
@@ -76,123 +146,70 @@
 
         <v-tabs-window v-model="tab">
           <v-tabs-window-item value="caudal">
-            <v-sheet v-if="forecastNAM_Harmonie && forecastNAM_Epstat" class="pa-5">
-              <ForecastChart
-                :forecast-det="forecastNAM_Harmonie"
-                :forecast-ens="forecastNAM_Epstat"
-                unit="m³/s"
-                chart-type="line"
-                :percentile-keys="{
-                  median: 'Q.NAM.ens.Med',
-                  p90: 'Q.NAM.ens.90',
-                  p75: 'Q.NAM.ens.75',
-                  p25: 'Q.NAM.ens.25',
-                  p10: 'Q.NAM.ens.10',
-                }"
-                :labels="{
-                  observed: 'Caudal Observado',
-                  p1090: 'Predicción P10-P90',
-                  p2575: 'Predicción P25-P75',
-                  eps: 'Predicción Det. EPS',
-                  harmonie: 'Predicción Det. Harmonie',
-                }"
-                :extra-options="{
-                  stroke: { width: [0, 0, 3, 3] },
-                  fill: { type: 'solid', opacity: [0.15, 0.35, 1, 1] },
-                  colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
-                }"
+            <v-sheet
+              v-if="caudalForecastHarmonie || caudalForecastEpstat || caudalForecastIHarmonie"
+              class="pa-5"
+            >
+              <ForecastChartNew
+                :forecast-harmonie="caudalForecastHarmonie"
+                :forecast-i-harmonie="caudalForecastIHarmonie"
+                :forecast-epsat="caudalForecastEpstat"
+                :forecast-i-epsat-medio="caudalForecastEpsatMedio"
+                :forecast-ens-p10="caudalForecastEnsP10"
+                :forecast-ens-p25="caudalForecastEnsP25"
+                :forecast-ens-p90="caudalForecastEnsP90"
+                :forecast-ens-p75="caudalForecastEnsP75"
               />
             </v-sheet>
+            <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
+            <div
+              v-else-if="loadingCaudales"
+              style="height: 560px; display: flex; align-items: center; justify-content: center"
+            >
+              <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+            </div>
+
+            <div
+              v-else-if="
+                !loadingCaudales && (selectedSimulationDate || availableDates.length === 0)
+              "
+              style="height: 560px; display: flex; align-items: center; justify-content: center"
+            >
+              No hay Datos de Caudales Disponibles
+            </div>
           </v-tabs-window-item>
-          <v-tabs-window-item value="caudalAm">
-            <v-sheet v-if="forecastNAM_Harmonie && forecastNAM_Epstat" class="pa-5">
-              <ForecastChartAmCharts
-                :forecast-det="forecastNAM_Harmonie"
-                :forecast-ens="forecastNAM_Epstat"
-                unit="m³/s"
-                chart-type="line"
-                :percentile-keys="{
-                  median: 'Q.NAM.ens.Med',
-                  p90: 'Q.NAM.ens.90',
-                  p75: 'Q.NAM.ens.75',
-                  p25: 'Q.NAM.ens.25',
-                  p10: 'Q.NAM.ens.10',
-                }"
-                :labels="{
-                  observed: 'Caudal Observado',
-                  p1090: 'Predicción P10-P90',
-                  p2575: 'Predicción P25-P75',
-                  eps: 'Predicción Det. EPS',
-                  harmonie: 'Predicción Det. Harmonie',
-                }"
-                :extra-options="{
-                  stroke: { width: [0, 0, 3, 3] },
-                  fill: { opacity: [0.15, 0.35, 1, 1] },
-                  colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
-                }"
-              />
-            </v-sheet>
-          </v-tabs-window-item>
-          <v-tabs-window-item value="caudalEx">
-            <v-sheet v-if="forecastNAM_Harmonie && forecastNAM_Epstat" class="pa-5">
-              <ForecastChartExChart
-                :forecast-det="forecastNAM_Harmonie"
-                :forecast-ens="forecastNAM_Epstat"
-                unit="m³/s"
-                chart-type="line"
-                :percentile-keys="{
-                  median: 'Q.NAM.ens.Med',
-                  p90: 'Q.NAM.ens.90',
-                  p75: 'Q.NAM.ens.75',
-                  p25: 'Q.NAM.ens.25',
-                  p10: 'Q.NAM.ens.10',
-                }"
-                :labels="{
-                  observed: 'Caudal Observado',
-                  p1090: 'Predicción P10-P90',
-                  p2575: 'Predicción P25-P75',
-                  eps: 'Predicción Det. EPS',
-                  harmonie: 'Predicción Det. Harmonie',
-                }"
-                :extra-options="{
-                  stroke: { width: [0, 0, 3, 3] },
-                  fill: { opacity: [0.15, 0.35, 1, 1] },
-                  colors: ['#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
-                }"
-              />
-            </v-sheet>
-          </v-tabs-window-item>
+
           <v-tabs-window-item value="precipitaciones">
-            <v-sheet v-if="precipitationMockup" class="pa-5">
+            <v-sheet
+              v-if="precipitationsForecastHarmonie || precipitationsForecastEpstat"
+              class="pa-5"
+            >
               <PrecipitationsChart
-                :forecast-det="forecastHarmonie"
-                :forecast-ens="forecastEpstat"
-                :observed="telemetryExample"
-                unit="mm"
-                chart-type="bar"
-                :percentile-keys="{
-                  median: 'P.ens.forecast.Med',
-                  p90: 'P.ens.forecast.90',
-                  p75: 'P.ens.forecast.75',
-                  p25: 'P.ens.forecast.25',
-                  p10: 'P.ens.forecast.10',
-                }"
-                :labels="{
-                  observed: 'Precipitación Observada',
-                  p1090: 'Predicción P10-P90',
-                  p2575: 'Predicción P25-P75',
-                  eps: 'Predicción Det. EPS',
-                  harmonie: 'Predicción Det. Harmonie',
-                }"
-                :extra-options="{
-                  dataLabels: { enabled: false },
-                  stroke: { width: [2, 0, 0, 2, 2] },
-                  fill: { type: 'solid', opacity: [1, 0.15, 0.35, 1, 1] },
-                  plotOptions: { bar: { columnWidth: '20%' } },
-                  colors: ['#d4a524', '#90CAF9', '#42A5F5', '#1565C0', '#25733a'],
-                }"
+                :forecast-harmonie="precipitationsForecastHarmonie"
+                :forecast-epsat="precipitationsForecastEpstat"
+                :forecast-ens-p10="precipitationsForecastEnsP10"
+                :forecast-ens-p25="precipitationsForecastEnsP25"
+                :forecast-ens-p90="precipitationsForecastEnsP90"
+                :forecast-ens-p75="precipitationsForecastEnsP75"
               />
             </v-sheet>
+
+            <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
+            <div
+              v-else-if="loadingPrecipitaciones"
+              style="height: 550px; display: flex; align-items: center; justify-content: center"
+            >
+              <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+            </div>
+
+            <div
+              v-else-if="
+                !loadingPrecipitaciones && (selectedSimulationDate || availableDates.length === 0)
+              "
+              style="height: 550px; display: flex; align-items: center; justify-content: center"
+            >
+              No hay Datos de Precipitaciones Disponibles
+            </div>
           </v-tabs-window-item>
         </v-tabs-window>
       </v-sheet>
@@ -201,22 +218,15 @@
 </template>
 
 <script lang="ts" setup>
-  import { ref, computed, watch, onMounted } from 'vue'
+  import { ref, computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
-  import { precipitationMockup } from '@/MOCKUPS/precip'
-  import { forecastNAM_Harmonie } from '@/MOCKUPS/aforo/forecastNAM_Harmonie'
-  import { forecastNAM_Epstat } from '@/MOCKUPS/aforo/forecastNAM_Epstat'
-  import { forecastPrecip_Harmonie } from '@/MOCKUPS/precipitaciones/forecast_Precipitacion_Harmonie'
-  import { forecastPrecip_EPS } from '@/MOCKUPS/precipitaciones/forecast_Precipitation_EPS'
-  import ForecastChart from '@/components/charts/ForecastChart.vue'
-  import ForecastChartAmCharts from '@/components/charts/ForecastChartAmChart.vue'
-  import ForecastChartExChart from '../charts/ForecastChartExChart.vue'
+  import { formatSimulationDate } from '@/utils/dates'
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
-  import { telemetryExample } from '@/MOCKUPS/precipitaciones/precipitaciones_observadas'
-  import { getHistoricalPredictionsService } from '@/services/predictions'
+  import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import ForecastChartNew from '../charts/ForecastChartNew.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -224,11 +234,31 @@
   const tab = ref('caudal')
 
   const feature = ref<GeoJSON.Feature | null>(null)
-  const loading = ref(false)
+  const loadingFeature = ref(false)
+  const loadingPrecipitaciones = ref(false)
+  const loadingCaudales = ref(true)
   const error = ref<string | null>(null)
 
-  const forecastEpstat = ref()
-  const forecastHarmonie = ref()
+  const precipitationsForecastEpstat = ref()
+  const precipitationsForecastHarmonie = ref()
+
+  const precipitationsForecastEnsP10 = ref()
+  const precipitationsForecastEnsP25 = ref()
+  const precipitationsForecastEnsP75 = ref()
+  const precipitationsForecastEnsP90 = ref()
+
+  const caudalForecastEpstat = ref()
+  const caudalForecastEpsatMedio = ref()
+  const caudalForecastHarmonie = ref()
+  const caudalForecastIHarmonie = ref()
+
+  const caudalForecastEnsP10 = ref()
+  const caudalForecastEnsP25 = ref()
+  const caudalForecastEnsP75 = ref()
+  const caudalForecastEnsP90 = ref()
+
+  const availableDates = ref<string[]>([])
+  const selectedSimulationDate = ref<string>('')
 
   // station desde la URL
   const stationCode = computed(() => route.query.station as string | undefined)
@@ -238,6 +268,98 @@
     () => dynamicLayersConfig.find((l) => l.id === 'saih') as WFSLayerConfig | undefined
   )
 
+  // Formatear fechas para el select
+  const formattedDates = computed(() =>
+    availableDates.value.map((date) => ({
+      title: formatSimulationDate(date),
+      value: date,
+    }))
+  )
+
+  // cargar predicciones de precipitaciones
+  async function loadCaudalPredictions() {
+    if (!stationCode.value || !selectedSimulationDate.value) return
+
+    loadingCaudales.value = true
+
+    try {
+      const [epstat, epsatMedio, harmonie, iHarmonie, ensP10, ensP25, ensP75, ensP90] =
+        await Promise.all([
+          getPredictionsService(stationCode.value, 'Q.NAM.ens'),
+          getPredictionsService(stationCode.value, 'I.NAM.ens.medio'),
+          getPredictionsService(stationCode.value, 'Q.NAM.harmonie'),
+          getPredictionsService(stationCode.value, 'I.NAM.harmonie'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '10'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '25'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '75'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '90'),
+        ])
+
+      caudalForecastEpstat.value = epstat
+      caudalForecastEpsatMedio.value = epsatMedio
+      caudalForecastHarmonie.value = harmonie
+      caudalForecastIHarmonie.value = iHarmonie
+      caudalForecastEnsP10.value = ensP10
+      caudalForecastEnsP25.value = ensP25
+      caudalForecastEnsP75.value = ensP75
+      caudalForecastEnsP90.value = ensP90
+    } catch (err) {
+      console.error('Error loading predictions:', err)
+    } finally {
+      loadingCaudales.value = false
+    }
+  }
+
+  // cargar predicciones de precipitaciones
+  async function loadPrecipitationsPredictions() {
+    if (!stationCode.value || !selectedSimulationDate.value) return
+
+    loadingPrecipitaciones.value = true
+
+    try {
+      const [epstat, harmonie, ensP10, ensP25, ensP75, ensP90] = await Promise.all([
+        getPredictionsService(stationCode.value, 'P.ens.forecast', selectedSimulationDate.value),
+        getPredictionsService(stationCode.value, 'P.harmonie.forecast'),
+        getPredictionsService(
+          stationCode.value,
+          'P.ens.forecast',
+          selectedSimulationDate.value,
+          '10'
+        ),
+        getPredictionsService(
+          stationCode.value,
+          'P.ens.forecast',
+          selectedSimulationDate.value,
+          '25'
+        ),
+
+        getPredictionsService(
+          stationCode.value,
+          'P.ens.forecast',
+          selectedSimulationDate.value,
+          '75'
+        ),
+        getPredictionsService(
+          stationCode.value,
+          'P.ens.forecast',
+          selectedSimulationDate.value,
+          '90'
+        ),
+      ])
+
+      precipitationsForecastEpstat.value = epstat
+      precipitationsForecastHarmonie.value = harmonie
+      precipitationsForecastEnsP10.value = ensP10
+      precipitationsForecastEnsP25.value = ensP25
+      precipitationsForecastEnsP75.value = ensP75
+      precipitationsForecastEnsP90.value = ensP90
+    } catch (err) {
+      console.error('Error loading predictions:', err)
+    } finally {
+      loadingPrecipitaciones.value = false
+    }
+  }
+
   // cargar feature
   async function loadFeature(code: string) {
     if (!saihConfig.value) {
@@ -245,45 +367,51 @@
       return
     }
 
-    loading.value = true
+    if (!code) {
+      error.value = 'Station code is required'
+      return
+    }
+
+    loadingFeature.value = true
     error.value = null
 
-    console.log('saihConfig.value', saihConfig.value)
-    console.log('stationCode', stationCode.value)
-
-    const predictions = await getHistoricalPredictionsService(
-      'AC01',
-      '2026-02-01T00:00:00Z',
-      '2026-03-31T23:59:59Z'
-    )
-
-    console.log('predictions', predictions)
-
-    forecastEpstat.value = predictions.find((item) => item.predictionTypeName === 'P.ens.forecast')
-    forecastHarmonie.value = predictions.find(
-      (item) => item.predictionTypeName === 'P.harmonie.forecast'
-    )
-
-    console.log('forecastEpstat.value ', forecastEpstat.value)
-    console.log('forecastPrecip_EPS', forecastPrecip_EPS)
-
     try {
-      const result = await getWFSFeatureById(saihConfig.value, 'codigo', code)
+      // Cargar predicciones y feature en paralelo
+      const [result, datesAvailable] = await Promise.all([
+        getWFSFeatureById(saihConfig.value, 'codigo', code),
+        getAvailablePredictionsService().catch((err) => {
+          console.error('Error loading Available Dates', err)
+          return []
+        }),
+      ])
 
       if (!result) {
         error.value = 'Feature not found'
         feature.value = null
         return
       }
+
       feature.value = result
+
+      // Guardar fechas disponibles
+      availableDates.value = datesAvailable
+      if (datesAvailable.length > 0) {
+        selectedSimulationDate.value = datesAvailable[0] // Seleccionar la más reciente por defecto
+      }
     } catch (err) {
-      console.error('Error loading feature', err)
+      console.error('Error loading feature:', err)
       error.value = 'Error loading feature'
       feature.value = null
     } finally {
-      loading.value = false
+      loadingFeature.value = false
     }
   }
+
+  // Cargar predicciones cuando cambia la fecha seleccionada
+  watch(selectedSimulationDate, async () => {
+    await loadPrecipitationsPredictions()
+    await loadCaudalPredictions()
+  })
 
   // reaccionar al cambio de URL
   watch(
@@ -293,7 +421,6 @@
         feature.value = null
         return
       }
-
       await loadFeature(code)
     },
     { immediate: true }
