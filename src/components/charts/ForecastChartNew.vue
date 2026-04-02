@@ -19,6 +19,10 @@
     forecastEnsP25?: StationPrediction
     forecastEnsP90?: StationPrediction
     forecastEnsP75?: StationPrediction
+    forecastEnsP10Emb?: StationPrediction
+    forecastEnsP25Emb?: StationPrediction
+    forecastEnsP75Emb?: StationPrediction
+    forecastEnsP90Emb?: StationPrediction
   }>()
 
   // Extraer fechas y valores de det
@@ -90,6 +94,38 @@
     }))
   })
 
+  const p10EmbData = computed(() => {
+    if (!props.forecastEnsP10Emb?.results?.length) return null
+    return props.forecastEnsP10Emb.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
+
+  const p25EmbData = computed(() => {
+    if (!props.forecastEnsP25Emb?.results?.length) return null
+    return props.forecastEnsP25Emb.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
+
+  const p75EmbData = computed(() => {
+    if (!props.forecastEnsP75Emb?.results?.length) return null
+    return props.forecastEnsP75Emb.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
+
+  const p90EmbData = computed(() => {
+    if (!props.forecastEnsP90Emb?.results?.length) return null
+    return props.forecastEnsP90Emb.results.map((r) => ({
+      date: r.date,
+      value: Number(r.value),
+    }))
+  })
+
   // Todas las fechas únicas ordenadas
   const allDates = computed(() => {
     const dateSet = new Set<string>()
@@ -102,6 +138,11 @@
     p75Data.value?.forEach((d) => dateSet.add(d.date))
     p25Data.value?.forEach((d) => dateSet.add(d.date))
     p90Data.value?.forEach((d) => dateSet.add(d.date))
+    p10EmbData.value?.forEach((d) => dateSet.add(d.date))
+    p25EmbData.value?.forEach((d) => dateSet.add(d.date))
+    p75EmbData.value?.forEach((d) => dateSet.add(d.date))
+    p90EmbData.value?.forEach((d) => dateSet.add(d.date))
+
     return Array.from(dateSet).sort()
   })
 
@@ -162,7 +203,7 @@
     if (IHarmonieData.value) {
       const iDetMap = new Map(IHarmonieData.value.map((d) => [d.date, d.value]))
       result.push({
-        name: 'Predicción Ind. Harmonie',
+        name: 'Predicción Entrada Harmonie',
         type: 'line',
         data: allDates.value.map((date, i) => ({
           x: labels[i],
@@ -187,11 +228,37 @@
     if (epsatMedioData.value) {
       const epsatMedioMap = new Map(epsatMedioData.value.map((d) => [d.date, d.value]))
       result.push({
-        name: 'Predicción Ind. EPS',
+        name: 'Predicción Entrada Media. EPS',
         type: 'line',
         data: allDates.value.map((date, i) => ({
           x: labels[i],
           y: epsatMedioMap.get(date) ?? null,
+        })),
+      })
+    }
+
+    if (p10EmbData.value && p90EmbData.value) {
+      const p10EmbMap = new Map(p10EmbData.value.map((d) => [d.date, d.value]))
+      const p90EmbMap = new Map(p90EmbData.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Percentiles Entrada P10-P90',
+        type: 'rangeArea',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: [p10EmbMap.get(date) ?? null, p90EmbMap.get(date) ?? null],
+        })),
+      })
+    }
+
+    if (p25EmbData.value && p75EmbData.value) {
+      const p25EmbMap = new Map(p25EmbData.value.map((d) => [d.date, d.value]))
+      const p75EmbMap = new Map(p75EmbData.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Percentiles Entrada P25-P75',
+        type: 'rangeArea',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: [p25EmbMap.get(date) ?? null, p75EmbMap.get(date) ?? null],
         })),
       })
     }
@@ -209,6 +276,8 @@
     if (IHarmonieData.value) colors.push('#006600') // Verde
     if (epsatData.value) colors.push('#FF9800') // Amarillo
     if (epsatMedioData.value) colors.push('#FF6666') // Rojo
+    if (p10EmbData.value && p90EmbData.value) colors.push('#D3D3D3')
+    if (p25EmbData.value && p75EmbData.value) colors.push('#696969') // Gris oscuro
     return colors
   })
 
@@ -221,6 +290,8 @@
     if (IHarmonieData.value) opacity.push(1)
     if (epsatData.value) opacity.push(1)
     if (epsatMedioData.value) opacity.push(1)
+    if (p10EmbData.value && p90EmbData.value) opacity.push(0.35)
+    if (p25EmbData.value && p75EmbData.value) opacity.push(0.35)
 
     return opacity
   })
@@ -234,6 +305,8 @@
     if (IHarmonieData.value) widths.push(2)
     if (epsatData.value) widths.push(2)
     if (epsatMedioData.value) widths.push(2)
+    if (p10EmbData.value && p90EmbData.value) widths.push(1)
+    if (p25EmbData.value && p75EmbData.value) widths.push(1)
     return widths
   })
 

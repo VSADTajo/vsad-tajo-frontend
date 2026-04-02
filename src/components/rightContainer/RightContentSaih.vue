@@ -159,6 +159,10 @@
                 :forecast-ens-p25="caudalForecastEnsP25"
                 :forecast-ens-p90="caudalForecastEnsP90"
                 :forecast-ens-p75="caudalForecastEnsP75"
+                :forecast-ens-p10-emb="caudalForecastEnsP10Emb"
+                :forecast-ens-p25-emb="caudalForecastEnsP25Emb"
+                :forecast-ens-p90-emb="caudalForecastEnsP90Emb"
+                :forecast-ens-p75-emb="caudalForecastEnsP75Emb"
               />
             </v-sheet>
             <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
@@ -257,6 +261,11 @@
   const caudalForecastEnsP75 = ref()
   const caudalForecastEnsP90 = ref()
 
+  const caudalForecastEnsP10Emb = ref()
+  const caudalForecastEnsP25Emb = ref()
+  const caudalForecastEnsP75Emb = ref()
+  const caudalForecastEnsP90Emb = ref()
+
   const availableDates = ref<string[]>([])
   const selectedSimulationDate = ref<string>('')
 
@@ -283,26 +292,52 @@
     loadingCaudales.value = true
 
     try {
-      const [epstat, epsatMedio, harmonie, iHarmonie, ensP10, ensP25, ensP75, ensP90] =
-        await Promise.all([
-          getPredictionsService(stationCode.value, 'Q.NAM.ens'),
-          getPredictionsService(stationCode.value, 'I.NAM.ens.medio'),
-          getPredictionsService(stationCode.value, 'Q.NAM.harmonie'),
-          getPredictionsService(stationCode.value, 'I.NAM.harmonie'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '10'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '25'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '75'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '90'),
-        ])
+      const [
+        harmonie,
+        epstat,
+        ensP10,
+        ensP25,
+        ensP75,
+        ensP90,
+        iHarmonie,
+        epsatMedio,
+        ensP10Emb,
+        ensP25Emb,
+        ensP75Emb,
+        ensP90Emb,
+      ] = await Promise.all([
+        getPredictionsService(stationCode.value, 'Q.NAM.harmonie'),
+        getPredictionsService(stationCode.value, 'Q.NAM.ens'),
 
-      caudalForecastEpstat.value = epstat
-      caudalForecastEpsatMedio.value = epsatMedio
+        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '10'),
+        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '25'),
+        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '75'),
+        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '90'),
+
+        getPredictionsService(stationCode.value, 'I.NAM.harmonie'),
+        getPredictionsService(stationCode.value, 'I.NAM.ens.medio'),
+
+        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '10'),
+        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '25'),
+        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '75'),
+        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '90'),
+      ])
+
       caudalForecastHarmonie.value = harmonie
-      caudalForecastIHarmonie.value = iHarmonie
+      caudalForecastEpstat.value = epstat
+
       caudalForecastEnsP10.value = ensP10
       caudalForecastEnsP25.value = ensP25
       caudalForecastEnsP75.value = ensP75
       caudalForecastEnsP90.value = ensP90
+
+      caudalForecastIHarmonie.value = iHarmonie
+      caudalForecastEpsatMedio.value = epsatMedio
+
+      caudalForecastEnsP10Emb.value = ensP10Emb
+      caudalForecastEnsP25Emb.value = ensP25Emb
+      caudalForecastEnsP75Emb.value = ensP75Emb
+      caudalForecastEnsP90Emb.value = ensP90Emb
     } catch (err) {
       console.error('Error loading predictions:', err)
     } finally {
