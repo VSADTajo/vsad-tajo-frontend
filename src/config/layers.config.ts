@@ -37,7 +37,7 @@ export const baseLayersConfig: LayerConfig[] = [
 export const dynamicLayersConfig: LayerConfig[] = [
   {
     id: 'subcuencas',
-    name: 'Subcuencas',
+    name: 'subcuencas',
     type: 'WFS',
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_subcuencas',
