@@ -184,9 +184,17 @@ export class MapLayerManager {
           layerState.id === 'sistemas10' ||
           layerState.id === 'zonasexpl'
         ) {
-          const pane = this.map.getPane(MAP_PANES.CONTORNO)
-          if (pane) {
-            pane.style.display = ''
+          // Solo restaurar CONTORNO si NO queda activo ninguno del grupo
+          const anyGroupActive = Object.values(layersState).some(
+            (l) =>
+              l.visible && (l.id === 'subcuencas' || l.id === 'sistemas10' || l.id === 'zonasexpl')
+          )
+
+          if (!anyGroupActive) {
+            const pane = this.map.getPane(MAP_PANES.CONTORNO)
+            if (pane) {
+              pane.style.display = ''
+            }
           }
         }
       }

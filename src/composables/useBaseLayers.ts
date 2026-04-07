@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { baseLayersConfig } from '@/config/layers.config'
 import { createLayer } from '@/services/geoserver'
-import { boundaryStore } from '@/stores/boundaryStore'
+import { setBoundary } from '@/stores/boundaryStore'
 import L from 'leaflet'
 
 export function useBaseLayers(map: L.Map) {
@@ -24,10 +24,10 @@ export function useBaseLayers(map: L.Map) {
           [bounds.getNorth(), bounds.getEast()],
         ]
 
-        boundaryStore['contorno'] = {
+        setBoundary('contorno', {
           geojson: layer.toGeoJSON() as GeoJSON.FeatureCollection,
           bbox: bbox,
-        }
+        })
       }
     }
   }

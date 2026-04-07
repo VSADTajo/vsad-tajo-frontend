@@ -26,13 +26,14 @@
           <v-divider></v-divider>
 
           <v-tabs-window v-model="tab">
-            <v-tabs-window-item value="basica">
+            <v-tabs-window-item value="basica" class="overflow-y-auto" style="height: 73vh">
               <div class="pa-4" v-html="basicInfoHtml" />
             </v-tabs-window-item>
             <v-tabs-window-item value="graficas" class="overflow-y-auto" style="height: 73vh">
-              <div class="pa-4" v-html="chartsHtml" />
+              <v-progress-linear v-if="chartsLoading" indeterminate color="primary" class="mt-2" />
+              <div ref="chartsContainerRef" class="pa-4" v-html="chartsHtml" />
             </v-tabs-window-item>
-            <v-tabs-window-item value="tablas">
+            <v-tabs-window-item value="tablas" class="overflow-y-auto" style="height: 73vh">
               <div class="pa-4" v-html="tablesHtml" />
             </v-tabs-window-item>
           </v-tabs-window>
@@ -44,7 +45,7 @@
 
 <script lang="ts" setup>
   import { useReportingPointStore } from '@/stores/reportingPointsStore'
-  import { computed, ref } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
 
   const tab = ref('basica')
@@ -55,6 +56,10 @@
   const reportingPointStore = useReportingPointStore()
 
   const loading = ref(false)
+  const chartsLoading = ref(false)
+  const chartsContainerRef = ref<HTMLElement | null>(null)
+
+  let clearImageListeners: (() => void) | null = null
 
   const parsedDoc = computed(() => {
     const html = reportingPointStore.html
@@ -114,6 +119,70 @@
     })
 
     return section.outerHTML
+  })
+
+  async function trackChartsImagesLoading() {
+    clearImageListeners?.()
+    clearImageListeners = null
+
+    await nextTick()
+
+    const container = chartsContainerRef.value
+    if (!container) {
+      chartsLoading.value = false
+      return
+    }
+
+    const images = Array.from(container.querySelectorAll('img'))
+    const pendingImages = images.filter((img) => !img.complete)
+
+    if (!pendingImages.length) {
+      chartsLoading.value = false
+      return
+    }
+
+    chartsLoading.value = true
+
+    let remaining = pendingImages.length
+
+    const listeners = pendingImages.map((img) => {
+      const done = () => {
+        remaining -= 1
+        if (remaining <= 0) {
+          chartsLoading.value = false
+          clearImageListeners?.()
+          clearImageListeners = null
+        }
+      }
+
+      img.addEventListener('load', done)
+      img.addEventListener('error', done)
+
+      return { img, done }
+    })
+
+    clearImageListeners = () => {
+      listeners.forEach(({ img, done }) => {
+        img.removeEventListener('load', done)
+        img.removeEventListener('error', done)
+      })
+    }
+  }
+
+  watch([chartsHtml, tab], async ([_, activeTab]) => {
+    if (activeTab !== 'graficas') {
+      chartsLoading.value = false
+      clearImageListeners?.()
+      clearImageListeners = null
+      return
+    }
+
+    await trackChartsImagesLoading()
+  })
+
+  onBeforeUnmount(() => {
+    clearImageListeners?.()
+    clearImageListeners = null
   })
 
   function closeDrawer() {
