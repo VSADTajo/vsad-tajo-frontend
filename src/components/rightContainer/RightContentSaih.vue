@@ -138,36 +138,27 @@
 
       <v-sheet elevation="2">
         <v-tabs v-model="tab" color="primary">
-          <v-tab value="caudal">Caudal</v-tab>
+          <v-tab v-if="hasCaudal" value="caudal">Caudal</v-tab>
           <v-tab value="precipitaciones">Precipitaciones</v-tab>
         </v-tabs>
 
         <v-divider></v-divider>
 
         <v-tabs-window v-model="tab">
-          <v-tabs-window-item value="caudal">
-            <v-sheet
-              v-if="caudalForecastHarmonie || caudalForecastEpstat || caudalForecastIHarmonie"
-              class="pa-5"
-            >
+          <v-tabs-window-item v-if="hasCaudal" value="caudal">
+            <v-sheet v-if="caudalForecastHarmonie || caudalForecastEpstat" class="pa-5">
               <ForecastChartNew
                 :forecast-harmonie="caudalForecastHarmonie"
-                :forecast-i-harmonie="caudalForecastIHarmonie"
                 :forecast-epsat="caudalForecastEpstat"
-                :forecast-i-epsat-medio="caudalForecastEpsatMedio"
                 :forecast-ens-p10="caudalForecastEnsP10"
                 :forecast-ens-p25="caudalForecastEnsP25"
                 :forecast-ens-p90="caudalForecastEnsP90"
                 :forecast-ens-p75="caudalForecastEnsP75"
-                :forecast-ens-p10-emb="caudalForecastEnsP10Emb"
-                :forecast-ens-p25-emb="caudalForecastEnsP25Emb"
-                :forecast-ens-p90-emb="caudalForecastEnsP90Emb"
-                :forecast-ens-p75-emb="caudalForecastEnsP75Emb"
               />
             </v-sheet>
             <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
             <div
-              v-else-if="loadingCaudales"
+              v-else-if="loadingCaudales || loadingPrecipitaciones"
               style="height: 560px; display: flex; align-items: center; justify-content: center"
             >
               <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
@@ -200,7 +191,7 @@
 
             <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
             <div
-              v-else-if="loadingPrecipitaciones"
+              v-else-if="loadingPrecipitaciones || loadingCaudales"
               style="height: 550px; display: flex; align-items: center; justify-content: center"
             >
               <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
@@ -235,8 +226,6 @@
   const route = useRoute()
   const router = useRouter()
 
-  const tab = ref('caudal')
-
   const feature = ref<GeoJSON.Feature | null>(null)
   const loadingFeature = ref(false)
   const loadingPrecipitaciones = ref(false)
@@ -252,19 +241,12 @@
   const precipitationsForecastEnsP90 = ref()
 
   const caudalForecastEpstat = ref()
-  const caudalForecastEpsatMedio = ref()
   const caudalForecastHarmonie = ref()
-  const caudalForecastIHarmonie = ref()
 
   const caudalForecastEnsP10 = ref()
   const caudalForecastEnsP25 = ref()
   const caudalForecastEnsP75 = ref()
   const caudalForecastEnsP90 = ref()
-
-  const caudalForecastEnsP10Emb = ref()
-  const caudalForecastEnsP25Emb = ref()
-  const caudalForecastEnsP75Emb = ref()
-  const caudalForecastEnsP90Emb = ref()
 
   const availableDates = ref<string[]>([])
   const selectedSimulationDate = ref<string>('')
@@ -276,6 +258,14 @@
   const saihConfig = computed<WFSLayerConfig | undefined>(
     () => dynamicLayersConfig.find((l) => l.id === 'saih') as WFSLayerConfig | undefined
   )
+
+  const codeType = computed(() => feature.value?.properties?.tipo_cod)
+
+  const hasCaudal = computed(
+    () => codeType.value === 'AR' || codeType.value === 'AC' || codeType.value === 'E'
+  )
+
+  const tab = ref(hasCaudal.value ? 'caudal' : 'precipitaciones')
 
   // Formatear fechas para el select
   const formattedDates = computed(() =>
@@ -291,57 +281,57 @@
 
     loadingCaudales.value = true
 
-    try {
-      const [
-        harmonie,
-        epstat,
-        ensP10,
-        ensP25,
-        ensP75,
-        ensP90,
-        iHarmonie,
-        epsatMedio,
-        ensP10Emb,
-        ensP25Emb,
-        ensP75Emb,
-        ensP90Emb,
-      ] = await Promise.all([
-        getPredictionsService(stationCode.value, 'Q.NAM.harmonie'),
-        getPredictionsService(stationCode.value, 'Q.NAM.ens'),
+    console.log('TIPo', codeType.value)
 
-        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '10'),
-        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '25'),
-        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '75'),
-        getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '90'),
+    if (codeType.value === 'E') {
+      try {
+        const [iHarmonie, epsatMedio, ensP10Emb, ensP25Emb, ensP75Emb, ensP90Emb] =
+          await Promise.all([
+            getPredictionsService(stationCode.value, 'I.NAM.harmonie'),
+            getPredictionsService(stationCode.value, 'I.NAM.ens.medio'),
 
-        getPredictionsService(stationCode.value, 'I.NAM.harmonie'),
-        getPredictionsService(stationCode.value, 'I.NAM.ens.medio'),
+            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '10'),
+            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '25'),
+            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '75'),
+            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '90'),
+          ])
 
-        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '10'),
-        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '25'),
-        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '75'),
-        getPredictionsService(stationCode.value, 'I.NAM.ens', '', '90'),
-      ])
+        caudalForecastHarmonie.value = iHarmonie
+        caudalForecastEpstat.value = epsatMedio
 
-      caudalForecastHarmonie.value = harmonie
-      caudalForecastEpstat.value = epstat
+        caudalForecastEnsP10.value = ensP10Emb
+        caudalForecastEnsP25.value = ensP25Emb
+        caudalForecastEnsP75.value = ensP75Emb
+        caudalForecastEnsP90.value = ensP90Emb
+      } catch (err) {
+        console.error('Error loading predictions:', err)
+      } finally {
+        loadingCaudales.value = false
+      }
+    } else {
+      try {
+        const [harmonie, epstat, ensP10, ensP25, ensP75, ensP90] = await Promise.all([
+          getPredictionsService(stationCode.value, 'Q.NAM.harmonie'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens'),
 
-      caudalForecastEnsP10.value = ensP10
-      caudalForecastEnsP25.value = ensP25
-      caudalForecastEnsP75.value = ensP75
-      caudalForecastEnsP90.value = ensP90
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '10'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '25'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '75'),
+          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '90'),
+        ])
 
-      caudalForecastIHarmonie.value = iHarmonie
-      caudalForecastEpsatMedio.value = epsatMedio
+        caudalForecastHarmonie.value = harmonie
+        caudalForecastEpstat.value = epstat
 
-      caudalForecastEnsP10Emb.value = ensP10Emb
-      caudalForecastEnsP25Emb.value = ensP25Emb
-      caudalForecastEnsP75Emb.value = ensP75Emb
-      caudalForecastEnsP90Emb.value = ensP90Emb
-    } catch (err) {
-      console.error('Error loading predictions:', err)
-    } finally {
-      loadingCaudales.value = false
+        caudalForecastEnsP10.value = ensP10
+        caudalForecastEnsP25.value = ensP25
+        caudalForecastEnsP75.value = ensP75
+        caudalForecastEnsP90.value = ensP90
+      } catch (err) {
+        console.error('Error loading predictions:', err)
+      } finally {
+        loadingCaudales.value = false
+      }
     }
   }
 
@@ -392,6 +382,7 @@
       console.error('Error loading predictions:', err)
     } finally {
       loadingPrecipitaciones.value = false
+      loadingCaudales.value = false
     }
   }
 
@@ -433,6 +424,8 @@
       if (datesAvailable.length > 0) {
         selectedSimulationDate.value = datesAvailable[0] // Seleccionar la más reciente por defecto
       }
+      // Ajustar la pestaña activa según si la estación tiene caudal
+      tab.value = hasCaudal.value ? 'caudal' : 'precipitaciones'
     } catch (err) {
       console.error('Error loading feature:', err)
       error.value = 'Error loading feature'
@@ -445,7 +438,7 @@
   // Cargar predicciones cuando cambia la fecha seleccionada
   watch(selectedSimulationDate, async () => {
     await loadPrecipitationsPredictions()
-    await loadCaudalPredictions()
+    if (hasCaudal.value) await loadCaudalPredictions()
   })
 
   // reaccionar al cambio de URL

@@ -3,6 +3,7 @@ import type { LayerConfig, WFSLayerConfig, WMSLayerConfig, TMSLayerConfig } from
 import ky from 'ky'
 import { boundaryStore } from '@/stores/boundaryStore'
 import { MAP_PANES } from '@/config/panes/mapPanes'
+import { applyPolygonMaskToWMS, type LayerWithMap } from '@/utils/mask'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
@@ -31,6 +32,10 @@ export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, s
     keepBuffer: 2,
     ...params,
   } as WMSOptionsExtended)
+
+  if (config.mask) {
+    applyPolygonMaskToWMS(wms, config.mask)
+  }
 
   return wms
 }
@@ -94,7 +99,7 @@ export async function createWFSLayer(
               highlightLayer = null
             }
 
-            const map = (layer as any)._map as L.Map | undefined
+            const map = (layer as LayerWithMap)._map
             if (!map) return
 
             // crear nuevo highlight en pane superior

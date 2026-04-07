@@ -12,17 +12,11 @@
 
   const props = defineProps<{
     forecastHarmonie?: StationPrediction
-    forecastIHarmonie?: StationPrediction
     forecastEpsat?: StationPrediction
-    forecastIEpsatMedio?: StationPrediction
     forecastEnsP10?: StationPrediction
     forecastEnsP25?: StationPrediction
     forecastEnsP90?: StationPrediction
     forecastEnsP75?: StationPrediction
-    forecastEnsP10Emb?: StationPrediction
-    forecastEnsP25Emb?: StationPrediction
-    forecastEnsP75Emb?: StationPrediction
-    forecastEnsP90Emb?: StationPrediction
   }>()
 
   // Extraer fechas y valores de det
@@ -34,26 +28,10 @@
     }))
   })
 
-  const IHarmonieData = computed(() => {
-    if (!props.forecastIHarmonie?.results?.length) return null
-    return props.forecastIHarmonie.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
-  })
-
   // Extraer fechas y valores de ens
   const epsatData = computed(() => {
     if (!props.forecastEpsat?.results?.length) return null
     return props.forecastEpsat.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
-  })
-
-  const epsatMedioData = computed(() => {
-    if (!props.forecastIEpsatMedio?.results?.length) return null
-    return props.forecastIEpsatMedio.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
@@ -94,54 +72,16 @@
     }))
   })
 
-  const p10EmbData = computed(() => {
-    if (!props.forecastEnsP10Emb?.results?.length) return null
-    return props.forecastEnsP10Emb.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
-  })
-
-  const p25EmbData = computed(() => {
-    if (!props.forecastEnsP25Emb?.results?.length) return null
-    return props.forecastEnsP25Emb.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
-  })
-
-  const p75EmbData = computed(() => {
-    if (!props.forecastEnsP75Emb?.results?.length) return null
-    return props.forecastEnsP75Emb.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
-  })
-
-  const p90EmbData = computed(() => {
-    if (!props.forecastEnsP90Emb?.results?.length) return null
-    return props.forecastEnsP90Emb.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
-  })
-
   // Todas las fechas únicas ordenadas
   const allDates = computed(() => {
     const dateSet = new Set<string>()
 
     HarmonieData.value?.forEach((d) => dateSet.add(d.date))
-    IHarmonieData.value?.forEach((d) => dateSet.add(d.date))
     epsatData.value?.forEach((d) => dateSet.add(d.date))
-    epsatMedioData.value?.forEach((d) => dateSet.add(d.date))
     p10Data.value?.forEach((d) => dateSet.add(d.date))
     p75Data.value?.forEach((d) => dateSet.add(d.date))
     p25Data.value?.forEach((d) => dateSet.add(d.date))
     p90Data.value?.forEach((d) => dateSet.add(d.date))
-    p10EmbData.value?.forEach((d) => dateSet.add(d.date))
-    p25EmbData.value?.forEach((d) => dateSet.add(d.date))
-    p75EmbData.value?.forEach((d) => dateSet.add(d.date))
-    p90EmbData.value?.forEach((d) => dateSet.add(d.date))
 
     return Array.from(dateSet).sort()
   })
@@ -157,6 +97,32 @@
 
     const result: SeriesItem[] = []
     const labels = xLabels.value
+
+    // Harmonie
+    if (HarmonieData.value) {
+      const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Predicción Det. Harmonie',
+        type: 'line',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: detMap.get(date) ?? null,
+        })),
+      })
+    }
+
+    // EPS
+    if (epsatData.value) {
+      const epsatMap = new Map(epsatData.value.map((d) => [d.date, d.value]))
+      result.push({
+        name: 'Predicción Det. EPS',
+        type: 'line',
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: epsatMap.get(date) ?? null,
+        })),
+      })
+    }
 
     // P10-P90 RangeArea (must come before bars so it renders behind)
     if (p10Data.value && p90Data.value) {
@@ -186,83 +152,6 @@
       })
     }
 
-    // Harmonie
-    if (HarmonieData.value) {
-      const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Predicción Det. Harmonie',
-        type: 'line',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: detMap.get(date) ?? null,
-        })),
-      })
-    }
-
-    // IHarmonie
-    if (IHarmonieData.value) {
-      const iDetMap = new Map(IHarmonieData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Predicción Entrada Harmonie',
-        type: 'line',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: iDetMap.get(date) ?? null,
-        })),
-      })
-    }
-
-    // EPS
-    if (epsatData.value) {
-      const epsatMap = new Map(epsatData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Predicción Det. EPS',
-        type: 'line',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: epsatMap.get(date) ?? null,
-        })),
-      })
-    }
-
-    if (epsatMedioData.value) {
-      const epsatMedioMap = new Map(epsatMedioData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Predicción Entrada Media. EPS',
-        type: 'line',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: epsatMedioMap.get(date) ?? null,
-        })),
-      })
-    }
-
-    if (p10EmbData.value && p90EmbData.value) {
-      const p10EmbMap = new Map(p10EmbData.value.map((d) => [d.date, d.value]))
-      const p90EmbMap = new Map(p90EmbData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Percentiles Entrada P10-P90',
-        type: 'rangeArea',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: [p10EmbMap.get(date) ?? null, p90EmbMap.get(date) ?? null],
-        })),
-      })
-    }
-
-    if (p25EmbData.value && p75EmbData.value) {
-      const p25EmbMap = new Map(p25EmbData.value.map((d) => [d.date, d.value]))
-      const p75EmbMap = new Map(p75EmbData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Percentiles Entrada P25-P75',
-        type: 'rangeArea',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: [p25EmbMap.get(date) ?? null, p75EmbMap.get(date) ?? null],
-        })),
-      })
-    }
-
     console.log('Series generadas para el gráfico:', result)
     return result
   })
@@ -270,28 +159,20 @@
   // Colores dinámicos basados en qué series existen (mismo orden que series)
   const dynamicColors = computed(() => {
     const colors: string[] = []
+    if (HarmonieData.value) colors.push('#1565C0') // Azul
+    if (epsatData.value) colors.push('#FF9800') // Amarillo
     if (p10Data.value && p90Data.value) colors.push('#D3D3D3') // Gris claro
     if (p25Data.value && p75Data.value) colors.push('#696969') // Gris oscuro
-    if (HarmonieData.value) colors.push('#1565C0') // Azul
-    if (IHarmonieData.value) colors.push('#006600') // Verde
-    if (epsatData.value) colors.push('#FF9800') // Amarillo
-    if (epsatMedioData.value) colors.push('#FF6666') // Rojo
-    if (p10EmbData.value && p90EmbData.value) colors.push('#D3D3D3')
-    if (p25EmbData.value && p75EmbData.value) colors.push('#696969') // Gris oscuro
     return colors
   })
 
   // Opacidad de relleno por serie (rangeArea necesita opacidad explícita)
   const dynamicFillOpacity = computed(() => {
     const opacity: number[] = []
+    if (HarmonieData.value) opacity.push(1)
+    if (epsatData.value) opacity.push(1)
     if (p10Data.value && p90Data.value) opacity.push(0.35)
     if (p25Data.value && p75Data.value) opacity.push(0.35)
-    if (HarmonieData.value) opacity.push(1)
-    if (IHarmonieData.value) opacity.push(1)
-    if (epsatData.value) opacity.push(1)
-    if (epsatMedioData.value) opacity.push(1)
-    if (p10EmbData.value && p90EmbData.value) opacity.push(0.35)
-    if (p25EmbData.value && p75EmbData.value) opacity.push(0.35)
 
     return opacity
   })
@@ -299,14 +180,10 @@
   // Ancho de trazo por serie
   const dynamicStrokeWidth = computed(() => {
     const widths: number[] = []
+    if (HarmonieData.value) widths.push(2)
+    if (epsatData.value) widths.push(2)
     if (p10Data.value && p90Data.value) widths.push(1)
     if (p25Data.value && p75Data.value) widths.push(1)
-    if (HarmonieData.value) widths.push(2)
-    if (IHarmonieData.value) widths.push(2)
-    if (epsatData.value) widths.push(2)
-    if (epsatMedioData.value) widths.push(2)
-    if (p10EmbData.value && p90EmbData.value) widths.push(1)
-    if (p25EmbData.value && p75EmbData.value) widths.push(1)
     return widths
   })
 
