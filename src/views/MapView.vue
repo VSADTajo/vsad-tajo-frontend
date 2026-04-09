@@ -19,9 +19,11 @@
   import { createMapPanes } from '@/config/panes/mapPanes'
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import { useLayersStore } from '@/stores/layersStore'
+  import { useMapStore } from '@/stores/mapStore'
   import { useDisplay } from 'vuetify'
 
   const layersStore = useLayersStore()
+  const mapStore = useMapStore()
   const { mdAndUp } = useDisplay()
 
   // Referencias
@@ -35,6 +37,20 @@
   )
 
   let currentTileLayer: L.TileLayer
+
+  watch(
+    () => mapStore.flyToTarget,
+    (target) => {
+      if (!target || !map) return
+
+      map.flyTo([target.lat, target.lng], target.zoom ?? Math.max(map.getZoom(), 11), {
+        animate: target.animate ?? true,
+        duration: 0.8,
+      })
+
+      mapStore.clearFlyToTarget()
+    }
+  )
 
   watch(selectedBasemap, (newId) => {
     if (!map) return
