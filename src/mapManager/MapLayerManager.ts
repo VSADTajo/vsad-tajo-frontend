@@ -200,7 +200,7 @@ export class MapLayerManager {
       }
 
       this.updateOpacityState(layerState)
-      this.updateTimeState(layerState)
+      await this.updateTimeState(layerState)
     }
   }
 
@@ -229,7 +229,7 @@ export class MapLayerManager {
   // 🎨 Actualizar Tiempo
   // ==============================
 
-  private updateTimeState(layerState: LayerState) {
+  private async updateTimeState(layerState: LayerState) {
     if (!layerState.visible) return
 
     const current = this.activeLayers[layerState.id]
@@ -240,7 +240,7 @@ export class MapLayerManager {
     const newTime = layerState.params?.time
     if (!newTime) return
 
-    const currentTime = (current.wmsParams as any)?.time
+    const currentTime = (current.wmsParams as unknown as Record<string, unknown>)?.time
 
     if (currentTime === newTime) return
 
@@ -249,10 +249,12 @@ export class MapLayerManager {
     const config = this.configMap.get(layerState.id)
     if (!config) return
 
-    const newLayer = L.tileLayer.wms((config as WMSLayerConfig).url, {
-      ...(current.options as any),
-      time: layerState.params.time,
-    })
+    const createdLayer = await createLayer(config, { time: layerState.params.time })
+
+    if (!createdLayer) return
+    if (!(createdLayer instanceof L.TileLayer.WMS)) return
+
+    const newLayer = createdLayer
 
     newLayer.setOpacity(0)
     newLayer.addTo(this.map)
@@ -263,6 +265,8 @@ export class MapLayerManager {
     }
 
     const layers = this.temporalLayers[layerState.id]
+
+    layers.push(newLayer)
 
     // mantener solo 2 layers (actual + anterior)
     if (layers.length > 2) {

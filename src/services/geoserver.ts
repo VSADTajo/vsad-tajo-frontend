@@ -4,6 +4,7 @@ import ky from 'ky'
 import { boundaryStore } from '@/stores/boundaryStore'
 import { MAP_PANES } from '@/config/panes/mapPanes'
 import { applyPolygonMaskToWMS, type LayerWithMap } from '@/utils/mask'
+import { buildSaihPopupContent } from '@/utils/saihStations'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
@@ -87,6 +88,27 @@ export async function createWFSLayer(
       interactive: config.interactive ?? true,
 
       onEachFeature: (feature, layer) => {
+        if (config.id === 'saih' && layer instanceof L.Marker) {
+          layer.bindPopup(buildSaihPopupContent(feature), {
+            closeButton: false,
+            autoClose: false,
+            closeOnClick: false,
+            className: 'saih-hover-popup',
+            offset: L.point(0, -14),
+          })
+
+          layer.on({
+            mouseover: () => {
+              layer.getElement()?.firstElementChild?.classList.add('is-highlight')
+              layer.openPopup()
+            },
+            mouseout: () => {
+              layer.getElement()?.firstElementChild?.classList.remove('is-highlight')
+              layer.closePopup()
+            },
+          })
+        }
+
         if (!config.highlight || !config.style) return
 
         const { highlight } = config.style

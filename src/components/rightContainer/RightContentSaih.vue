@@ -12,19 +12,13 @@
     </template>
 
     <template v-else-if="feature">
-      <v-card-title
-        class="d-flex justify-space-between align-start pa-6"
-        style="
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          margin: -16px -16px 0 -16px;
-        "
-      >
+      <v-card-title class="d-flex justify-space-between align-start pa-6" :style="headerStyle">
         <div>
           <div class="text-h6 font-weight-bold" style="color: white">
-            {{ feature.properties?.nombre }}
+            {{ feature.properties?.codigo }}
           </div>
           <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">
-            Código: {{ feature.properties?.codigo }}
+            {{ feature.properties?.nombre }}
           </div>
         </div>
 
@@ -44,7 +38,7 @@
         <div class="mb-4">
           <v-chip
             :icon="feature?.properties?.tipo === 'SAIH' ? 'mdi-water' : 'mdi-map-marker'"
-            color="primary"
+            :color="stationBaseColor"
             variant="tonal"
             size="small"
             class="font-weight-bold"
@@ -222,6 +216,7 @@
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
+  import { getSaihTypeColor } from '@/utils/saihStations'
 
   const route = useRoute()
   const router = useRouter()
@@ -260,6 +255,43 @@
   )
 
   const codeType = computed(() => feature.value?.properties?.tipo_cod)
+
+  function hexToRgb(hex: string): [number, number, number] {
+    const value = hex.replace('#', '')
+    const full =
+      value.length === 3
+        ? value
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : value
+    const num = Number.parseInt(full, 16)
+
+    return [(num >> 16) & 255, (num >> 8) & 255, num & 255]
+  }
+
+  function shadeHex(hex: string, factor: number): string {
+    const [r, g, b] = hexToRgb(hex)
+    const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)))
+
+    const rr = clamp(r * factor)
+    const gg = clamp(g * factor)
+    const bb = clamp(b * factor)
+
+    return `rgb(${rr}, ${gg}, ${bb})`
+  }
+
+  const stationBaseColor = computed(() => getSaihTypeColor(codeType.value as string | undefined))
+
+  const headerStyle = computed(() => {
+    const base = stationBaseColor.value
+    const darker = shadeHex(base, 0.72)
+
+    return {
+      background: `linear-gradient(135deg, ${base} 0%, ${darker} 100%)`,
+      margin: '-16px -16px 0 -16px',
+    }
+  })
 
   const hasCaudal = computed(
     () => codeType.value === 'AR' || codeType.value === 'AC' || codeType.value === 'E'

@@ -58,3 +58,50 @@ html {
     display: none;
   }
 }
+
+.saih-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.saih-marker {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 3px solid var(--saih-color);
+  background: var(--saih-bg, color-mix(in srgb, var(--saih-color) 20%, white));
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  color: var(--saih-color);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.2px;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.saih-marker:hover,
+.saih-marker.is-highlight {
+  transform: scale(1.18);
+  background: color-mix(in srgb, var(--saih-bg, var(--saih-color)) 78%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--saih-color) 34%, transparent);
+}
+
+.leaflet-popup.saih-hover-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.leaflet-popup.saih-hover-popup .leaflet-popup-content {
+  margin: 0;
+}
+
+.leaflet-popup.saih-hover-popup .leaflet-popup-tip {
+  background: #ffffff;
+  box-shadow: none;
+}
