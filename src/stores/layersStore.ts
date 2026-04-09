@@ -55,6 +55,11 @@ export const useLayersStore = defineStore('layers', {
       this.layers[id].visible = !this.layers[id].visible
     },
 
+    setLayerVisibility(id: string, visible: boolean) {
+      if (!this.layers[id]) return
+      this.layers[id].visible = visible
+    },
+
     setOpacity(id: string, opacity: number) {
       if (this.layers[id]) {
         this.layers[id].opacity = opacity
