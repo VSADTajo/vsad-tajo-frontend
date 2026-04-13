@@ -74,7 +74,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     type: 'WFS',
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_puntos_saih',
-    pane: MAP_PANES.POINTS,
+    pane: MAP_PANES.SAIH,
     pointToLayer: saihPointStyle,
     interactive: true,
     groupBy: {

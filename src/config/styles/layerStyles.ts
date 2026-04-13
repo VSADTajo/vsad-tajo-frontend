@@ -2,6 +2,7 @@ import L from 'leaflet'
 import type { Feature } from 'geojson'
 import type { LayerStyle } from '@/types/Layers'
 import { getSaihTypeColor } from '@/utils/saihStations'
+import { MAP_PANES } from '@/config/panes/mapPanes'
 
 const temporaryAlertPool = [
   '#facc15',
@@ -58,6 +59,7 @@ export const saihPointStyle = (feature: Feature, latlng: L.LatLng) => {
       iconSize: [30, 30],
       iconAnchor: [15, 15],
     }),
+    pane: MAP_PANES.SAIH,
     riseOnHover: true,
   })
 
@@ -113,6 +115,12 @@ export const sistemas10Style: LayerStyle = {
     fillColor: '#b2df8a',
     fillOpacity: 0.55,
   },
+  selected: {
+    color: '#1f7a1f',
+    weight: 3,
+    fillColor: '#49b24a',
+    fillOpacity: 0.5,
+  },
 }
 
 export const zonasexplStyle: LayerStyle = {
@@ -127,5 +135,11 @@ export const zonasexplStyle: LayerStyle = {
     weight: 3,
     fillColor: '#a0c8e2',
     fillOpacity: 0.55,
+  },
+  selected: {
+    color: '#1f7a1f',
+    weight: 3,
+    fillColor: '#49b24a',
+    fillOpacity: 0.5,
   },
 }

@@ -7,6 +7,7 @@ export const MAP_PANES = {
   CONTORNO: 'contornoPane',
   LINES: 'linesPane',
   POINTS: 'pointsPane',
+  SAIH: 'saihPane',
   REPORTING: 'reportingPane',
   HIGHLIGHT: 'highlightPane',
 } as const
@@ -19,8 +20,9 @@ export function createMapPanes(map: L.Map) {
     { name: MAP_PANES.CONTORNO, zIndex: 300 },
     { name: MAP_PANES.LINES, zIndex: 400 },
     { name: MAP_PANES.POINTS, zIndex: 500 },
-    { name: MAP_PANES.REPORTING, zIndex: 600 },
-    { name: MAP_PANES.HIGHLIGHT, zIndex: 700 },
+    { name: MAP_PANES.HIGHLIGHT, zIndex: 620 },
+    { name: MAP_PANES.SAIH, zIndex: 650 },
+    { name: MAP_PANES.REPORTING, zIndex: 650 },
   ]
 
   panes.forEach(({ name, zIndex }) => {
@@ -31,4 +33,24 @@ export function createMapPanes(map: L.Map) {
       pane.style.zIndex = String(zIndex)
     }
   })
+
+  // Asegurar que el pane de highlight no intercepte eventos de mouse
+  const highlightPane = map.getPane(MAP_PANES.HIGHLIGHT)
+  if (highlightPane) {
+    highlightPane.style.pointerEvents = 'none'
+  }
+
+  // Asegurar que el popup pane de Leaflet esté encima de todo
+  const popupPane = map.getPane('popupPane')
+  if (popupPane) {
+    popupPane.style.zIndex = '800'
+    console.log('[MapPanes] Popup pane z-index set to 800')
+  }
+
+  // Asegurar que el tooltip pane también esté alto
+  const tooltipPane = map.getPane('tooltipPane')
+  if (tooltipPane) {
+    tooltipPane.style.zIndex = '801'
+    console.log('[MapPanes] Tooltip pane z-index set to 801')
+  }
 }
