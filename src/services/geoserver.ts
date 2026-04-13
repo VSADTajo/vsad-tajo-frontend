@@ -99,7 +99,7 @@ export async function createWFSLayer(
             closeButton: false,
             autoClose: false,
             closeOnClick: false,
-            className: 'saih-hover-popup',
+            className: 'feature-hover-popup',
             offset: L.point(0, -14),
           })
 
@@ -122,6 +122,9 @@ export async function createWFSLayer(
 
     // Seleccionar builder de popup según el layer
     let popupBuilder: ((feature: GeoJSON.Feature) => string) | undefined
+
+    console.log('config.id en createWFSLayer:', config.id)
+
     if (config.id === 'subcuencas') {
       popupBuilder = buildSubcuencaPopupContent
     } else if (config.id === 'sistemas10') {

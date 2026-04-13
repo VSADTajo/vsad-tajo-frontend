@@ -224,8 +224,15 @@ export class MapLayerManager {
 
       // Desactivar
       if (!layerState.visible && existing) {
-        // Limpiar StyleManager antes de desactivar
-        this.clearStyleManager(layerState.id)
+        const selectableIds = ['subcuencas', 'sistemas10', 'zonasexpl']
+
+        // Si se apaga una capa seleccionable, limpiar cualquier seleccion residual
+        if (selectableIds.includes(layerState.id)) {
+          this.clearAllSelections()
+        } else {
+          this.clearStyleManager(layerState.id)
+        }
+
         delete this.styleManagers[layerState.id]
 
         this.layerGeneration[layerState.id]++
