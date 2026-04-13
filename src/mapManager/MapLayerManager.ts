@@ -210,13 +210,17 @@ export class MapLayerManager {
 
   private updateOpacityState(layerState: LayerState) {
     const layer = this.activeLayers[layerState.id]
+    const config = this.configMap.get(layerState.id)
 
     if (!layer) return
 
     if (layer instanceof L.GeoJSON) {
+      const baseOpacity = config?.type === 'WFS' ? (config.style?.normal.opacity ?? 1) : 1
+      const baseFillOpacity = config?.type === 'WFS' ? (config.style?.normal.fillOpacity ?? 1) : 1
+
       layer.setStyle({
-        opacity: layerState.opacity,
-        fillOpacity: layerState.opacity,
+        opacity: baseOpacity * layerState.opacity,
+        fillOpacity: baseFillOpacity * layerState.opacity,
       })
     }
 

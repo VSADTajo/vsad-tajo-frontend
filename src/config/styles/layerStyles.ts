@@ -84,13 +84,19 @@ export const subcuencasStyle: LayerStyle = {
     color: '#8d5d26',
     weight: 2,
     fillColor: '#ec9c41',
-    fillOpacity: 0.2,
+    fillOpacity: 0.5,
   },
   highlight: {
     color: '#5c3a10',
     weight: 3,
     fillColor: '#ec9c41',
     fillOpacity: 0.55,
+  },
+  selected: {
+    color: '#1f7a1f',
+    weight: 3,
+    fillColor: '#49b24a',
+    fillOpacity: 0.5,
   },
 }
 

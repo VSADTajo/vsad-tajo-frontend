@@ -115,6 +115,14 @@ export async function createWFSLayer(
 
         layer.on({
           mouseover: () => {
+            const isSelectedSubcuenca =
+              config.id === 'subcuencas' &&
+              Boolean(
+                (feature.properties as Record<string, unknown> | undefined)?.__subcuencaSelected
+              )
+
+            if (isSelectedSubcuenca) return
+
             // eliminar anterior
             if (highlightLayer) {
               highlightLayer.remove()
