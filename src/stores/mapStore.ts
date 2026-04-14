@@ -8,9 +8,17 @@ type FlyToTarget = {
   token: number
 }
 
+type PendingFeatureSelection = {
+  layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl'
+  featureId: string
+  focus?: boolean
+  token: number
+}
+
 export const useMapStore = defineStore('map', {
   state: () => ({
     flyToTarget: null as FlyToTarget | null,
+    pendingFeatureSelection: null as PendingFeatureSelection | null,
   }),
 
   actions: {
@@ -26,6 +34,23 @@ export const useMapStore = defineStore('map', {
 
     clearFlyToTarget() {
       this.flyToTarget = null
+    },
+
+    requestFeatureSelection(
+      layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl',
+      featureId: string,
+      options?: { focus?: boolean }
+    ) {
+      this.pendingFeatureSelection = {
+        layerId,
+        featureId,
+        focus: options?.focus,
+        token: Date.now(),
+      }
+    },
+
+    clearPendingFeatureSelection() {
+      this.pendingFeatureSelection = null
     },
   },
 })

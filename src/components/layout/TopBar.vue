@@ -340,9 +340,16 @@
   function flyToResult(result: SearchResult) {
     if (!hasValidCoordinates(result)) return
 
+    const originType = getOriginType(result.origen)
+    const layerId = getLayerIdForOriginType(originType)
+
     activateLayerForResult(result)
 
     mapStore.requestFlyTo(result.y, result.x, { zoom: getFlyToZoom(result), animate: true })
+
+    if (layerId && result.codigo) {
+      mapStore.requestFeatureSelection(layerId, String(result.codigo), { focus: false })
+    }
   }
 
   function getQueryKeyFromResult(result: SearchResult): string | null {
@@ -363,6 +370,9 @@
 
     const selected = searchResults.value.find((result) => result.uid === uid)
     if (!selected) return
+
+    selectedResult.value = selected.uid
+    searchText.value = selected.display
 
     flyToResult(selected)
 

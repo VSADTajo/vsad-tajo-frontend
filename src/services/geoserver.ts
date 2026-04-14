@@ -2,9 +2,14 @@ import L from 'leaflet'
 import type { LayerConfig, WFSLayerConfig, WMSLayerConfig, TMSLayerConfig } from '@/types/Layers'
 import ky from 'ky'
 import { boundaryStore } from '@/stores/boundaryStore'
-import { MAP_PANES } from '@/config/panes/mapPanes'
-import { applyPolygonMaskToWMS, type LayerWithMap } from '@/utils/mask'
+import { applyPolygonMaskToWMS } from '@/utils/mask'
 import { buildSaihPopupContent } from '@/utils/saihStations'
+import {
+  buildSubcuencaPopupContent,
+  buildSistemaPopupContent,
+  buildZonaPopupContent,
+} from '@/utils/popupContent'
+import { StyleManager } from '@/mapManager/StyleManager'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
@@ -59,7 +64,8 @@ export function createTMSLayer(config: TMSLayerConfig): L.TileLayer {
 
 export async function createWFSLayer(
   config: WFSLayerConfig,
-  extraParams?: Record<string, string>
+  extraParams?: Record<string, string>,
+  onDblClick?: (feature: GeoJSON.Feature) => void
 ): Promise<L.GeoJSON | null> {
   try {
     const baseUrl = config.url.split('?')[0]
@@ -77,9 +83,8 @@ export async function createWFSLayer(
       ...extraParams,
     }
 
+    console.log(`[GeoServer] Creando capa WFS: ${config.id}`)
     const geojson = await ky.get(baseUrl, { searchParams: params }).json()
-
-    let highlightLayer: L.GeoJSON | null = null
 
     const geojsonLayer = L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
       style: config.style?.normal,
@@ -88,12 +93,13 @@ export async function createWFSLayer(
       interactive: config.interactive ?? true,
 
       onEachFeature: (feature, layer) => {
+        // Especial para SAIH: popups
         if (config.id === 'saih' && layer instanceof L.Marker) {
           layer.bindPopup(buildSaihPopupContent(feature), {
             closeButton: false,
             autoClose: false,
             closeOnClick: false,
-            className: 'saih-hover-popup',
+            className: 'feature-hover-popup',
             offset: L.point(0, -14),
           })
 
@@ -108,45 +114,51 @@ export async function createWFSLayer(
             },
           })
         }
-
-        if (!config.highlight || !config.style) return
-
-        const { highlight } = config.style
-
-        layer.on({
-          mouseover: () => {
-            // eliminar anterior
-            if (highlightLayer) {
-              highlightLayer.remove()
-              highlightLayer = null
-            }
-
-            const map = (layer as LayerWithMap)._map
-            if (!map) return
-
-            // crear nuevo highlight en pane superior
-            highlightLayer = L.geoJSON(feature as GeoJSON.GeoJsonObject, {
-              style: highlight,
-              pane: MAP_PANES.HIGHLIGHT,
-              interactive: false,
-            })
-
-            highlightLayer.addTo(map)
-          },
-
-          mouseout: () => {
-            if (highlightLayer) {
-              highlightLayer.remove()
-              highlightLayer = null
-            }
-          },
-        })
       },
     })
 
+    // Guardar StyleManager en el layer para acceso desde MapLayerManager
+    const isSelectable = ['subcuencas', 'sistemas10', 'zonasexpl'].includes(config.id)
+
+    // Seleccionar builder de popup según el layer
+    let popupBuilder: ((feature: GeoJSON.Feature) => string) | undefined
+
+    console.log('config.id en createWFSLayer:', config.id)
+
+    if (config.id === 'subcuencas') {
+      popupBuilder = buildSubcuencaPopupContent
+    } else if (config.id === 'sistemas10') {
+      popupBuilder = buildSistemaPopupContent
+    } else if (config.id === 'zonasexpl') {
+      popupBuilder = buildZonaPopupContent
+    }
+
+    const styleManager = new StyleManager(
+      config.id,
+      config.style,
+      isSelectable,
+      onDblClick,
+      popupBuilder
+    )
+
+    console.log(
+      `[GeoServer] Creando StyleManager para ${config.id}. isSelectable=${isSelectable}, hasCallback=${!!onDblClick}, hasPopup=${!!popupBuilder}`
+    )
+
+    Object.defineProperty(geojsonLayer, '_styleManager', {
+      value: styleManager,
+      writable: false,
+      enumerable: false,
+    })
+
+    console.log(
+      `[GeoServer] Capa WFS creada: ${config.id}. Features count: ${
+        (geojson as GeoJSON.FeatureCollection).features?.length || 0
+      }`
+    )
     return geojsonLayer
   } catch (err) {
-    console.error('Error creando capa WFS', err)
+    console.error('[GeoServer] Error creando capa WFS', err)
     return null
   }
 }
@@ -156,7 +168,8 @@ export async function createWFSLayer(
 // ==============================
 type LayerFactory = (
   config: LayerConfig,
-  extra?: Record<string, string>
+  extra?: Record<string, string>,
+  callback?: (feature: GeoJSON.Feature) => void
 ) => Promise<L.Layer | null> | L.Layer | null
 
 const layerFactories: {
@@ -166,12 +179,13 @@ const layerFactories: {
 
   TMS: (config) => createTMSLayer(config as TMSLayerConfig),
 
-  WFS: (config, extra) => createWFSLayer(config as WFSLayerConfig, extra),
+  WFS: (config, extra, callback) => createWFSLayer(config as WFSLayerConfig, extra, callback),
 }
 
 export async function createLayer(
   config: LayerConfig,
-  extraParams?: Record<string, string>
+  extraParams?: Record<string, string>,
+  onDblClick?: (feature: GeoJSON.Feature) => void
 ): Promise<L.Layer | null> {
   const factory = layerFactories[config.type]
 
@@ -180,7 +194,7 @@ export async function createLayer(
     return null
   }
 
-  return await factory(config, extraParams)
+  return await factory(config, extraParams, onDblClick)
 }
 
 export async function getWFSFeatureById(
