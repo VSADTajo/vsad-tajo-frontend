@@ -187,7 +187,12 @@ export class StyleManager {
   /**
    * Selecciona una feature y aplica estilo
    */
-  private selectFeature(feature: GeoJSON.Feature, featureId: string, map: L.Map): void {
+  private selectFeature(
+    feature: GeoJSON.Feature,
+    featureId: string,
+    map: L.Map,
+    options?: { focus?: boolean }
+  ): void {
     console.log(`[StyleManager] SELECCIONANDO ${featureId}`)
 
     // Si quedó estado huérfano por una limpieza externa, reiniciarlo antes de seleccionar
@@ -211,7 +216,7 @@ export class StyleManager {
 
     // FlyTo
     const bounds = this.selectedLayer.getBounds()
-    if (bounds && bounds.isValid()) {
+    if (options?.focus !== false && bounds && bounds.isValid()) {
       map.flyTo(bounds.getCenter(), 10, { animate: true, duration: 0.8 })
     }
   }
@@ -262,6 +267,31 @@ export class StyleManager {
    */
   getSelectedFeatureId(): string | null {
     return this.selectedFeatureId
+  }
+
+  selectFeatureById(
+    featureId: string,
+    geojsonLayer: L.GeoJSON,
+    map: L.Map,
+    options?: { focus?: boolean }
+  ): boolean {
+    let found = false
+
+    geojsonLayer.eachLayer((layer: L.Layer) => {
+      const feature = (layer as (L.Path | L.Marker) & { feature?: GeoJSON.Feature }).feature as
+        | GeoJSON.Feature
+        | undefined
+
+      if (!feature || found) return
+
+      const currentFeatureId = this.getFeatureId(feature)
+      if (currentFeatureId !== featureId) return
+
+      this.selectFeature(feature, featureId, map, options)
+      found = true
+    })
+
+    return found
   }
 
   /**

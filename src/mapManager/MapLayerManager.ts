@@ -23,7 +23,16 @@ export class MapLayerManager {
   private configMap = new Map(dynamicLayersConfig.map((c) => [c.id, c]))
   private styleManagers: Record<
     string,
-    { clearAll: () => void; wasLastClickHandled: () => boolean }
+    {
+      clearAll: () => void
+      wasLastClickHandled: () => boolean
+      selectFeatureById?: (
+        featureId: string,
+        geojsonLayer: L.GeoJSON,
+        map: L.Map,
+        options?: { focus?: boolean }
+      ) => boolean
+    }
   > = {}
   private mapClickDebounce: ReturnType<typeof setTimeout> | null = null
 
@@ -627,6 +636,25 @@ export class MapLayerManager {
       if (otherId === layerId) continue
       this.clearStyleManager(otherId)
     }
+  }
+
+  selectFeature(
+    layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl',
+    featureId: string,
+    options?: { focus?: boolean }
+  ): boolean {
+    const layer = this.activeLayers[layerId]
+    if (!(layer instanceof L.GeoJSON)) {
+      return false
+    }
+
+    const styleManager = this.styleManagers[layerId]
+    if (!styleManager?.selectFeatureById) {
+      return false
+    }
+
+    this.clearAllSelections()
+    return styleManager.selectFeatureById(featureId, layer, this.map, options)
   }
 
   /**
