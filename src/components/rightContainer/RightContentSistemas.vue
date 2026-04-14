@@ -72,8 +72,6 @@
     } finally {
       loading.value = false
     }
-
-    console.log('feature.valuePPPPPfeature.value', feature.value)
   }
 
   watch(

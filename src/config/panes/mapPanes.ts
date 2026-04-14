@@ -44,13 +44,11 @@ export function createMapPanes(map: L.Map) {
   const popupPane = map.getPane('popupPane')
   if (popupPane) {
     popupPane.style.zIndex = '800'
-    console.log('[MapPanes] Popup pane z-index set to 800')
   }
 
   // Asegurar que el tooltip pane también esté alto
   const tooltipPane = map.getPane('tooltipPane')
   if (tooltipPane) {
     tooltipPane.style.zIndex = '801'
-    console.log('[MapPanes] Tooltip pane z-index set to 801')
   }
 }
