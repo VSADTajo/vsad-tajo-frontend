@@ -45,34 +45,50 @@ export const meteoMaps: LayerNode[] = [
     id: 'eps',
     title: 'EPS',
     children: [
-      { id: 'nieve_agua', title: 'Nieve-Agua Media', parentLayer: 'eps' },
-      { id: 'precip_25', title: 'Precipitaciones 25', parentLayer: 'eps' },
-      { id: 'precip_75', title: 'Precipitaciones 75', parentLayer: 'eps' },
-      { id: 'precip_media', title: 'Precipitaciones Media', parentLayer: 'eps' },
-      { id: 'temp_media', title: 'Temperatura Media', parentLayer: 'eps' },
+      {
+        id: 'eps_nieve_agua_equiv_media',
+        title: 'Nieve-Agua Media',
+        parentLayer: 'eps',
+      },
+      { id: 'eps_precipitacion_25', title: 'Precipitaciones 25', parentLayer: 'eps' },
+      { id: 'eps_precipitacion_75', title: 'Precipitaciones 75', parentLayer: 'eps' },
+      {
+        id: 'eps_precipitacion_media',
+        title: 'Precipitaciones Media',
+        parentLayer: 'eps',
+      },
+      { id: 'eps_temperatura_media', title: 'Temperatura Media', parentLayer: 'eps' },
     ],
   },
   {
     id: 'harmonie',
     title: 'HARMONIE',
     children: [
-      { id: 'coberturanieve', title: 'Cobertura Nieve', parentLayer: 'harmonie' },
-      { id: 'nubosidad', title: 'Nubosidad', parentLayer: 'harmonie' },
-      { id: 'precipitacion', title: 'Precipitaciones', parentLayer: 'harmonie' },
-      { id: 'rayos', title: 'Rayos', parentLayer: 'harmonie' },
-      { id: 'temperatura', title: 'Temperatura', parentLayer: 'harmonie' },
-      { id: 'viento', title: 'Viento', parentLayer: 'harmonie' },
+      {
+        id: 'harmonie_cobertura_nieve',
+        title: 'Cobertura Nieve',
+        parentLayer: 'harmonie',
+      },
+      { id: 'harmonie_nubosidad', title: 'Nubosidad', parentLayer: 'harmonie' },
+      {
+        id: 'harmonie_precipitacion',
+        title: 'Precipitaciones',
+        parentLayer: 'harmonie',
+      },
+      { id: 'harmonie_rayos', title: 'Rayos', parentLayer: 'harmonie' },
+      { id: 'harmonie_temperatura', title: 'Temperatura', parentLayer: 'harmonie' },
+      { id: 'harmonie_viento', title: 'Viento', parentLayer: 'harmonie' },
     ],
   },
   {
     id: 'radar',
     title: 'Radar',
-    children: [{ id: 'precip_radar', title: 'Precipitaciones', parentLayer: 'radar' }],
+    children: [{ id: 'radar_precipitacion', title: 'Precipitaciones', parentLayer: 'radar' }],
   },
   {
     id: 'meteo_saih',
     title: 'SAIH',
-    children: [{ id: 'precip_saih', title: 'Precipitaciones', parentLayer: 'meteo_saih' }],
+    children: [{ id: 'saih_precipitacion', title: 'Precipitaciones', parentLayer: 'meteo_saih' }],
   },
 ]
 

@@ -9,11 +9,13 @@ import {
   getLayerLegendUrl,
   getLayerTimeDimension,
 } from '@/services/efasWmsService'
+import { getGeoServerLayerTimeDimension } from '@/services/geoserverWmsService'
 import { LegendManager } from './LegendManager'
 import { useLayersStore } from '@/stores/layersStore'
 import { subHours, isAfter, parseISO } from 'date-fns'
 import { useReportingPointStore } from '@/stores/reportingPointsStore'
 import { MAP_PANES } from '@/config/panes/mapPanes'
+import { efas_url } from '@/config/efasConfig'
 
 export class MapLayerManager {
   private map: L.Map
@@ -658,6 +660,14 @@ export class MapLayerManager {
       if (layer.temporal) return
 
       const wmsConfig = config as WMSLayerConfig
+      // const time =
+      //   wmsConfig.url === efas_url
+      //     ? await getLayerTimeDimension(wmsConfig.layers)
+      //     : await getGeoServerLayerTimeDimension({
+      //         url: wmsConfig.url,
+      //         layerName: wmsConfig.layers,
+      //       })
+
       const time = await getLayerTimeDimension(wmsConfig.layers)
 
       if (!time) return
