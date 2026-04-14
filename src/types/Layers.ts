@@ -75,4 +75,5 @@ export type LayerConfig = WMSLayerConfig | WFSLayerConfig | TMSLayerConfig
 export interface LayerStyle {
   normal: L.PathOptions
   highlight: L.PathOptions
+  selected?: L.PathOptions
 }
