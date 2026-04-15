@@ -83,7 +83,6 @@ export async function createWFSLayer(
       ...extraParams,
     }
 
-    console.log(`[GeoServer] Creando capa WFS: ${config.id}`)
     const geojson = await ky.get(baseUrl, { searchParams: params }).json()
 
     const geojsonLayer = L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
@@ -123,8 +122,6 @@ export async function createWFSLayer(
     // Seleccionar builder de popup según el layer
     let popupBuilder: ((feature: GeoJSON.Feature) => string) | undefined
 
-    console.log('config.id en createWFSLayer:', config.id)
-
     if (config.id === 'subcuencas') {
       popupBuilder = buildSubcuencaPopupContent
     } else if (config.id === 'sistemas10') {
@@ -141,21 +138,12 @@ export async function createWFSLayer(
       popupBuilder
     )
 
-    console.log(
-      `[GeoServer] Creando StyleManager para ${config.id}. isSelectable=${isSelectable}, hasCallback=${!!onDblClick}, hasPopup=${!!popupBuilder}`
-    )
-
     Object.defineProperty(geojsonLayer, '_styleManager', {
       value: styleManager,
       writable: false,
       enumerable: false,
     })
 
-    console.log(
-      `[GeoServer] Capa WFS creada: ${config.id}. Features count: ${
-        (geojson as GeoJSON.FeatureCollection).features?.length || 0
-      }`
-    )
     return geojsonLayer
   } catch (err) {
     console.error('[GeoServer] Error creando capa WFS', err)

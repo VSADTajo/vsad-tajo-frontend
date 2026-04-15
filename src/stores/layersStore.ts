@@ -1,6 +1,6 @@
 import type { LayerState, LayerNode, TimeParams } from '@/types/Layers'
 import { defineStore } from 'pinia'
-import { zonasLayers, stationLayers, efasLayers } from '@/constants/itemsLayers'
+import { zonasLayers, stationLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
 
 // Recorre recursivamente el LAaerNode y construye un estado plano solo para nodos hoja aplicando la configuración del grupo
 function buildLayerStateFromTree(
@@ -37,6 +37,9 @@ function buildInitialState(): Record<string, LayerState> {
     }),
     ...buildLayerStateFromTree(stationLayers, {
       defaultVisible: true,
+    }),
+    ...buildLayerStateFromTree(meteoMaps, {
+      defaultVisible: false,
     }),
     ...buildLayerStateFromTree(efasLayers, {
       defaultVisible: false,

@@ -152,7 +152,6 @@
       })
     }
 
-    console.log('Series generadas para el gráfico:', result)
     return result
   })
 

@@ -9,11 +9,13 @@ import {
   getLayerLegendUrl,
   getLayerTimeDimension,
 } from '@/services/efasWmsService'
+import { getGeoServerLayerTimeDimension } from '@/services/geoserverWmsService'
 import { LegendManager } from './LegendManager'
 import { useLayersStore } from '@/stores/layersStore'
 import { subHours, isAfter, parseISO } from 'date-fns'
 import { useReportingPointStore } from '@/stores/reportingPointsStore'
 import { MAP_PANES } from '@/config/panes/mapPanes'
+import { efas_url } from '@/config/efasConfig'
 
 export class MapLayerManager {
   private map: L.Map
@@ -56,7 +58,6 @@ export class MapLayerManager {
         }
 
         if (!anyHandled) {
-          console.log(`[MapLayerManager] Click en mapa (fuera de features) → deseleccionando`)
           this.clearAllSelections()
         }
       }, 50)
@@ -81,23 +82,16 @@ export class MapLayerManager {
     for (const config of this.configMap.values()) {
       if (!config.groupBy) continue
 
-      console.log(`[MapLayerManager] Procesando capa agrupada: ${config.id}`)
-
       const { field, parentLayer } = config.groupBy
 
       const activeChildren = Object.values(layersState)
         .filter((l) => l.parentLayer === parentLayer && l.visible)
         .map((l) => l.id)
 
-      console.log(
-        `[MapLayerManager]   → Field: ${field}, Parent: ${parentLayer}, Active children: ${activeChildren.join(',')}`
-      )
-
       // Si no hay hijos activos → limpiar capa
       if (!activeChildren.length) {
         const existing = this.groupedLayers[config.id]
         if (existing) {
-          console.log(`[MapLayerManager]   → Limpiando capa ${config.id}`)
           this.map.removeLayer(existing)
           delete this.groupedLayers[config.id]
         }
@@ -106,38 +100,31 @@ export class MapLayerManager {
 
       const cql = `${field} IN (${activeChildren.map((v) => `'${v}'`).join(',')})`
 
-      console.log(`[MapLayerManager]   → Creando capa con CQL: ${cql}`)
-
       // Crear callback para capas agrupadas
       const callback = (feature: GeoJSON.Feature) => {
-        console.log(`[MapLayerManager] Callback para capa agrupada ${config.id}`)
         this.handleFeatureClick(config.id, feature)
       }
 
       const newLayer = await createLayer(config, { CQL_FILTER: cql }, callback)
 
       if (!newLayer) {
-        console.log(`[MapLayerManager]   ⚠️ createLayer retornó null`)
         continue
       }
 
       const existing = this.groupedLayers[config.id]
 
       if (!existing) {
-        console.log(`[MapLayerManager]   → Nueva capa agrupada, adjuntando listeners`)
         newLayer.addTo(this.map)
         this.attachVectorClick(config.id, newLayer)
         this.groupedLayers[config.id] = newLayer
       } else {
         // Si es GeoJSON podemos actualizar datos
         if (existing instanceof L.GeoJSON && newLayer instanceof L.GeoJSON) {
-          console.log(`[MapLayerManager]   → Actualizando datos de capa existente`)
           existing.clearLayers()
           existing.addData(newLayer.toGeoJSON())
           // Usar el StyleManager del newLayer para re-adjuntar listeners
           const newStyleManager = Object.getOwnPropertyDescriptor(newLayer, '_styleManager')?.value
           if (newStyleManager && typeof newStyleManager.attachStyleListeners === 'function') {
-            console.log(`[MapLayerManager]   → Re-adjuntando StyleManager desde newLayer`)
             newStyleManager.attachStyleListeners(existing, this.map)
             this.styleManagers[config.id] = newStyleManager
           } else {
@@ -145,7 +132,6 @@ export class MapLayerManager {
           }
         } else {
           // Para otros tipos, recreamos
-          console.log(`[MapLayerManager]   → Recreando capa (tipo diferente)`)
           this.map.removeLayer(existing)
           newLayer.addTo(this.map)
           this.attachVectorClick(config.id, newLayer)
@@ -204,7 +190,6 @@ export class MapLayerManager {
 
         layer.addTo(this.map)
 
-        console.log(`[MapLayerManager] Adjuntando listeners para ${layerState.id}`)
         this.attachVectorClick(layerState.id, layer)
         this.attachWMSClick(layerState.id, layer)
 
@@ -460,10 +445,7 @@ export class MapLayerManager {
   }
 
   private attachVectorClick(layerId: string, layer: L.Layer) {
-    console.log(`[MapLayerManager] attachVectorClick: ${layerId}`)
-
     if (!(layer instanceof L.GeoJSON)) {
-      console.log(`[MapLayerManager]   ⚠️ No es L.GeoJSON, saltando`)
       return
     }
 
@@ -481,7 +463,6 @@ export class MapLayerManager {
       typeof styleManager === 'object' &&
       'attachStyleListeners' in styleManager
     ) {
-      console.log(`[MapLayerManager]   ✓ StyleManager encontrado para ${layerId}`)
       styleManager.attachStyleListeners(layer, this.map)
 
       // Guardar referencia para limpiar después
@@ -489,22 +470,14 @@ export class MapLayerManager {
       return
     }
 
-    console.log(`[MapLayerManager]   ⚠️ No hay StyleManager para ${layerId}`)
-
     // Fallback: manejo de doble-click para navegación
-    console.log(`[MapLayerManager] Usando fallback para ${layerId}`)
     const isSelectableLayer = ['subcuencas', 'sistemas10', 'zonasexpl'].includes(layerId)
     const eventType = isSelectableLayer ? 'dblclick' : 'click'
 
     const handler = (e: L.LeafletMouseEvent) => {
-      console.log(
-        `[MapLayerManager] Fallback handler: ${eventType} en ${layerId}, e.layer:`,
-        e.layer
-      )
       const geoJsonLayer = e.layer as unknown as L.GeoJSON
       const feature = geoJsonLayer.feature as GeoJSON.Feature | undefined
       if (!feature) {
-        console.log(`[MapLayerManager]   ⚠️ Sin feature`)
         return
       }
 
@@ -515,13 +488,10 @@ export class MapLayerManager {
   }
 
   private handleFeatureClick(layerId: string, feature: GeoJSON.Feature) {
-    console.log(`[MapLayerManager] handleFeatureClick: ${layerId}`)
-    console.log(`[MapLayerManager]   → feature:`, feature.properties)
-
     switch (layerId) {
       case 'saih': {
         const stationCode = feature.properties?.codigo ? feature.properties.codigo : feature.id
-        console.log(`[MapLayerManager]   → SAIH navegando a: ${stationCode}`)
+
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -533,7 +503,7 @@ export class MapLayerManager {
 
       case 'subcuencas': {
         const code = feature.properties?.code
-        console.log(`[MapLayerManager]   → Subcuenca navegando a: ${code}`)
+
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -545,7 +515,7 @@ export class MapLayerManager {
 
       case 'sistemas10': {
         const sistema = feature.properties?.sistema
-        console.log(`[MapLayerManager]   → Sistema navegando a: ${sistema}`)
+
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -557,7 +527,7 @@ export class MapLayerManager {
 
       case 'zonasexpl': {
         const zona = feature.properties?.ogc_fid
-        console.log(`[MapLayerManager]   → Zona navegando a: ${zona}`)
+
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -568,7 +538,6 @@ export class MapLayerManager {
       }
 
       default:
-        console.log(`[MapLayerManager]   ⚠️ Capa ${layerId} sin comportamiento`)
     }
   }
 
@@ -579,7 +548,6 @@ export class MapLayerManager {
     const styleManager = this.styleManagers[layerId]
 
     if (styleManager && typeof styleManager === 'object' && 'clearAll' in styleManager) {
-      console.log(`[MapLayerManager] Limpiando StyleManager de ${layerId}`)
       styleManager.clearAll()
     }
   }
@@ -588,25 +556,21 @@ export class MapLayerManager {
    * Limpia TODOS los StyleManagers (click fuera)
    */
   private clearAllSelections(): void {
-    console.log(`[MapLayerManager] Limpiando todas las selecciones`)
-
     // 1. Limpiar desde los styleManagers registrados
-    for (const [layerId, styleManager] of Object.entries(this.styleManagers)) {
+    for (const styleManager of Object.values(this.styleManagers)) {
       if (styleManager && typeof styleManager === 'object' && 'clearAll' in styleManager) {
-        console.log(`[MapLayerManager]   → Limpiando registrado: ${layerId}`)
         styleManager.clearAll()
       }
     }
 
     // 2. Fallback: buscar StyleManagers directamente en las capas activas
     const allLayers = { ...this.activeLayers, ...this.groupedLayers }
-    for (const [layerId, layer] of Object.entries(allLayers)) {
+    for (const layer of Object.values(allLayers)) {
       if (!(layer instanceof L.GeoJSON)) continue
       const sm = Object.getOwnPropertyDescriptor(layer, '_styleManager')?.value as
         | { clearAll: () => void }
         | undefined
       if (sm && typeof sm.clearAll === 'function') {
-        console.log(`[MapLayerManager]   → Limpiando desde layer: ${layerId}`)
         sm.clearAll()
       }
     }
@@ -622,7 +586,6 @@ export class MapLayerManager {
     })
 
     for (const layer of orphanHighlightLayers) {
-      console.log(`[MapLayerManager]   → Eliminando overlay huérfano en HIGHLIGHT pane`)
       this.map.removeLayer(layer)
     }
   }
@@ -693,11 +656,25 @@ export class MapLayerManager {
       const layersStore = useLayersStore()
       const layer = layersStore.layers[config.id]
 
+      console.log('layer', layer)
+
       if (!layer) return
       if (layer.temporal) return
 
-      const layerName = (config as WMSLayerConfig).layers
-      const time = await getLayerTimeDimension(layerName)
+      const wmsConfig = config as WMSLayerConfig
+      const time =
+        wmsConfig.url === efas_url
+          ? await getLayerTimeDimension(wmsConfig.layers)
+          : await getGeoServerLayerTimeDimension({
+              url: wmsConfig.url,
+              layerName: wmsConfig.layers,
+            })
+
+      console.log('wmsConfig', wmsConfig)
+
+      //const time = await getLayerTimeDimension(wmsConfig.layers)
+
+      console.log('time dimension', time)
 
       if (!time) return
 
@@ -721,6 +698,8 @@ export class MapLayerManager {
         ...layer.params,
         time: safeStart.toISOString(),
       }
+
+      console.log('layer after temporal', layer)
     } catch (err) {
       console.error('Error loading temporal dimension', err)
     }

@@ -79,11 +79,7 @@ export function buildFeatureInfoUrl(map: L.Map, layer: L.TileLayer.WMS, latlng: 
   const point = map.latLngToContainerPoint(latlng)
   const size = map.getSize()
 
-  console.log('size', size)
-
   const bounds = map.getBounds()
-
-  console.log('bounds', bounds)
 
   const bbox = [
     bounds.getSouthWest().lat,

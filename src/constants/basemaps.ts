@@ -1,5 +1,13 @@
 export const basemapsLayers = [
   {
+    id: 'ign-es',
+    name: 'IGN',
+    preview:
+      'https://www.ign.es/wmts/ign-base?request=GetTile&service=WMTS&Version=1.0.0&Layer=IGNBaseTodo&Style=default&Format=image/jpeg&TileMatrixSet=GoogleMapsCompatible&TileMatrix=6&TileCol=30&TileRow=24',
+    url: 'https://www.ign.es/wmts/ign-base?request=GetTile&service=WMTS&Version=1.0.0&Layer=IGNBaseTodo&Style=default&Format=image/jpeg&TileMatrixSet=GoogleMapsCompatible&TileMatrix={z}&TileCol={x}&TileRow={y}',
+    attribution: '&copy; Instituto Geográfico Nacional de España',
+  },
+  {
     id: 'osm',
     name: 'OpenStreetMap',
     preview: 'https://tile.openstreetmap.org/10/511/340.png',
