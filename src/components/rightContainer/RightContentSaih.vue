@@ -313,8 +313,6 @@
 
     loadingCaudales.value = true
 
-    console.log('TIPo', codeType.value)
-
     if (codeType.value === 'E') {
       try {
         const [iHarmonie, epsatMedio, ensP10Emb, ensP25Emb, ensP75Emb, ensP90Emb] =

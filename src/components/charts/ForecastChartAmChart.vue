@@ -160,9 +160,6 @@
 
     const data = mergedChartData.value
     if (!data.length) {
-      console.log('amCharts: mergedChartData vacío')
-      console.log('builtSeries', builtSeries.value)
-      console.log('normalizedSeries', normalizedSeries.value)
       return
     }
 
@@ -313,10 +310,6 @@
     xAxis.data.setAll(data)
 
     chart.appear(1000, 100)
-
-    console.log('amCharts OK')
-    console.log('data', data)
-    console.log('normalizedSeries', normalizedSeries.value)
   }
 
   onMounted(async () => {

@@ -29,9 +29,6 @@ export class StyleManager {
     this.isSelectableLayer = isSelectable
     this.onDblClick = onDblClick || null
     this.buildPopupContent = buildPopupContent || null
-    console.log(
-      `[StyleManager] Inicializado para ${layerId}. Seleccionable: ${isSelectable}, Tiene estilo: ${!!style}, Tiene popup: ${!!buildPopupContent}`
-    )
   }
 
   private listenersAttached: boolean = false
@@ -42,15 +39,9 @@ export class StyleManager {
   attachStyleListeners(geojsonLayer: L.GeoJSON, map: L.Map): void {
     // Evitar duplicar listeners si ya se adjuntaron
     if (this.listenersAttached) {
-      console.log(`[StyleManager] Listeners ya adjuntados para ${this.layerId}, ignorando`)
       return
     }
     this.listenersAttached = true
-
-    console.log(`[StyleManager] Adjuntando listeners a ${this.layerId}`)
-    console.log(
-      `[StyleManager] → isSelectableLayer: ${this.isSelectableLayer}, hasCallback: ${!!this.onDblClick}`
-    )
 
     geojsonLayer.eachLayer((layer: L.Layer) => {
       const isPath = layer instanceof L.Path
@@ -64,9 +55,6 @@ export class StyleManager {
       if (!feature) return
 
       const featureId = this.getFeatureId(feature)
-      console.log(
-        `[StyleManager] → Procesando feature: ${featureId} (selectable: ${this.isSelectableLayer}, isMarker: ${isMarker})`
-      )
 
       // Mouseover: mostrar highlight (solo para Path, markers ya tienen hover en geoserver.ts)
       if (isPath) {
@@ -83,10 +71,6 @@ export class StyleManager {
         }
 
         layer.on('mouseover', () => {
-          console.log(
-            `[StyleManager] MOUSEOVER en ${featureId}. Selected: ${this.selectedFeatureId}`
-          )
-
           // Si quedó selectedFeatureId sin selectedLayer en mapa, resetear estado huérfano
           if (
             this.selectedFeatureId &&
@@ -102,14 +86,12 @@ export class StyleManager {
             this.selectedLayer &&
             map.hasLayer(this.selectedLayer)
           ) {
-            console.log(`[StyleManager]   → Es la seleccionada, no hacer highlight`)
             return
           }
 
           this.clearHighlight()
 
           if (!this.style?.highlight) {
-            console.log(`[StyleManager]   → Sin estilo highlight`)
             return
           }
 
@@ -120,7 +102,6 @@ export class StyleManager {
           })
 
           this.highlightLayer.addTo(map)
-          console.log(`[StyleManager]   → Highlight agregado`)
 
           // Abrir popup si está vinculado
           if (layer instanceof L.Path && layer.getPopup()) {
@@ -130,7 +111,6 @@ export class StyleManager {
 
         // Mouseout: limpiar highlight y cerrar popup
         layer.on('mouseout', () => {
-          console.log(`[StyleManager] MOUSEOUT en ${featureId}`)
           this.clearHighlight()
 
           // Cerrar popup si está abierto
@@ -141,42 +121,30 @@ export class StyleManager {
       }
       // Click: seleccionar feature (o navegar si no es seleccionable)
       layer.on('click', (e: L.LeafletMouseEvent) => {
-        console.log(
-          `[StyleManager] ✓ CLICK en ${featureId} (${this.layerId}). Seleccionable: ${this.isSelectableLayer}`
-        )
         if (e.originalEvent) {
           e.originalEvent.preventDefault()
         }
         this.lastClickTimestamp = Date.now()
-        console.log(`[StyleManager]   → lastClickTimestamp=${this.lastClickTimestamp}`)
 
         if (!this.isSelectableLayer) {
           // Para capas no seleccionables (SAIH): click directo = navegar
-          console.log(
-            `[StyleManager]   → SAIH (no seleccionable): disparando callback. Tiene callback: ${!!this.onDblClick}`
-          )
+
           if (this.onDblClick) {
-            console.log(`[StyleManager]   → Llamando onDblClick`)
             this.onDblClick(feature)
-          } else {
-            console.log(`[StyleManager]   ⚠️ Sin callback!`)
           }
           return
         }
 
         // Para capas seleccionables: click = seleccionar visualmente
-        console.log(`[StyleManager]   → Seleccionable: seleccionando feature`)
         this.selectFeature(feature, featureId, map)
       })
 
       // Dblclick: navegar a ruta (solo en capas seleccionables)
       if (this.isSelectableLayer && isPath) {
         layer.on('dblclick', (e: L.LeafletMouseEvent) => {
-          console.log(`[StyleManager] DBLCLICK en ${featureId}`)
           L.DomEvent.stop(e)
 
           if (this.onDblClick) {
-            console.log(`[StyleManager]   → Disparando navegación`)
             this.onDblClick(feature)
           }
         })
@@ -193,8 +161,6 @@ export class StyleManager {
     map: L.Map,
     options?: { focus?: boolean }
   ): void {
-    console.log(`[StyleManager] SELECCIONANDO ${featureId}`)
-
     // Si quedó estado huérfano por una limpieza externa, reiniciarlo antes de seleccionar
     if (!this.selectedLayer && this.selectedFeatureId) {
       this.selectedFeatureId = null
@@ -212,7 +178,6 @@ export class StyleManager {
 
     this.selectedLayer.addTo(map)
     this.selectedFeatureId = featureId
-    console.log(`[StyleManager]   → Seleccionada. FlyTo zoom 10`)
 
     // FlyTo
     const bounds = this.selectedLayer.getBounds()
@@ -228,7 +193,6 @@ export class StyleManager {
     if (this.highlightLayer) {
       this.highlightLayer.remove()
       this.highlightLayer = null
-      console.log(`[StyleManager]   → Highlight removido`)
     }
   }
 
@@ -239,7 +203,6 @@ export class StyleManager {
     if (this.selectedLayer) {
       this.selectedLayer.remove()
       this.selectedLayer = null
-      console.log(`[StyleManager]   → Selección removida`)
     }
 
     // Resetear siempre el ID seleccionado aunque no exista layer referenciado

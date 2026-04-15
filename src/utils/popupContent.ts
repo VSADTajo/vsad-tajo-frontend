@@ -5,8 +5,6 @@
 export function buildSubcuencaPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
 
-  console.log('feature.properties en buildSubcuencaPopupContent:', props)
-
   const code = escapeHtml(String(props.code ?? 'N/A'))
   const nombre = escapeHtml(String(props.name ?? 'Sin nombre'))
 
@@ -23,8 +21,6 @@ export function buildSubcuencaPopupContent(feature: GeoJSON.Feature): string {
 export function buildSistemaPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
 
-  console.log('feature.properties en buildSubcuencaPopupContent:', props)
-
   const sistema = escapeHtml(String(props.sistema ?? 'N/A'))
   const id = escapeHtml(String(props.fid ?? 'Sin nombre'))
 
@@ -40,8 +36,6 @@ export function buildSistemaPopupContent(feature: GeoJSON.Feature): string {
 
 export function buildZonaPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
-
-  console.log('feature.properties en buildSubcuencaPopupContent:', props)
 
   const nombre = escapeHtml(String(props.nombre ?? 'Sin nombre'))
 
