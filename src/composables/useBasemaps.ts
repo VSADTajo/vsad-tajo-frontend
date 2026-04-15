@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-const selectedBasemap = ref<string[]>(['osm'])
+const selectedBasemap = ref<string[]>(['ign-es'])
 
 export function useBasemap() {
   function setBasemap(id: string) {

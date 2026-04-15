@@ -11,7 +11,7 @@ const cachedCapabilitiesByUrl = new Map<string, Document>()
 
 function getDirectChildText(parent: Element, tagName: string): string | null {
   for (const child of Array.from(parent.children)) {
-    if (child.tagName === tagName) {
+    if (child.localName === tagName) {
       return child.textContent?.trim() ?? null
     }
   }
@@ -21,7 +21,7 @@ function getDirectChildText(parent: Element, tagName: string): string | null {
 
 function getTimeDimensionText(layer: Element): string | null {
   for (const child of Array.from(layer.children)) {
-    const tagName = child.tagName
+    const tagName = child.localName
     const dimensionName = child.getAttribute('name')?.toLowerCase()
 
     if ((tagName === 'Dimension' || tagName === 'Extent') && dimensionName === 'time') {
@@ -30,6 +30,27 @@ function getTimeDimensionText(layer: Element): string | null {
   }
 
   return null
+}
+
+function getInheritedTimeDimensionText(layer: Element): string | null {
+  let current: Element | null = layer
+
+  while (current) {
+    const timeDimension = getTimeDimensionText(current)
+
+    if (timeDimension) {
+      return timeDimension
+    }
+
+    const parentLayer: Element | null = current.parentElement
+    current = parentLayer?.localName === 'Layer' ? parentLayer : null
+  }
+
+  return null
+}
+
+function normalizeLayerName(layerName: string): string {
+  return layerName.includes(':') ? (layerName.split(':').pop() ?? layerName) : layerName
 }
 
 function parseDurationHours(step: string): number | null {
@@ -129,13 +150,14 @@ export async function getGeoServerLayerTimeDimension(options: {
 }): Promise<WmsLayerTime | null> {
   const xml = await getWmsCapabilities(options.url)
 
-  const layers = xml.querySelectorAll('Layer')
+  const layers = xml.getElementsByTagNameNS('*', 'Layer')
+  const requestedLayerName = normalizeLayerName(options.layerName)
 
   for (const layer of layers) {
     const name = getDirectChildText(layer, 'Name')
 
-    if (name === options.layerName) {
-      const timeDimension = getTimeDimensionText(layer)
+    if (name && normalizeLayerName(name) === requestedLayerName) {
+      const timeDimension = getInheritedTimeDimensionText(layer)
 
       if (!timeDimension) {
         return null

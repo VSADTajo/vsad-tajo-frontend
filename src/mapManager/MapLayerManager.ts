@@ -656,19 +656,25 @@ export class MapLayerManager {
       const layersStore = useLayersStore()
       const layer = layersStore.layers[config.id]
 
+      console.log('layer', layer)
+
       if (!layer) return
       if (layer.temporal) return
 
       const wmsConfig = config as WMSLayerConfig
-      // const time =
-      //   wmsConfig.url === efas_url
-      //     ? await getLayerTimeDimension(wmsConfig.layers)
-      //     : await getGeoServerLayerTimeDimension({
-      //         url: wmsConfig.url,
-      //         layerName: wmsConfig.layers,
-      //       })
+      const time =
+        wmsConfig.url === efas_url
+          ? await getLayerTimeDimension(wmsConfig.layers)
+          : await getGeoServerLayerTimeDimension({
+              url: wmsConfig.url,
+              layerName: wmsConfig.layers,
+            })
 
-      const time = await getLayerTimeDimension(wmsConfig.layers)
+      console.log('wmsConfig', wmsConfig)
+
+      //const time = await getLayerTimeDimension(wmsConfig.layers)
+
+      console.log('time dimension', time)
 
       if (!time) return
 
@@ -692,6 +698,8 @@ export class MapLayerManager {
         ...layer.params,
         time: safeStart.toISOString(),
       }
+
+      console.log('layer after temporal', layer)
     } catch (err) {
       console.error('Error loading temporal dimension', err)
     }
