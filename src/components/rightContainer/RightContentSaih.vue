@@ -1,5 +1,5 @@
 <template>
-  <v-card class="pa-4 bg-background" elevation="2">
+  <v-card class="pa-2 bg-background" elevation="2">
     <v-progress-linear v-if="loadingFeature" indeterminate />
 
     <!-- Skeleton while loading feature -->
@@ -31,11 +31,9 @@
         />
       </v-card-title>
 
-      <v-divider class="mt-3" />
-
       <v-card-text>
         <!-- Tipo -->
-        <div class="mb-4">
+        <div class="mb-2 mt-2">
           <v-chip
             :icon="feature?.properties?.tipo === 'SAIH' ? 'mdi-water' : 'mdi-map-marker'"
             :color="stationBaseColor"
@@ -48,55 +46,7 @@
         </div>
 
         <!-- Información -->
-        <v-row dense class="gap-3">
-          <v-col cols="6" sm="3">
-            <div class="pa-3 rounded bg-info-light" style="background: rgba(99, 125, 234, 0.08)">
-              <div class="text-caption font-weight-bold text-primary mb-1">
-                <v-icon size="small" class="me-1">mdi-map</v-icon>
-                Zona
-              </div>
-              <div class="text-body-2 font-weight-medium">
-                {{ feature.properties?.zona }}
-              </div>
-            </div>
-          </v-col>
-
-          <v-col cols="6" sm="3">
-            <div class="pa-3 rounded" style="background: rgba(255, 152, 0, 0.08)">
-              <div class="text-caption font-weight-bold mb-1" style="color: #ff9800">
-                <v-icon size="small" class="me-1">mdi-city</v-icon>
-                Municipio
-              </div>
-              <div class="text-body-2 font-weight-medium">
-                {{ feature?.properties?.municipio }}
-              </div>
-            </div>
-          </v-col>
-
-          <v-col cols="6" sm="3">
-            <div class="pa-3 rounded" style="background: rgba(76, 175, 80, 0.08)">
-              <div class="text-caption font-weight-bold mb-1" style="color: #4caf50">
-                <v-icon size="small" class="me-1">mdi-flag</v-icon>
-                Provincia
-              </div>
-              <div class="text-body-2 font-weight-medium">
-                {{ feature?.properties?.provincia }}
-              </div>
-            </div>
-          </v-col>
-
-          <v-col cols="6" sm="3">
-            <div class="pa-3 rounded" style="background: rgba(233, 30, 99, 0.08)">
-              <div class="text-caption font-weight-bold mb-1" style="color: #e91e63">
-                <v-icon size="small" class="me-1">mdi-crown</v-icon>
-                CCAA
-              </div>
-              <div class="text-body-2 font-weight-medium">
-                {{ feature?.properties?.ccaa }}
-              </div>
-            </div>
-          </v-col>
-        </v-row>
+        <ContentSaihInfo :feature="feature" />
       </v-card-text>
     </template>
 
@@ -105,105 +55,186 @@
     </v-alert>
   </v-card>
 
-  <v-card class="bg-background">
-    <v-card-text>
-      <v-row v-if="feature && !loadingFeature">
-        <v-col cols="4">
-          <v-select
-            v-model="selectedSimulationDate"
-            disabled
-            :items="formattedDates"
-            label="Fecha de Simulación"
-            item-title="title"
-            item-value="value"
-            variant="outlined"
-            density="compact"
-            color="primary"
-          />
-        </v-col>
-      </v-row>
-
-      <!-- skeleton for select when loading -->
-      <v-row v-else-if="loadingFeature">
-        <v-col cols="4">
-          <v-skeleton-loader type="text" height="48" />
-        </v-col>
-      </v-row>
-
-      <v-sheet elevation="2">
-        <v-tabs v-model="tab" color="primary">
-          <v-tab v-if="hasCaudal" value="caudal">Caudal</v-tab>
-          <v-tab value="precipitaciones">Precipitaciones</v-tab>
-        </v-tabs>
-
-        <v-divider></v-divider>
-
-        <v-tabs-window v-model="tab">
-          <v-tabs-window-item v-if="hasCaudal" value="caudal">
-            <v-sheet v-if="caudalForecastHarmonie || caudalForecastEpstat" class="pa-5">
-              <ForecastChartNew
-                :forecast-harmonie="caudalForecastHarmonie"
-                :forecast-epsat="caudalForecastEpstat"
-                :forecast-ens-p10="caudalForecastEnsP10"
-                :forecast-ens-p25="caudalForecastEnsP25"
-                :forecast-ens-p90="caudalForecastEnsP90"
-                :forecast-ens-p75="caudalForecastEnsP75"
+  <v-row>
+    <v-col cols="2">
+      <v-card class="ma-2 pa-2 bg-background" elevation="2">
+        <v-row>
+          <v-col cols="12">
+            <ContentSaihLastData />
+          </v-col>
+          <v-col cols="12">
+            <ContentSaihLastWeek />
+          </v-col>
+        </v-row>
+      </v-card>
+    </v-col>
+    <v-col cols="8" class="pt-4">
+      <v-card class="bg-background">
+        <v-card-text>
+          <v-row v-if="feature && !loadingFeature">
+            <v-col cols="4">
+              <v-select
+                v-model="selectedSimulationDate"
+                disabled
+                :items="formattedDates"
+                label="Fecha de Simulación"
+                item-title="title"
+                item-value="value"
+                variant="outlined"
+                density="compact"
+                color="primary"
               />
-            </v-sheet>
-            <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
-            <div
-              v-else-if="loadingCaudales || loadingPrecipitaciones"
-              style="height: 560px; display: flex; align-items: center; justify-content: center"
-            >
-              <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-            </div>
+            </v-col>
+          </v-row>
 
-            <div
-              v-else-if="
-                !loadingCaudales && (selectedSimulationDate || availableDates.length === 0)
-              "
-              style="height: 560px; display: flex; align-items: center; justify-content: center"
-            >
-              No hay Datos de Caudales Disponibles
-            </div>
-          </v-tabs-window-item>
+          <!-- skeleton for select when loading -->
+          <v-row v-else-if="loadingFeature">
+            <v-col cols="4">
+              <v-skeleton-loader type="text" height="48" />
+            </v-col>
+          </v-row>
 
-          <v-tabs-window-item value="precipitaciones">
-            <v-sheet
-              v-if="precipitationsForecastHarmonie || precipitationsForecastEpstat"
-              class="pa-5"
-            >
-              <PrecipitationsChart
-                :forecast-harmonie="precipitationsForecastHarmonie"
-                :forecast-epsat="precipitationsForecastEpstat"
-                :forecast-ens-p10="precipitationsForecastEnsP10"
-                :forecast-ens-p25="precipitationsForecastEnsP25"
-                :forecast-ens-p90="precipitationsForecastEnsP90"
-                :forecast-ens-p75="precipitationsForecastEnsP75"
-              />
-            </v-sheet>
+          <v-sheet elevation="2">
+            <v-tabs v-model="tab" color="primary">
+              <v-tab v-if="hasCaudal" value="caudal">Caudal</v-tab>
+              <v-tab value="precipitaciones">Precipitaciones</v-tab>
+            </v-tabs>
 
-            <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
-            <div
-              v-else-if="loadingPrecipitaciones || loadingCaudales"
-              style="height: 550px; display: flex; align-items: center; justify-content: center"
-            >
-              <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-            </div>
+            <v-divider></v-divider>
 
-            <div
-              v-else-if="
-                !loadingPrecipitaciones && (selectedSimulationDate || availableDates.length === 0)
-              "
-              style="height: 550px; display: flex; align-items: center; justify-content: center"
-            >
-              No hay Datos de Precipitaciones Disponibles
-            </div>
-          </v-tabs-window-item>
-        </v-tabs-window>
-      </v-sheet>
-    </v-card-text>
-  </v-card>
+            <v-tabs-window v-model="tab">
+              <v-tabs-window-item v-if="hasCaudal" value="caudal">
+                <v-sheet v-if="caudalForecastHarmonie || caudalForecastEpstat" class="pa-5">
+                  <ForecastChartNew
+                    :forecast-harmonie="caudalForecastHarmonie"
+                    :forecast-epsat="caudalForecastEpstat"
+                    :forecast-ens-p10="caudalForecastEnsP10"
+                    :forecast-ens-p25="caudalForecastEnsP25"
+                    :forecast-ens-p90="caudalForecastEnsP90"
+                    :forecast-ens-p75="caudalForecastEnsP75"
+                  />
+                </v-sheet>
+                <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
+                <div
+                  v-else-if="loadingCaudales || loadingPrecipitaciones"
+                  style="height: 360px; display: flex; align-items: center; justify-content: center"
+                >
+                  <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+                </div>
+
+                <div
+                  v-else-if="
+                    !loadingCaudales && (selectedSimulationDate || availableDates.length === 0)
+                  "
+                  style="height: 360px; display: flex; align-items: center; justify-content: center"
+                >
+                  No hay Datos de Caudales Disponibles
+                </div>
+              </v-tabs-window-item>
+
+              <v-tabs-window-item value="precipitaciones">
+                <v-sheet
+                  v-if="precipitationsForecastHarmonie || precipitationsForecastEpstat"
+                  class="pa-5"
+                >
+                  <PrecipitationsChart
+                    :forecast-harmonie="precipitationsForecastHarmonie"
+                    :forecast-epsat="precipitationsForecastEpstat"
+                    :forecast-ens-p10="precipitationsForecastEnsP10"
+                    :forecast-ens-p25="precipitationsForecastEnsP25"
+                    :forecast-ens-p90="precipitationsForecastEnsP90"
+                    :forecast-ens-p75="precipitationsForecastEnsP75"
+                  />
+                </v-sheet>
+
+                <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
+                <div
+                  v-else-if="loadingPrecipitaciones || loadingCaudales"
+                  style="height: 550px; display: flex; align-items: center; justify-content: center"
+                >
+                  <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+                </div>
+
+                <div
+                  v-else-if="
+                    !loadingPrecipitaciones &&
+                    (selectedSimulationDate || availableDates.length === 0)
+                  "
+                  style="height: 550px; display: flex; align-items: center; justify-content: center"
+                >
+                  No hay Datos de Precipitaciones Disponibles
+                </div>
+              </v-tabs-window-item>
+            </v-tabs-window>
+          </v-sheet>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="2">
+      <v-card class="ma-2 pa-2 bg-background" elevation="2">
+        <v-row>
+          <v-col cols="12">
+            <ContentSaihPredictionsLatest />
+          </v-col>
+          <v-col cols="12">
+            <ContentSaihPredictionsWeek />
+          </v-col>
+        </v-row>
+      </v-card>
+    </v-col>
+  </v-row>
+
+  <v-row no-gutters class="pl-2 pr-2">
+    <v-col cols="12" md="7">
+      <ContentSaihCaudalMatrix
+        :forecast-harmonie="caudalForecastHarmonie"
+        :forecast-epsat="caudalForecastEpstat"
+        :thresholds="feature?.properties as Record<string, unknown>"
+        :loading="loadingCaudales"
+      />
+    </v-col>
+
+    <v-col cols="12" md="5" class="pl-2 pr-2">
+      <v-card class="bg-surface" elevation="2">
+        <v-card-title class="text-subtitle-1 font-weight-bold">Percentiles de caudal</v-card-title>
+        <v-divider />
+
+        <v-card-text>
+          <div
+            v-if="
+              caudalForecastEnsP10 ||
+              caudalForecastEnsP25 ||
+              caudalForecastEnsP75 ||
+              caudalForecastEnsP90
+            "
+          >
+            <ForecastChartNew
+              :forecast-ens-p10="caudalForecastEnsP10"
+              :forecast-ens-p25="caudalForecastEnsP25"
+              :forecast-ens-p90="caudalForecastEnsP90"
+              :forecast-ens-p75="caudalForecastEnsP75"
+              :toolbar="false"
+              :height="220"
+            />
+          </div>
+
+          <div
+            v-else-if="loadingCaudales"
+            style="height: 160px; display: flex; align-items: center; justify-content: center"
+          >
+            <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+          </div>
+
+          <div
+            v-else
+            style="height: 160px; display: flex; align-items: center; justify-content: center"
+          >
+            No hay datos de percentiles disponibles
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
 </template>
 
 <script lang="ts" setup>
@@ -217,6 +248,12 @@
   import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import { getSaihTypeColor } from '@/utils/saihStations'
+  import ContentSaihInfo from './ContentSaih/ContentSaihInfo.vue'
+  import ContentSaihLastData from './ContentSaih/ContentSaihLastData.vue'
+  import ContentSaihLastWeek from './ContentSaih/ContentSaihLastWeek.vue'
+  import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
+  import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
+  import ContentSaihPredictionsWeek from './ContentSaih/ContentSaihPredictionsWeek.vue'
 
   const route = useRoute()
   const router = useRouter()
