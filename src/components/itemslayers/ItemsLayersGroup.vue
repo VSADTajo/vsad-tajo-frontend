@@ -127,6 +127,7 @@
   import { ref } from 'vue'
   import { computed } from 'vue'
   import { useLayersStore } from '@/stores/layersStore'
+  import { zonasLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
 
   const componentProps = defineProps<{
     layers: LayerNode[]
@@ -140,11 +141,26 @@
   const isOpen = ref(componentProps.defaultOpen ?? true)
 
   const groupLeafIds = computed(() => getAllLeafIds(componentProps.layers))
+  const exclusiveSingleGroupLeafIds = getAllLeafIds([...zonasLayers, ...meteoMaps, ...efasLayers])
 
   const selectedLayers = computed<string[]>({
     get: () => groupLeafIds.value.filter((id) => store.layers[id]?.visible),
 
     set: (newIds: string[]) => {
+      // En grupos de selección única, aplicar exclusividad también entre grupos simples
+      if (!componentProps.multiple) {
+        exclusiveSingleGroupLeafIds.forEach((id) => {
+          const shouldBeVisible = newIds.includes(id)
+          const isVisible = store.layers[id]?.visible
+
+          if (shouldBeVisible !== isVisible) {
+            store.toggleLayer(id)
+          }
+        })
+
+        return
+      }
+
       // Solo afectar a los ids de ESTE grupo
       groupLeafIds.value.forEach((id) => {
         const shouldBeVisible = newIds.includes(id)
