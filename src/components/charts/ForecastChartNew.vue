@@ -1,6 +1,6 @@
 <template>
   <div>
-    <apexchart height="550" :options="chartOptions" :series="series" />
+    <apexchart :height="props.height ?? 350" :options="chartOptions" :series="series" />
   </div>
 </template>
 
@@ -17,6 +17,8 @@
     forecastEnsP25?: StationPrediction
     forecastEnsP90?: StationPrediction
     forecastEnsP75?: StationPrediction
+    toolbar?: boolean
+    height?: number
   }>()
 
   // Extraer fechas y valores de det
@@ -192,7 +194,7 @@
       stacked: false,
       height: 550,
       zoom: { enabled: true },
-      toolbar: { show: true },
+      toolbar: { show: props.toolbar ?? true },
       events: {
         mounted: (chartContext: { el: HTMLElement }) => {
           try {
