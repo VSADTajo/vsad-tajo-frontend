@@ -53,6 +53,44 @@ html {
   display: block;
 }
 
+.custom-legend-gradient {
+  min-width: 180px;
+  padding: 10px;
+}
+
+.custom-legend-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.custom-legend-image {
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
+  border-radius: 4px;
+}
+
+.custom-legend-scale {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.custom-legend-ramp {
+  width: 20px;
+  height: 120px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+}
+
+.custom-legend-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2f2f2f;
+}
+
 @media (max-width: 960px) {
   .custom-legend {
     display: none;
