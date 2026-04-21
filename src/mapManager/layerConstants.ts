@@ -1,0 +1,7 @@
+export const SELECTABLE_LAYER_IDS = ['subcuencas', 'sistemas10', 'zonasexpl'] as const
+
+export type SelectableLayerId = (typeof SELECTABLE_LAYER_IDS)[number]
+
+export function isSelectableLayerId(layerId: string): layerId is SelectableLayerId {
+  return SELECTABLE_LAYER_IDS.includes(layerId as SelectableLayerId)
+}
