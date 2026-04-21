@@ -55,24 +55,24 @@
     </v-alert>
   </v-card>
 
-  <v-row>
-    <v-col cols="2">
-      <v-card class="ma-2 pa-2 bg-background" elevation="2">
+  <v-row class="mt-2">
+    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1">
+      <v-card class="ma-2 pa-2 bg-background h-100" elevation="2">
         <v-row>
-          <v-col cols="12">
+          <v-col cols="6" md="12">
             <ContentSaihLastData />
           </v-col>
-          <v-col cols="12">
+          <v-col cols="6" md="12">
             <ContentSaihLastWeek />
           </v-col>
         </v-row>
       </v-card>
     </v-col>
-    <v-col cols="8" class="pt-4">
+    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2">
       <v-card class="bg-background">
         <v-card-text>
           <v-row v-if="feature && !loadingFeature">
-            <v-col cols="4">
+            <v-col cols="12" sm="6" md="4">
               <v-select
                 v-model="selectedSimulationDate"
                 disabled
@@ -105,19 +105,12 @@
             <v-tabs-window v-model="tab">
               <v-tabs-window-item v-if="hasCaudal" value="caudal">
                 <v-sheet v-if="caudalForecastHarmonie || caudalForecastEpstat" class="pa-5">
-                  <ForecastChartNew
-                    :forecast-harmonie="caudalForecastHarmonie"
-                    :forecast-epsat="caudalForecastEpstat"
-                    :forecast-ens-p10="caudalForecastEnsP10"
-                    :forecast-ens-p25="caudalForecastEnsP25"
-                    :forecast-ens-p90="caudalForecastEnsP90"
-                    :forecast-ens-p75="caudalForecastEnsP75"
-                  />
+                  <ForecastChartNew :data="caudalChartData" />
                 </v-sheet>
                 <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
                 <div
                   v-else-if="loadingCaudales || loadingPrecipitaciones"
-                  style="height: 360px; display: flex; align-items: center; justify-content: center"
+                  class="chart-placeholder chart-placeholder--caudal"
                 >
                   <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
                 </div>
@@ -126,7 +119,7 @@
                   v-else-if="
                     !loadingCaudales && (selectedSimulationDate || availableDates.length === 0)
                   "
-                  style="height: 360px; display: flex; align-items: center; justify-content: center"
+                  class="chart-placeholder chart-placeholder--caudal"
                 >
                   No hay Datos de Caudales Disponibles
                 </div>
@@ -137,20 +130,13 @@
                   v-if="precipitationsForecastHarmonie || precipitationsForecastEpstat"
                   class="pa-5"
                 >
-                  <PrecipitationsChart
-                    :forecast-harmonie="precipitationsForecastHarmonie"
-                    :forecast-epsat="precipitationsForecastEpstat"
-                    :forecast-ens-p10="precipitationsForecastEnsP10"
-                    :forecast-ens-p25="precipitationsForecastEnsP25"
-                    :forecast-ens-p90="precipitationsForecastEnsP90"
-                    :forecast-ens-p75="precipitationsForecastEnsP75"
-                  />
+                  <PrecipitationsChart :data="precipitationsChartData" />
                 </v-sheet>
 
                 <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
                 <div
                   v-else-if="loadingPrecipitaciones || loadingCaudales"
-                  style="height: 550px; display: flex; align-items: center; justify-content: center"
+                  class="chart-placeholder chart-placeholder--precip"
                 >
                   <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
                 </div>
@@ -160,7 +146,7 @@
                     !loadingPrecipitaciones &&
                     (selectedSimulationDate || availableDates.length === 0)
                   "
-                  style="height: 550px; display: flex; align-items: center; justify-content: center"
+                  class="chart-placeholder chart-placeholder--precip"
                 >
                   No hay Datos de Precipitaciones Disponibles
                 </div>
@@ -170,13 +156,13 @@
         </v-card-text>
       </v-card>
     </v-col>
-    <v-col cols="2">
-      <v-card class="ma-2 pa-2 bg-background" elevation="2">
+    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3">
+      <v-card class="ma-2 pa-2 bg-background h-100" elevation="2">
         <v-row>
-          <v-col cols="12">
+          <v-col cols="6" md="12">
             <ContentSaihPredictionsLatest />
           </v-col>
-          <v-col cols="12">
+          <v-col cols="6" md="12">
             <ContentSaihPredictionsWeek />
           </v-col>
         </v-row>
@@ -184,8 +170,8 @@
     </v-col>
   </v-row>
 
-  <v-row no-gutters class="pl-2 pr-2">
-    <v-col cols="12" md="7">
+  <v-row no-gutters class="px-2">
+    <v-col cols="12" md="7" class="mb-2 mb-md-0">
       <ContentSaihCaudalMatrix
         :forecast-harmonie="caudalForecastHarmonie"
         :forecast-epsat="caudalForecastEpstat"
@@ -194,7 +180,7 @@
       />
     </v-col>
 
-    <v-col cols="12" md="5" class="pl-2 pr-2">
+    <v-col cols="12" md="5" class="px-2">
       <v-card class="bg-surface" elevation="2">
         <v-card-title class="text-subtitle-1 font-weight-bold">Percentiles de caudal</v-card-title>
         <v-divider />
@@ -208,27 +194,14 @@
               caudalForecastEnsP90
             "
           >
-            <ForecastChartNew
-              :forecast-ens-p10="caudalForecastEnsP10"
-              :forecast-ens-p25="caudalForecastEnsP25"
-              :forecast-ens-p90="caudalForecastEnsP90"
-              :forecast-ens-p75="caudalForecastEnsP75"
-              :toolbar="false"
-              :height="220"
-            />
+            <ForecastChartNew :data="caudalPercentilesChartData" :toolbar="false" :height="220" />
           </div>
 
-          <div
-            v-else-if="loadingCaudales"
-            style="height: 160px; display: flex; align-items: center; justify-content: center"
-          >
+          <div v-else-if="loadingCaudales" class="chart-placeholder chart-placeholder--percentiles">
             <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
           </div>
 
-          <div
-            v-else
-            style="height: 160px; display: flex; align-items: center; justify-content: center"
-          >
+          <div v-else class="chart-placeholder chart-placeholder--percentiles">
             No hay datos de percentiles disponibles
           </div>
         </v-card-text>
@@ -238,12 +211,17 @@
 </template>
 
 <script lang="ts" setup>
-  import { ref, computed, watch } from 'vue'
+  import { ref, computed, watch, type Ref } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
   import { formatSimulationDate } from '@/utils/dates'
+  import type {
+    DataStationPrediction,
+    PredictionTypeName,
+    StationPrediction,
+  } from '@/types/Predictions'
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
@@ -264,21 +242,21 @@
   const loadingCaudales = ref(true)
   const error = ref<string | null>(null)
 
-  const precipitationsForecastEpstat = ref()
-  const precipitationsForecastHarmonie = ref()
+  const precipitationsForecastEpstat = ref<StationPrediction>()
+  const precipitationsForecastHarmonie = ref<StationPrediction>()
 
-  const precipitationsForecastEnsP10 = ref()
-  const precipitationsForecastEnsP25 = ref()
-  const precipitationsForecastEnsP75 = ref()
-  const precipitationsForecastEnsP90 = ref()
+  const precipitationsForecastEnsP10 = ref<StationPrediction>()
+  const precipitationsForecastEnsP25 = ref<StationPrediction>()
+  const precipitationsForecastEnsP75 = ref<StationPrediction>()
+  const precipitationsForecastEnsP90 = ref<StationPrediction>()
 
-  const caudalForecastEpstat = ref()
-  const caudalForecastHarmonie = ref()
+  const caudalForecastEpstat = ref<StationPrediction>()
+  const caudalForecastHarmonie = ref<StationPrediction>()
 
-  const caudalForecastEnsP10 = ref()
-  const caudalForecastEnsP25 = ref()
-  const caudalForecastEnsP75 = ref()
-  const caudalForecastEnsP90 = ref()
+  const caudalForecastEnsP10 = ref<StationPrediction>()
+  const caudalForecastEnsP25 = ref<StationPrediction>()
+  const caudalForecastEnsP75 = ref<StationPrediction>()
+  const caudalForecastEnsP90 = ref<StationPrediction>()
 
   const availableDates = ref<string[]>([])
   const selectedSimulationDate = ref<string>('')
@@ -335,6 +313,85 @@
   )
 
   const tab = ref(hasCaudal.value ? 'caudal' : 'precipitaciones')
+  let availableDatesCache: string[] | null = null
+  let featureRequestId = 0
+  let predictionsRequestId = 0
+  let skipNextSimulationWatch = false
+
+  type ForecastKey = keyof DataStationPrediction
+  type ForecastRefsMap = Record<ForecastKey, Ref<StationPrediction | undefined>>
+  type ForecastRequestDef = {
+    key: ForecastKey
+    predictionType: PredictionTypeName
+    useSimulationDate?: boolean
+    percentile?: string
+  }
+
+  const precipitationRefs: ForecastRefsMap = {
+    forecastHarmonie: precipitationsForecastHarmonie,
+    forecastEpsat: precipitationsForecastEpstat,
+    forecastEnsP10: precipitationsForecastEnsP10,
+    forecastEnsP25: precipitationsForecastEnsP25,
+    forecastEnsP75: precipitationsForecastEnsP75,
+    forecastEnsP90: precipitationsForecastEnsP90,
+  }
+
+  const caudalRefs: ForecastRefsMap = {
+    forecastHarmonie: caudalForecastHarmonie,
+    forecastEpsat: caudalForecastEpstat,
+    forecastEnsP10: caudalForecastEnsP10,
+    forecastEnsP25: caudalForecastEnsP25,
+    forecastEnsP75: caudalForecastEnsP75,
+    forecastEnsP90: caudalForecastEnsP90,
+  }
+
+  const precipitationRequests: ForecastRequestDef[] = [
+    { key: 'forecastEpsat', predictionType: 'P.ens.forecast', useSimulationDate: true },
+    { key: 'forecastHarmonie', predictionType: 'P.harmonie.forecast' },
+    {
+      key: 'forecastEnsP10',
+      predictionType: 'P.ens.forecast',
+      useSimulationDate: true,
+      percentile: '10',
+    },
+    {
+      key: 'forecastEnsP25',
+      predictionType: 'P.ens.forecast',
+      useSimulationDate: true,
+      percentile: '25',
+    },
+    {
+      key: 'forecastEnsP75',
+      predictionType: 'P.ens.forecast',
+      useSimulationDate: true,
+      percentile: '75',
+    },
+    {
+      key: 'forecastEnsP90',
+      predictionType: 'P.ens.forecast',
+      useSimulationDate: true,
+      percentile: '90',
+    },
+  ]
+
+  const caudalRequestsByType: Record<'default' | 'E', ForecastRequestDef[]> = {
+    default: [
+      { key: 'forecastHarmonie', predictionType: 'Q.NAM.harmonie' },
+      { key: 'forecastEpsat', predictionType: 'Q.NAM.ens' },
+      { key: 'forecastEnsP10', predictionType: 'Q.NAM.ens', percentile: '10' },
+      { key: 'forecastEnsP25', predictionType: 'Q.NAM.ens', percentile: '25' },
+      { key: 'forecastEnsP75', predictionType: 'Q.NAM.ens', percentile: '75' },
+      { key: 'forecastEnsP90', predictionType: 'Q.NAM.ens', percentile: '90' },
+    ],
+    E: [
+      { key: 'forecastHarmonie', predictionType: 'I.NAM.harmonie' },
+      { key: 'forecastEpsat', predictionType: 'I.NAM.ens.medio' },
+      { key: 'forecastEnsP10', predictionType: 'I.NAM.ens', percentile: '10' },
+      { key: 'forecastEnsP25', predictionType: 'I.NAM.ens', percentile: '25' },
+      { key: 'forecastEnsP75', predictionType: 'I.NAM.ens', percentile: '75' },
+      { key: 'forecastEnsP90', predictionType: 'I.NAM.ens', percentile: '90' },
+    ],
+  }
 
   // Formatear fechas para el select
   const formattedDates = computed(() =>
@@ -344,179 +401,231 @@
     }))
   )
 
-  // cargar predicciones de precipitaciones
-  async function loadCaudalPredictions() {
-    if (!stationCode.value || !selectedSimulationDate.value) return
+  const caudalChartData = computed(() => ({
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
 
-    loadingCaudales.value = true
+  const precipitationsChartData = computed(() => ({
+    forecastHarmonie: precipitationsForecastHarmonie.value,
+    forecastEpsat: precipitationsForecastEpstat.value,
+    forecastEnsP10: precipitationsForecastEnsP10.value,
+    forecastEnsP25: precipitationsForecastEnsP25.value,
+    forecastEnsP90: precipitationsForecastEnsP90.value,
+    forecastEnsP75: precipitationsForecastEnsP75.value,
+  }))
 
-    if (codeType.value === 'E') {
-      try {
-        const [iHarmonie, epsatMedio, ensP10Emb, ensP25Emb, ensP75Emb, ensP90Emb] =
-          await Promise.all([
-            getPredictionsService(stationCode.value, 'I.NAM.harmonie'),
-            getPredictionsService(stationCode.value, 'I.NAM.ens.medio'),
+  const caudalPercentilesChartData = computed(() => ({
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
 
-            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '10'),
-            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '25'),
-            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '75'),
-            getPredictionsService(stationCode.value, 'I.NAM.ens', '', '90'),
-          ])
+  function clearForecasts(target: ForecastRefsMap) {
+    Object.values(target).forEach((predictionRef) => {
+      predictionRef.value = undefined
+    })
+  }
 
-        caudalForecastHarmonie.value = iHarmonie
-        caudalForecastEpstat.value = epsatMedio
-
-        caudalForecastEnsP10.value = ensP10Emb
-        caudalForecastEnsP25.value = ensP25Emb
-        caudalForecastEnsP75.value = ensP75Emb
-        caudalForecastEnsP90.value = ensP90Emb
-      } catch (err) {
-        console.error('Error loading predictions:', err)
-      } finally {
-        loadingCaudales.value = false
-      }
-    } else {
-      try {
-        const [harmonie, epstat, ensP10, ensP25, ensP75, ensP90] = await Promise.all([
-          getPredictionsService(stationCode.value, 'Q.NAM.harmonie'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens'),
-
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '10'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '25'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '75'),
-          getPredictionsService(stationCode.value, 'Q.NAM.ens', '', '90'),
-        ])
-
-        caudalForecastHarmonie.value = harmonie
-        caudalForecastEpstat.value = epstat
-
-        caudalForecastEnsP10.value = ensP10
-        caudalForecastEnsP25.value = ensP25
-        caudalForecastEnsP75.value = ensP75
-        caudalForecastEnsP90.value = ensP90
-      } catch (err) {
-        console.error('Error loading predictions:', err)
-      } finally {
-        loadingCaudales.value = false
-      }
+  function applyForecastData(target: ForecastRefsMap, payload: Partial<DataStationPrediction>) {
+    for (const key in target) {
+      target[key as ForecastKey].value = payload[key as ForecastKey]
     }
   }
 
-  // cargar predicciones de precipitaciones
-  async function loadPrecipitationsPredictions() {
-    if (!stationCode.value || !selectedSimulationDate.value) return
+  async function fetchPredictionBatch(
+    stationId: string,
+    simulationDate: string,
+    requests: ForecastRequestDef[]
+  ): Promise<Partial<DataStationPrediction>> {
+    const entries = await Promise.all(
+      requests.map(async (requestDef) => {
+        const prediction = await getPredictionsService(
+          stationId,
+          requestDef.predictionType,
+          requestDef.useSimulationDate ? simulationDate : undefined,
+          requestDef.percentile
+        )
 
-    loadingPrecipitaciones.value = true
+        return [requestDef.key, prediction] as const
+      })
+    )
+
+    const result: Partial<DataStationPrediction> = {}
+
+    for (const [key, prediction] of entries) {
+      result[key] = prediction
+    }
+
+    return result
+  }
+
+  async function getAvailableDatesCached(): Promise<string[]> {
+    if (availableDatesCache) {
+      return availableDatesCache
+    }
 
     try {
-      const [epstat, harmonie, ensP10, ensP25, ensP75, ensP90] = await Promise.all([
-        getPredictionsService(stationCode.value, 'P.ens.forecast', selectedSimulationDate.value),
-        getPredictionsService(stationCode.value, 'P.harmonie.forecast'),
-        getPredictionsService(
-          stationCode.value,
-          'P.ens.forecast',
-          selectedSimulationDate.value,
-          '10'
-        ),
-        getPredictionsService(
-          stationCode.value,
-          'P.ens.forecast',
-          selectedSimulationDate.value,
-          '25'
-        ),
-
-        getPredictionsService(
-          stationCode.value,
-          'P.ens.forecast',
-          selectedSimulationDate.value,
-          '75'
-        ),
-        getPredictionsService(
-          stationCode.value,
-          'P.ens.forecast',
-          selectedSimulationDate.value,
-          '90'
-        ),
-      ])
-
-      precipitationsForecastEpstat.value = epstat
-      precipitationsForecastHarmonie.value = harmonie
-      precipitationsForecastEnsP10.value = ensP10
-      precipitationsForecastEnsP25.value = ensP25
-      precipitationsForecastEnsP75.value = ensP75
-      precipitationsForecastEnsP90.value = ensP90
+      availableDatesCache = await getAvailablePredictionsService()
+      return availableDatesCache
     } catch (err) {
-      console.error('Error loading predictions:', err)
-    } finally {
+      console.error('Error loading Available Dates', err)
+      availableDatesCache = []
+      return []
+    }
+  }
+
+  async function refreshPredictions() {
+    const currentStation = stationCode.value
+    const simulationDate = selectedSimulationDate.value
+
+    if (!currentStation || !simulationDate) {
+      clearForecasts(precipitationRefs)
+      clearForecasts(caudalRefs)
       loadingPrecipitaciones.value = false
       loadingCaudales.value = false
+      return
+    }
+
+    const requestId = ++predictionsRequestId
+    loadingPrecipitaciones.value = true
+    loadingCaudales.value = hasCaudal.value
+
+    try {
+      const precipitationPromise = fetchPredictionBatch(
+        currentStation,
+        simulationDate,
+        precipitationRequests
+      )
+
+      const caudalPromise = hasCaudal.value
+        ? fetchPredictionBatch(
+            currentStation,
+            simulationDate,
+            codeType.value === 'E' ? caudalRequestsByType.E : caudalRequestsByType.default
+          )
+        : Promise.resolve({} as Partial<DataStationPrediction>)
+
+      const [precipitationData, caudalData] = await Promise.all([
+        precipitationPromise,
+        caudalPromise,
+      ])
+
+      if (requestId !== predictionsRequestId) {
+        return
+      }
+
+      applyForecastData(precipitationRefs, precipitationData)
+      applyForecastData(caudalRefs, caudalData)
+    } catch (err) {
+      console.error('Error loading predictions:', err)
+      if (requestId !== predictionsRequestId) {
+        return
+      }
+      clearForecasts(precipitationRefs)
+      clearForecasts(caudalRefs)
+    } finally {
+      if (requestId === predictionsRequestId) {
+        loadingPrecipitaciones.value = false
+        loadingCaudales.value = false
+      }
     }
   }
 
   // cargar feature
-  async function loadFeature(code: string) {
+  async function loadFeature(code: string): Promise<boolean> {
     if (!saihConfig.value) {
       console.warn('SAIH layer config not found')
-      return
+      return false
     }
 
     if (!code) {
       error.value = 'Station code is required'
-      return
+      return false
     }
 
+    const requestId = ++featureRequestId
     loadingFeature.value = true
     error.value = null
 
     try {
-      // Cargar predicciones y feature en paralelo
       const [result, datesAvailable] = await Promise.all([
         getWFSFeatureById(saihConfig.value, 'codigo', code),
-        getAvailablePredictionsService().catch((err) => {
-          console.error('Error loading Available Dates', err)
-          return []
-        }),
+        getAvailableDatesCached(),
       ])
+
+      if (requestId !== featureRequestId) {
+        return false
+      }
 
       if (!result) {
         error.value = 'Feature not found'
         feature.value = null
-        return
+        return false
       }
 
       feature.value = result
-
-      // Guardar fechas disponibles
       availableDates.value = datesAvailable
-      if (datesAvailable.length > 0) {
-        selectedSimulationDate.value = datesAvailable[0] // Seleccionar la más reciente por defecto
-      }
-      // Ajustar la pestaña activa según si la estación tiene caudal
+
+      skipNextSimulationWatch = true
+      selectedSimulationDate.value = datesAvailable[0] ?? ''
+
       tab.value = hasCaudal.value ? 'caudal' : 'precipitaciones'
+      return true
     } catch (err) {
       console.error('Error loading feature:', err)
       error.value = 'Error loading feature'
       feature.value = null
+      return false
     } finally {
-      loadingFeature.value = false
+      if (requestId === featureRequestId) {
+        loadingFeature.value = false
+      }
     }
   }
 
-  // Cargar predicciones cuando cambia la fecha seleccionada
-  watch(selectedSimulationDate, async () => {
-    await loadPrecipitationsPredictions()
-    if (hasCaudal.value) await loadCaudalPredictions()
+  watch(selectedSimulationDate, async (date) => {
+    if (!date) {
+      return
+    }
+
+    if (skipNextSimulationWatch) {
+      skipNextSimulationWatch = false
+      return
+    }
+
+    await refreshPredictions()
   })
 
-  // reaccionar al cambio de URL
   watch(
     stationCode,
     async (code) => {
       if (!code) {
         feature.value = null
+        error.value = null
+        selectedSimulationDate.value = ''
+        availableDates.value = []
+        clearForecasts(precipitationRefs)
+        clearForecasts(caudalRefs)
+        loadingPrecipitaciones.value = false
+        loadingCaudales.value = false
         return
       }
-      await loadFeature(code)
+
+      clearForecasts(precipitationRefs)
+      clearForecasts(caudalRefs)
+
+      const loaded = await loadFeature(code)
+      if (!loaded) {
+        return
+      }
+
+      await refreshPredictions()
     },
     { immediate: true }
   )
@@ -530,3 +639,33 @@
     router.replace({ query })
   }
 </script>
+
+<style scoped>
+  .chart-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chart-placeholder--caudal {
+    min-height: 320px;
+  }
+
+  .chart-placeholder--precip {
+    min-height: 500px;
+  }
+
+  .chart-placeholder--percentiles {
+    min-height: 160px;
+  }
+
+  @media (max-width: 960px) {
+    .chart-placeholder--caudal {
+      min-height: 260px;
+    }
+
+    .chart-placeholder--precip {
+      min-height: 360px;
+    }
+  }
+</style>

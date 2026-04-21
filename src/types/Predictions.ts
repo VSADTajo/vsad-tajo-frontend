@@ -1,3 +1,12 @@
+export interface DataStationPrediction {
+  forecastHarmonie?: StationPrediction
+  forecastEpsat?: StationPrediction
+  forecastEnsP10?: StationPrediction
+  forecastEnsP25?: StationPrediction
+  forecastEnsP90?: StationPrediction
+  forecastEnsP75?: StationPrediction
+}
+
 export interface PredictionResult {
   id: number
   date: string
