@@ -55,14 +55,35 @@ html {
 
 .custom-legend-gradient {
   min-width: 180px;
-  padding: 10px;
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(var(--v-theme-primary), 0.7);
+  background: #fff;
+  opacity: 0.9;
 }
 
 .custom-legend-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   margin-bottom: 8px;
   text-align: center;
+}
+
+.custom-legend-header {
+  background: rgba(var(--v-theme-primary), 0.7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 10px;
+}
+
+.custom-legend-body {
+  position: relative;
+  min-height: 160px;
+  padding: 8px;
+  background: #fff;
+  opacity: 0.9;
 }
 
 .custom-legend-image {
@@ -70,6 +91,51 @@ html {
   display: block;
   margin: 0 auto;
   border-radius: 4px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.custom-legend-body.is-loading .custom-legend-image {
+  opacity: 0;
+}
+
+.custom-legend-loading {
+  position: absolute;
+  inset: 8px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.72);
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(0, 0, 0, 0.04),
+    rgba(0, 0, 0, 0.04) 8px,
+    rgba(0, 0, 0, 0.08) 8px,
+    rgba(0, 0, 0, 0.08) 16px
+  );
+  border-radius: 4px;
+}
+
+.custom-legend-body.is-loading .custom-legend-loading {
+  display: flex;
+}
+
+.custom-legend-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--v-theme-primary), 0.25);
+  border-top-color: rgba(var(--v-theme-primary), 0.9);
+  animation: custom-legend-spin 0.8s linear infinite;
+}
+
+@keyframes custom-legend-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .custom-legend-scale {

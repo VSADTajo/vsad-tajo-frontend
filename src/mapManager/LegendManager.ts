@@ -15,15 +15,7 @@ export class LegendManager {
   }
 
   addLegend(layerId: string, url: string) {
-    if (this.legends[layerId]) {
-      console.debug('[LegendManager] Leyenda ya existente, se omite addLegend', { layerId })
-      return
-    }
-
-    console.debug('[LegendManager] addLegend (imagen nativa)', {
-      layerId,
-      url,
-    })
+    if (this.legends[layerId]) return
 
     const legend = new L.Control({ position: 'bottomright' })
 
@@ -44,31 +36,42 @@ export class LegendManager {
   }
 
   async addGradientLegend(layerId: string, options: GradientLegendOptions) {
-    if (this.legends[layerId]) {
-      console.debug('[LegendManager] Leyenda ya existente, se omite addGradientLegend', {
-        layerId,
-      })
-      return
-    }
-
-    console.debug('[LegendManager] addGradientLegend iniciado', {
-      layerId,
-      title: options.title,
-      legendUrl: options.legendUrl,
-    })
-
-    console.debug('[LegendManager] Render de leyenda con imagen titulada', { layerId })
+    if (this.legends[layerId]) return
 
     const legend = new L.Control({ position: 'bottomright' })
 
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'leaflet-control custom-legend custom-legend-gradient')
       const unitsText = options.units ? ` (${options.units})` : ''
+      const header = document.createElement('div')
+      header.className = 'custom-legend-header'
+      header.textContent = `${options.title}${unitsText}`
 
-      div.innerHTML = `
-        <div class="custom-legend-title">${options.title}${unitsText}</div>
-        <img class="custom-legend-image" src="${options.legendUrl}" alt="Leyenda ${options.title}" />
-      `
+      const body = document.createElement('div')
+      body.className = 'custom-legend-body is-loading'
+
+      const loading = document.createElement('div')
+      loading.className = 'custom-legend-loading'
+      loading.innerHTML =
+        '<span class="custom-legend-spinner" aria-hidden="true"></span><span>Cargando leyenda...</span>'
+
+      const image = document.createElement('img')
+      image.className = 'custom-legend-image'
+      image.alt = `Leyenda ${options.title}`
+      image.src = options.legendUrl
+
+      image.addEventListener('load', () => {
+        body.classList.remove('is-loading')
+      })
+
+      image.addEventListener('error', () => {
+        loading.innerHTML = '<span>No se pudo cargar la leyenda</span>'
+      })
+
+      body.appendChild(loading)
+      body.appendChild(image)
+      div.appendChild(header)
+      div.appendChild(body)
 
       return div
     }
@@ -81,8 +84,6 @@ export class LegendManager {
     const legend = this.legends[layerId]
 
     if (!legend) return
-
-    console.debug('[LegendManager] removeLegend', { layerId })
 
     legend.remove()
 

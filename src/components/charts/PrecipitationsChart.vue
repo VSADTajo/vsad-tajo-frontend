@@ -7,22 +7,17 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import type { ApexOptions } from 'apexcharts'
-  import type { Point, RangePoint, SeriesItem, StationPrediction } from '@/types/Predictions'
+  import type { DataStationPrediction, Point, RangePoint, SeriesItem } from '@/types/Predictions'
   import { dateFormattedWithHours } from '@/utils/dates'
 
   const props = defineProps<{
-    forecastHarmonie?: StationPrediction
-    forecastEpsat?: StationPrediction
-    forecastEnsP10?: StationPrediction
-    forecastEnsP25?: StationPrediction
-    forecastEnsP90?: StationPrediction
-    forecastEnsP75?: StationPrediction
+    data: DataStationPrediction
   }>()
 
   // Extraer fechas y valores de det
   const HarmonieData = computed(() => {
-    if (!props.forecastHarmonie?.results?.length) return null
-    return props.forecastHarmonie.results.map((r) => ({
+    if (!props.data.forecastHarmonie?.results?.length) return null
+    return props.data.forecastHarmonie.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
@@ -30,8 +25,8 @@
 
   // Extraer fechas y valores de ens
   const epsatData = computed(() => {
-    if (!props.forecastEpsat?.results?.length) return null
-    return props.forecastEpsat.results.map((r) => ({
+    if (!props.data.forecastEpsat?.results?.length) return null
+    return props.data.forecastEpsat.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
@@ -39,8 +34,8 @@
 
   // Extraer fechas y valores de p10
   const p10Data = computed(() => {
-    if (!props.forecastEnsP10?.results?.length) return null
-    return props.forecastEnsP10.results.map((r) => ({
+    if (!props.data.forecastEnsP10?.results?.length) return null
+    return props.data.forecastEnsP10.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
@@ -48,16 +43,16 @@
 
   // Extraer fechas y valores de p75
   const p75Data = computed(() => {
-    if (!props.forecastEnsP75?.results?.length) return null
-    return props.forecastEnsP75.results.map((r) => ({
+    if (!props.data.forecastEnsP75?.results?.length) return null
+    return props.data.forecastEnsP75.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
   })
 
   const p25Data = computed(() => {
-    if (!props.forecastEnsP25?.results?.length) return null
-    return props.forecastEnsP25.results.map((r) => ({
+    if (!props.data.forecastEnsP25?.results?.length) return null
+    return props.data.forecastEnsP25.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
@@ -65,8 +60,8 @@
 
   // Extraer fechas y valores de p75
   const p90Data = computed(() => {
-    if (!props.forecastEnsP90?.results?.length) return null
-    return props.forecastEnsP90.results.map((r) => ({
+    if (!props.data.forecastEnsP90?.results?.length) return null
+    return props.data.forecastEnsP90.results.map((r) => ({
       date: r.date,
       value: Number(r.value),
     }))
