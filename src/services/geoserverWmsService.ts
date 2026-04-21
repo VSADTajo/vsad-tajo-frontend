@@ -169,3 +169,25 @@ export async function getGeoServerLayerTimeDimension(options: {
 
   return null
 }
+
+export function getGeoServerLegendUrl(options: {
+  url: string
+  layerName: string
+  styleName?: string
+  format?: string
+}): string {
+  const params = new URLSearchParams({
+    SERVICE: 'WMS',
+    VERSION: '1.3.0',
+    REQUEST: 'GetLegendGraphic',
+    LAYER: options.layerName,
+    FORMAT: options.format ?? 'image/png',
+    TRANSPARENT: 'true',
+  })
+
+  if (options.styleName) {
+    params.set('STYLE', options.styleName)
+  }
+
+  return `${options.url}?${params.toString()}`
+}
