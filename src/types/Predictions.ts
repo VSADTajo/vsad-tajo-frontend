@@ -1,4 +1,5 @@
 export interface DataStationPrediction {
+  historical?: StationPrediction
   forecastHarmonie?: StationPrediction
   forecastEpsat?: StationPrediction
   forecastEnsP10?: StationPrediction
@@ -35,6 +36,8 @@ export type PredictionTypeName =
   | 'Q.NAM.ens'
   | 'I.NAM.ens.medio'
   | 'I.NAM.ens'
+
+export type HistoricalPredictionTypeName = 'Q.historical' | 'Precip.historical'
 
 export type PredictionsResponse = {
   predictions: StationPrediction[]
