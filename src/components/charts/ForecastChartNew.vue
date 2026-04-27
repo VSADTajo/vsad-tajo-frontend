@@ -1,6 +1,14 @@
 <template>
   <div>
-    <apexchart :height="props.height ?? 350" :options="chartOptions" :series="series" />
+    <apexchart
+      v-if="hasRenderableSeries"
+      :height="props.height ?? 350"
+      :options="chartOptions"
+      :series="series"
+    />
+    <div v-else class="chart-empty-state" :style="{ height: `${props.height ?? 350}px` }">
+      Sin datos para mostrar
+    </div>
   </div>
 </template>
 
@@ -16,63 +24,61 @@
     height?: number
   }>()
 
+  function normalizePredictionResults(prediction?: DataStationPrediction['forecastHarmonie']) {
+    if (!prediction?.results?.length) return null
+
+    return prediction.results
+      .map((result) => {
+        const timestamp = new Date(result.date).getTime()
+        if (!Number.isFinite(timestamp)) return null
+
+        const numericValue = Number(result.value)
+        return {
+          date: result.date,
+          value: Number.isFinite(numericValue) ? numericValue : null,
+        }
+      })
+      .filter((item): item is { date: string; value: number | null } => item !== null)
+  }
+
   // Extraer fechas y valores de det
+  const historicalData = computed(() => {
+    return normalizePredictionResults(props.data.historical)
+  })
+
   const HarmonieData = computed(() => {
-    if (!props.data.forecastHarmonie?.results?.length) return null
-    return props.data.forecastHarmonie.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
+    return normalizePredictionResults(props.data.forecastHarmonie)
   })
 
   // Extraer fechas y valores de ens
   const epsatData = computed(() => {
-    if (!props.data.forecastEpsat?.results?.length) return null
-    return props.data.forecastEpsat.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
+    return normalizePredictionResults(props.data.forecastEpsat)
   })
 
   // Extraer fechas y valores de p10
   const p10Data = computed(() => {
-    if (!props.data.forecastEnsP10?.results?.length) return null
-    return props.data.forecastEnsP10.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
+    return normalizePredictionResults(props.data.forecastEnsP10)
   })
 
   // Extraer fechas y valores de p75
   const p75Data = computed(() => {
-    if (!props.data.forecastEnsP75?.results?.length) return null
-    return props.data.forecastEnsP75.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
+    return normalizePredictionResults(props.data.forecastEnsP75)
   })
 
   const p25Data = computed(() => {
-    if (!props.data.forecastEnsP25?.results?.length) return null
-    return props.data.forecastEnsP25.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
+    return normalizePredictionResults(props.data.forecastEnsP25)
   })
 
   // Extraer fechas y valores de p90
   const p90Data = computed(() => {
-    if (!props.data.forecastEnsP90?.results?.length) return null
-    return props.data.forecastEnsP90.results.map((r) => ({
-      date: r.date,
-      value: Number(r.value),
-    }))
+    return normalizePredictionResults(props.data.forecastEnsP90)
   })
 
   // Todas las fechas únicas ordenadas
   const allDates = computed(() => {
     const dateSet = new Set<string>()
 
+    historicalData.value?.forEach((d) => dateSet.add(d.date))
     HarmonieData.value?.forEach((d) => dateSet.add(d.date))
     epsatData.value?.forEach((d) => dateSet.add(d.date))
     p10Data.value?.forEach((d) => dateSet.add(d.date))
@@ -88,6 +94,20 @@
     allDates.value.map((date) => dateFormattedWithHours(new Date(date).getTime()))
   )
 
+  function hasFiniteValue(values: Array<number | null>): boolean {
+    return values.some((value) => Number.isFinite(value))
+  }
+
+  function hasFiniteRange(values: Array<[number | null, number | null] | null>): boolean {
+    return values.some(
+      (range) =>
+        Array.isArray(range) &&
+        range.length === 2 &&
+        Number.isFinite(range[0]) &&
+        Number.isFinite(range[1])
+    )
+  }
+
   // Series para el gráfico
   const series = computed<SeriesItem[]>(() => {
     if (allDates.value.length === 0) return []
@@ -95,91 +115,135 @@
     const result: SeriesItem[] = []
     const labels = xLabels.value
 
+    // Observado
+    if (historicalData.value) {
+      const historicalMap = new Map(historicalData.value.map((d) => [d.date, d.value]))
+      const values = allDates.value.map((date) => historicalMap.get(date) ?? null)
+      if (hasFiniteValue(values)) {
+        result.push({
+          name: 'Observado',
+          type: 'line',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: values[i],
+          })),
+        })
+      }
+    }
+
     // Harmonie
     if (HarmonieData.value) {
       const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Predicción Det. Harmonie',
-        type: 'line',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: detMap.get(date) ?? null,
-        })),
-      })
+      const values = allDates.value.map((date) => detMap.get(date) ?? null)
+      if (hasFiniteValue(values)) {
+        result.push({
+          name: 'Predicción Det. Harmonie',
+          type: 'line',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: values[i],
+          })),
+        })
+      }
     }
 
     // EPS
     if (epsatData.value) {
       const epsatMap = new Map(epsatData.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Predicción Det. EPS',
-        type: 'line',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: epsatMap.get(date) ?? null,
-        })),
-      })
+      const values = allDates.value.map((date) => epsatMap.get(date) ?? null)
+      if (hasFiniteValue(values)) {
+        result.push({
+          name: 'Predicción Det. EPS',
+          type: 'line',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: values[i],
+          })),
+        })
+      }
     }
 
     // P10-P90 RangeArea (must come before bars so it renders behind)
     if (p10Data.value && p90Data.value) {
       const p10Map = new Map(p10Data.value.map((d) => [d.date, d.value]))
       const p90Map = new Map(p90Data.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Percentiles P10-P90',
-        type: 'rangeArea',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: [p10Map.get(date) ?? null, p90Map.get(date) ?? null],
-        })),
+      const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
+        const low = p10Map.get(date) ?? null
+        const high = p90Map.get(date) ?? null
+        return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
       })
+      if (hasFiniteRange(ranges)) {
+        result.push({
+          name: 'Percentiles P10-P90',
+          type: 'rangeArea',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: ranges[i],
+          })),
+        })
+      }
     }
 
     // P25-P75 RangeArea
     if (p25Data.value && p75Data.value) {
       const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
       const p75Map = new Map(p75Data.value.map((d) => [d.date, d.value]))
-      result.push({
-        name: 'Percentiles P25-P75',
-        type: 'rangeArea',
-        data: allDates.value.map((date, i) => ({
-          x: labels[i],
-          y: [p25Map.get(date) ?? null, p75Map.get(date) ?? null],
-        })),
+      const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
+        const low = p25Map.get(date) ?? null
+        const high = p75Map.get(date) ?? null
+        return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
       })
+      if (hasFiniteRange(ranges)) {
+        result.push({
+          name: 'Percentiles P25-P75',
+          type: 'rangeArea',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: ranges[i],
+          })),
+        })
+      }
     }
 
     return result
   })
 
+  const hasRenderableSeries = computed(() => series.value.length > 0)
+
   // Colores dinámicos basados en qué series existen (mismo orden que series)
   const dynamicColors = computed(() => {
+    const names = new Set(series.value.map((serie) => serie.name))
     const colors: string[] = []
-    if (HarmonieData.value) colors.push('#1565C0') // Azul
-    if (epsatData.value) colors.push('#FF9800') // Amarillo
-    if (p10Data.value && p90Data.value) colors.push('#D3D3D3') // Gris claro
-    if (p25Data.value && p75Data.value) colors.push('#696969') // Gris oscuro
+    if (names.has('Observado')) colors.push('#2E7D32') // Verde
+    if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
+    if (names.has('Predicción Det. EPS')) colors.push('#FF9800') // Amarillo
+    if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
+    if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
     return colors
   })
 
   // Opacidad de relleno por serie (rangeArea necesita opacidad explícita)
   const dynamicFillOpacity = computed(() => {
+    const names = new Set(series.value.map((serie) => serie.name))
     const opacity: number[] = []
-    if (HarmonieData.value) opacity.push(1)
-    if (epsatData.value) opacity.push(1)
-    if (p10Data.value && p90Data.value) opacity.push(0.35)
-    if (p25Data.value && p75Data.value) opacity.push(0.35)
+    if (names.has('Observado')) opacity.push(1)
+    if (names.has('Predicción Det. Harmonie')) opacity.push(1)
+    if (names.has('Predicción Det. EPS')) opacity.push(1)
+    if (names.has('Percentiles P10-P90')) opacity.push(0.35)
+    if (names.has('Percentiles P25-P75')) opacity.push(0.35)
 
     return opacity
   })
 
   // Ancho de trazo por serie
   const dynamicStrokeWidth = computed(() => {
+    const names = new Set(series.value.map((serie) => serie.name))
     const widths: number[] = []
-    if (HarmonieData.value) widths.push(2)
-    if (epsatData.value) widths.push(2)
-    if (p10Data.value && p90Data.value) widths.push(1)
-    if (p25Data.value && p75Data.value) widths.push(1)
+    if (names.has('Observado')) widths.push(2)
+    if (names.has('Predicción Det. Harmonie')) widths.push(2)
+    if (names.has('Predicción Det. EPS')) widths.push(2)
+    if (names.has('Percentiles P10-P90')) widths.push(1)
+    if (names.has('Percentiles P25-P75')) widths.push(1)
     return widths
   })
 
@@ -225,8 +289,8 @@
     },
     xaxis: {
       type: 'category',
-      tickPlacement: 'on' as const,
-      tickAmount: 8,
+      tickPlacement: (allDates.value.length > 1 ? 'on' : 'between') as 'on' | 'between',
+      tickAmount: allDates.value.length > 1 ? Math.min(8, allDates.value.length) : undefined,
       labels: {
         rotate: 0,
         rotateAlways: false,
@@ -322,6 +386,14 @@
 </script>
 
 <style>
+  .chart-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 0.875rem;
+  }
+
   /* Oculta el pequeño tooltip nativo del eje X que aparece bajo el gráfico */
   .apexcharts-xaxistooltip {
     display: none !important;

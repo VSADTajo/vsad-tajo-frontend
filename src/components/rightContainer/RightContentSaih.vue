@@ -75,7 +75,6 @@
             <v-col cols="12" sm="6" md="4">
               <v-select
                 v-model="selectedSimulationDate"
-                disabled
                 :items="formattedDates"
                 label="Fecha de Simulación"
                 item-title="title"
@@ -106,6 +105,7 @@
               <v-tabs-window-item v-if="hasCaudal" value="caudal">
                 <v-sheet v-if="caudalForecastHarmonie || caudalForecastEpstat" class="pa-5">
                   <ForecastChartNew :data="caudalChartData" />
+                  <!-- <ForecastChartNewEcharts :data="caudalChartData" /> -->
                 </v-sheet>
                 <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
                 <div
@@ -131,6 +131,7 @@
                   class="pa-5"
                 >
                   <PrecipitationsChart :data="precipitationsChartData" />
+                  <!-- <PrecipitationsChartEcharts :data="precipitationsChartData" /> -->
                 </v-sheet>
 
                 <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
@@ -194,7 +195,12 @@
               caudalForecastEnsP90
             "
           >
-            <ForecastChartNew :data="caudalPercentilesChartData" :toolbar="false" :height="220" />
+            <!-- <ForecastChartNew :data="caudalPercentilesChartData" :toolbar="false" :height="220" /> -->
+            <!-- <ForecastChartNewEcharts
+              :data="caudalPercentilesChartData"
+              :toolbar="false"
+              :height="220"
+            /> -->
           </div>
 
           <div v-else-if="loadingCaudales" class="chart-placeholder chart-placeholder--percentiles">
@@ -219,11 +225,16 @@
   import { formatSimulationDate } from '@/utils/dates'
   import type {
     DataStationPrediction,
+    HistoricalPredictionTypeName,
     PredictionTypeName,
     StationPrediction,
   } from '@/types/Predictions'
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
-  import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import {
+    getAvailablePredictionsService,
+    getHistoricalPredictionService,
+    getPredictionsService,
+  } from '@/services/predictions'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import { getSaihTypeColor } from '@/utils/saihStations'
   import ContentSaihInfo from './ContentSaih/ContentSaihInfo.vue'
@@ -232,6 +243,8 @@
   import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
   import ContentSaihPredictionsWeek from './ContentSaih/ContentSaihPredictionsWeek.vue'
+  import ForecastChartNewEcharts from '../charts/ForecastChartNewEcharts.vue'
+  import PrecipitationsChartEcharts from '../charts/PrecipitationsChartEcharts.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -249,6 +262,7 @@
   const precipitationsForecastEnsP25 = ref<StationPrediction>()
   const precipitationsForecastEnsP75 = ref<StationPrediction>()
   const precipitationsForecastEnsP90 = ref<StationPrediction>()
+  const precipitationsHistorical = ref<StationPrediction>()
 
   const caudalForecastEpstat = ref<StationPrediction>()
   const caudalForecastHarmonie = ref<StationPrediction>()
@@ -257,6 +271,7 @@
   const caudalForecastEnsP25 = ref<StationPrediction>()
   const caudalForecastEnsP75 = ref<StationPrediction>()
   const caudalForecastEnsP90 = ref<StationPrediction>()
+  const caudalHistorical = ref<StationPrediction>()
 
   const availableDates = ref<string[]>([])
   const selectedSimulationDate = ref<string>('')
@@ -328,6 +343,7 @@
   }
 
   const precipitationRefs: ForecastRefsMap = {
+    historical: precipitationsHistorical,
     forecastHarmonie: precipitationsForecastHarmonie,
     forecastEpsat: precipitationsForecastEpstat,
     forecastEnsP10: precipitationsForecastEnsP10,
@@ -337,6 +353,7 @@
   }
 
   const caudalRefs: ForecastRefsMap = {
+    historical: caudalHistorical,
     forecastHarmonie: caudalForecastHarmonie,
     forecastEpsat: caudalForecastEpstat,
     forecastEnsP10: caudalForecastEnsP10,
@@ -402,6 +419,7 @@
   )
 
   const caudalChartData = computed(() => ({
+    historical: caudalHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
     forecastEnsP10: caudalForecastEnsP10.value,
@@ -411,6 +429,7 @@
   }))
 
   const precipitationsChartData = computed(() => ({
+    historical: precipitationsHistorical.value,
     forecastHarmonie: precipitationsForecastHarmonie.value,
     forecastEpsat: precipitationsForecastEpstat.value,
     forecastEnsP10: precipitationsForecastEnsP10.value,
@@ -443,12 +462,14 @@
     simulationDate: string,
     requests: ForecastRequestDef[]
   ): Promise<Partial<DataStationPrediction>> {
+    console.log('Fetching predictions for', stationId, simulationDate, requests)
+
     const entries = await Promise.all(
       requests.map(async (requestDef) => {
         const prediction = await getPredictionsService(
           stationId,
           requestDef.predictionType,
-          requestDef.useSimulationDate ? simulationDate : undefined,
+          simulationDate,
           requestDef.percentile
         )
 
@@ -463,6 +484,13 @@
     }
 
     return result
+  }
+
+  async function fetchHistoricalPrediction(
+    stationId: string,
+    predictionType: HistoricalPredictionTypeName
+  ): Promise<StationPrediction | undefined> {
+    return getHistoricalPredictionService(stationId, predictionType)
   }
 
   async function getAvailableDatesCached(): Promise<string[]> {
@@ -511,14 +539,29 @@
           )
         : Promise.resolve({} as Partial<DataStationPrediction>)
 
-      const [precipitationData, caudalData] = await Promise.all([
-        precipitationPromise,
-        caudalPromise,
-      ])
+      const precipitationHistoricalPromise = fetchHistoricalPrediction(
+        currentStation,
+        'Precip.historical'
+      )
+
+      const caudalHistoricalPromise = hasCaudal.value
+        ? fetchHistoricalPrediction(currentStation, 'Q.historical')
+        : Promise.resolve(undefined)
+
+      const [precipitationData, caudalData, precipitationHistoricalData, caudalHistoricalData] =
+        await Promise.all([
+          precipitationPromise,
+          caudalPromise,
+          precipitationHistoricalPromise,
+          caudalHistoricalPromise,
+        ])
 
       if (requestId !== predictionsRequestId) {
         return
       }
+
+      precipitationData.historical = precipitationHistoricalData
+      caudalData.historical = caudalHistoricalData
 
       applyForecastData(precipitationRefs, precipitationData)
       applyForecastData(caudalRefs, caudalData)
