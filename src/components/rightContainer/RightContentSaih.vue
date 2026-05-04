@@ -62,7 +62,7 @@
           <v-col cols="6" md="12">
             <ContentObservedData
               :active-tab="tab"
-              :loading="isTabDataLoading"
+              :loading="sidePanelsLoading"
               :selected-observed-caudal-date="selectedObservedCaudalDate"
               :selected-observed-precip-date="selectedObservedPrecipDate"
               :observed-caudal-dates="observedCaudalDates"
@@ -101,11 +101,17 @@
             <v-tabs-window v-model="tab">
               <v-tabs-window-item v-if="hasCaudal" value="caudal">
                 <v-sheet
-                  v-if="caudalHistorical || caudalForecastHarmonie || caudalForecastEpstat"
+                  v-if="
+                    loadingCaudales ||
+                    caudalHistorical ||
+                    caudalForecastHarmonie ||
+                    caudalForecastEpstat
+                  "
                   class="pa-5"
                 >
                   <ForecastChartNew
                     :data="caudalChartData"
+                    :loading="loadingCaudales"
                     :thresholds="feature?.properties as Record<string, unknown>"
                   />
                   <!-- <ForecastChartNewEcharts :data="caudalChartData" /> -->
@@ -132,13 +138,17 @@
               <v-tabs-window-item value="precipitaciones">
                 <v-sheet
                   v-if="
+                    loadingPrecipitaciones ||
                     precipitationsHistorical ||
                     precipitationsForecastHarmonie ||
                     precipitationsForecastEpstat
                   "
                   class="pa-5"
                 >
-                  <PrecipitationsChart :data="precipitationsChartData" />
+                  <PrecipitationsChart
+                    :data="precipitationsChartData"
+                    :loading="loadingPrecipitaciones"
+                  />
                   <!-- <PrecipitationsChartEcharts :data="precipitationsChartData" /> -->
                 </v-sheet>
 
@@ -171,7 +181,9 @@
           <v-col cols="6" md="12">
             <ContentSaihPredictionsLatest
               :active-tab="tab"
-              :loading="isTabDataLoading"
+              :loading="sidePanelsLoading"
+              :loading-harmonie="loadingHarmoniePredict"
+              :loading-eps="loadingEpsPredict"
               :caudal-forecast-harmonie="caudalForecastHarmonie"
               :caudal-forecast-epstat="caudalForecastEpstat"
               :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
@@ -205,7 +217,7 @@
           :forecast-harmonie="caudalForecastHarmonie"
           :forecast-epsat="caudalForecastEpstat"
           :thresholds="feature?.properties as Record<string, unknown>"
-          :loading="loadingCaudales"
+          :loading="matrixLoading"
         />
       </v-card>
     </v-col>
@@ -367,6 +379,10 @@
   let featureRequestId = 0
   let predictionsRequestId = 0
   let skipNextSimulationWatch = false
+  const loadingInitialData = ref(false)
+  const loadingMatrixOnPredictionSelect = ref(false)
+  const loadingHarmoniePredict = ref(false)
+  const loadingEpsPredict = ref(false)
 
   type ForecastKey = keyof DataStationPrediction
   type ForecastRefsMap = Record<ForecastKey, Ref<StationPrediction | undefined>>
@@ -443,10 +459,10 @@
         )
   )
 
-  const isTabDataLoading = computed(
-    () =>
-      loadingFeature.value ||
-      (tab.value === 'caudal' ? loadingCaudales.value : loadingPrecipitaciones.value)
+  const sidePanelsLoading = computed(() => loadingFeature.value || loadingInitialData.value)
+
+  const matrixLoading = computed(
+    () => loadingFeature.value || loadingInitialData.value || loadingMatrixOnPredictionSelect.value
   )
 
   const precipitationRefs: ForecastRefsMap = {
@@ -660,13 +676,6 @@
     return result
   }
 
-  // async function fetchHistoricalPrediction(
-  //   stationId: string,
-  //   predictionType: HistoricalPredictionTypeName
-  // ): Promise<StationPrediction | undefined> {
-  //   return getHistoricalPredictionService(stationId, predictionType)
-  // }
-
   async function getAvailableDates(code: string): Promise<DatesAvailableResponse> {
     try {
       const response = await getAvailablePredictionsService(code)
@@ -719,28 +728,14 @@
           )
         : Promise.resolve({} as Partial<DataStationPrediction>)
 
-      // const precipitationHistoricalPromise = fetchHistoricalPrediction(
-      //   currentStation,
-      //   'Precip.historical'
-      // )
-
-      // const caudalHistoricalPromise = hasCaudal.value
-      //   ? fetchHistoricalPrediction(currentStation, 'Q.historical')
-      //   : Promise.resolve(undefined)
-
       const [precipitationData, caudalData] = await Promise.all([
         precipitationPromise,
         caudalPromise,
-        // precipitationHistoricalPromise,
-        //caudalHistoricalPromise,
       ])
 
       if (requestId !== predictionsRequestId) {
         return
       }
-
-      // precipitationData.historical = precipitationHistoricalData
-      // caudalData.historical = caudalHistoricalData
 
       applyForecastData(precipitationRefs, precipitationData)
       applyForecastData(caudalRefs, caudalData)
@@ -845,13 +840,29 @@
       selectedEpsCaudalDate,
       selectedEpsPrecipDate,
     ],
-    async () => {
+    async (currentValues, previousValues) => {
       if (skipNextSimulationWatch) {
         skipNextSimulationWatch = false
         return
       }
 
-      await refreshPredictions()
+      const harmonieChanged =
+        currentValues[2] !== previousValues?.[2] || currentValues[3] !== previousValues?.[3]
+      const epsChanged =
+        currentValues[4] !== previousValues?.[4] || currentValues[5] !== previousValues?.[5]
+      const changedPredictionSelect = harmonieChanged || epsChanged
+
+      loadingMatrixOnPredictionSelect.value = changedPredictionSelect
+      loadingHarmoniePredict.value = harmonieChanged
+      loadingEpsPredict.value = epsChanged
+
+      try {
+        await refreshPredictions()
+      } finally {
+        loadingMatrixOnPredictionSelect.value = false
+        loadingHarmoniePredict.value = false
+        loadingEpsPredict.value = false
+      }
     }
   )
 
@@ -861,6 +872,10 @@
       if (!code) {
         feature.value = null
         error.value = null
+        loadingInitialData.value = false
+        loadingMatrixOnPredictionSelect.value = false
+        loadingHarmoniePredict.value = false
+        loadingEpsPredict.value = false
         selectedObservedCaudalDate.value = ''
         selectedObservedPrecipDate.value = ''
         selectedHarmonieCaudalDate.value = ''
@@ -877,13 +892,18 @@
 
       clearForecasts(precipitationRefs)
       clearForecasts(caudalRefs)
+      loadingInitialData.value = true
 
-      const loaded = await loadFeature(code)
-      if (!loaded) {
-        return
+      try {
+        const loaded = await loadFeature(code)
+        if (!loaded) {
+          return
+        }
+
+        await refreshPredictions()
+      } finally {
+        loadingInitialData.value = false
       }
-
-      await refreshPredictions()
     },
     { immediate: true }
   )
