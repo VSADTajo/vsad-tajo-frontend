@@ -32,30 +32,41 @@
             />
           </v-col>
         </v-row>
-        <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
-          <v-col cols="5" class="text-right font-weight-medium rounded pr-4">
-            {{ model.lastValueLabel }}
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha ultimo</v-col>
-          <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
-            {{ model.lastDateLabel }}
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
-          <v-col cols="5" class="text-right font-weight-medium rounded pr-4">
-            {{ model.maxValueLabel }}
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha maximo</v-col>
-          <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
-            {{ model.maxDateLabel }}
-          </v-col>
-        </v-row>
+
+        <template v-if="model.loading">
+          <v-row>
+            <v-col cols="12" class="px-4 py-1">
+              <v-skeleton-loader type="list-item-two-line" />
+              <v-skeleton-loader type="list-item-two-line" />
+            </v-col>
+          </v-row>
+        </template>
+        <template v-else>
+          <v-row>
+            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+            <v-col cols="5" class="text-right font-weight-medium rounded pr-4">
+              {{ model.lastValueLabel }}
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha ultimo</v-col>
+            <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
+              {{ model.lastDateLabel }}
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+            <v-col cols="5" class="text-right font-weight-medium rounded pr-4">
+              {{ model.maxValueLabel }}
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha maximo</v-col>
+            <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
+              {{ model.maxDateLabel }}
+            </v-col>
+          </v-row>
+        </template>
 
         <v-divider class="my-1" />
       </template>
@@ -72,6 +83,8 @@
   const props = defineProps<{
     activeTab: 'caudal' | 'precipitaciones'
     loading?: boolean
+    loadingHarmonie?: boolean
+    loadingEps?: boolean
     caudalForecastHarmonie?: StationPrediction
     caudalForecastEpstat?: StationPrediction
     precipitationsForecastHarmonie?: StationPrediction
@@ -207,6 +220,7 @@
       selectedDate: harmonieSelectedDate.value,
       dateOptions: harmonieDateOptions.value,
       onUpdateDate: updateHarmonieDate,
+      loading: props.loadingHarmonie ?? false,
       ...harmonieData.value,
     },
     {
@@ -215,6 +229,7 @@
       selectedDate: epsSelectedDate.value,
       dateOptions: epsDateOptions.value,
       onUpdateDate: updateEpsDate,
+      loading: props.loadingEps ?? false,
       ...epstatData.value,
     },
   ])
