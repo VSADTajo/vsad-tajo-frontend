@@ -1,5 +1,6 @@
 import { api } from './api'
 import type {
+  AvailableDateItem,
   DatesAvailableResponse,
   HistoricalPredictionTypeName,
   PredictionsResponse,
@@ -30,16 +31,45 @@ export async function getPredictionsService(
   return res.predictions[0]
 }
 
-export async function getAvailablePredictionsService(): Promise<string[]> {
+export async function getAvailablePredictionsService(
+  station: string
+): Promise<DatesAvailableResponse> {
   const result = await api
-    .get(`predictions/available-dates`, {
+    .get(`predictions/available-dates?stationId=${station}`, {
       headers: {
         Accept: 'application/json',
       },
     })
-    .json<DatesAvailableResponse>()
+    .json<DatesAvailableResponse | AvailableDateItem[]>()
 
-  return result.dates
+  // Normalize backend variants to a single object shape.
+  if (Array.isArray(result)) {
+    return {
+      simulationDates: result,
+      totalResults: result.length,
+    }
+  }
+
+  if (Array.isArray(result.simulationDates)) {
+    return {
+      simulationDates: result.simulationDates,
+      totalResults: result.totalResults,
+      dates: result.dates,
+    }
+  }
+
+  if (Array.isArray(result.dates)) {
+    return {
+      dates: result.dates,
+      simulationDates: result.dates.map((simulationDate) => ({ simulationDate })),
+      totalResults: result.totalResults ?? result.dates.length,
+    }
+  }
+
+  return {
+    simulationDates: [],
+    totalResults: 0,
+  }
 }
 
 export async function getHistoricalPredictionService(
