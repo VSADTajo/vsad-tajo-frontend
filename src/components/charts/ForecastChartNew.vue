@@ -2,11 +2,11 @@
   <div>
     <apexchart
       v-if="hasRenderableSeries"
-      :height="props.height ?? 350"
+      :height="chartHeight"
       :options="chartOptions"
       :series="series"
     />
-    <div v-else class="chart-empty-state" :style="{ height: `${props.height ?? 350}px` }">
+    <div v-else class="chart-empty-state" :style="{ height: `${chartHeight}px` }">
       Sin datos para mostrar
     </div>
   </div>
@@ -18,11 +18,72 @@
   import type { DataStationPrediction, Point, RangePoint, SeriesItem } from '@/types/Predictions'
   import { dateFormattedWithHours } from '@/utils/dates'
 
-  const props = defineProps<{
-    data: DataStationPrediction
-    toolbar?: boolean
-    height?: number
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      data: DataStationPrediction
+      toolbar?: boolean
+      height?: number
+      thresholds?: Record<string, unknown>
+    }>(),
+    {
+      toolbar: true,
+      height: 510,
+      thresholds: undefined,
+    }
+  )
+
+  const chartHeight = computed(() => props.height)
+
+  function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
+    if (!source) return null
+
+    for (const key of keys) {
+      const raw = source[key]
+      if (raw == null) continue
+
+      if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+      if (typeof raw === 'string') {
+        const parsed = Number.parseFloat(raw.replace(',', '.'))
+        if (Number.isFinite(parsed)) return parsed
+      }
+    }
+
+    return null
+  }
+
+  const caudalThresholdAnnotations = computed(() => {
+    const t1 = readNumber(['umbral_caudal_1', 'umbral_cauda_1'], props.thresholds)
+    const t2 = readNumber(['umbral_caudal_2', 'umbral_cauda_2'], props.thresholds)
+    const t3 = readNumber(['umbral_caudal_3', 'umbral_cauda_3'], props.thresholds)
+
+    const annotations: Array<{ y: number; borderColor: string; label: { text: string } }> = []
+
+    if (t1 != null) {
+      annotations.push({
+        y: t1,
+        borderColor: '#FBC02D',
+        label: { text: `Umbral 1: ${t1.toFixed(2)} m3/s` },
+      })
+    }
+
+    if (t2 != null) {
+      annotations.push({
+        y: t2,
+        borderColor: '#EF6C00',
+        label: { text: `Umbral 2: ${t2.toFixed(2)} m3/s` },
+      })
+    }
+
+    if (t3 != null) {
+      annotations.push({
+        y: t3,
+        borderColor: '#C62828',
+        label: { text: `Umbral 3: ${t3.toFixed(2)} m3/s` },
+      })
+    }
+
+    return annotations
+  })
 
   function normalizePredictionResults(prediction?: DataStationPrediction['forecastHarmonie']) {
     if (!prediction?.results?.length) return null
@@ -94,6 +155,42 @@
     allDates.value.map((date) => dateFormattedWithHours(new Date(date).getTime()))
   )
 
+  const observedEndLabel = computed(() => {
+    if (!historicalData.value?.length) return null
+
+    const lastObserved = [...historicalData.value]
+      .reverse()
+      .find((item) => Number.isFinite(item.value))
+
+    if (!lastObserved) return null
+
+    const index = allDates.value.lastIndexOf(lastObserved.date)
+    if (index < 0) return null
+
+    return xLabels.value[index] ?? null
+  })
+
+  const observedEndXAnnotation = computed(() => {
+    if (!observedEndLabel.value) return []
+
+    return [
+      {
+        x: observedEndLabel.value,
+        borderColor: '#455A64',
+        strokeDashArray: 4,
+        label: {
+          text: 'Tº',
+          orientation: 'horizontal',
+          style: {
+            background: '#455A64',
+            color: '#fff',
+            fontSize: '10px',
+          },
+        },
+      },
+    ]
+  })
+
   function hasFiniteValue(values: Array<number | null>): boolean {
     return values.some((value) => Number.isFinite(value))
   }
@@ -153,7 +250,7 @@
       const values = allDates.value.map((date) => epsatMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
-          name: 'Predicción Det. EPS',
+          name: 'Predicción Prob. EPS',
           type: 'line',
           data: allDates.value.map((date, i) => ({
             x: labels[i],
@@ -216,7 +313,7 @@
     const colors: string[] = []
     if (names.has('Observado')) colors.push('#2E7D32') // Verde
     if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
-    if (names.has('Predicción Det. EPS')) colors.push('#FF9800') // Amarillo
+    if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
     if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
     if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
     return colors
@@ -228,7 +325,7 @@
     const opacity: number[] = []
     if (names.has('Observado')) opacity.push(1)
     if (names.has('Predicción Det. Harmonie')) opacity.push(1)
-    if (names.has('Predicción Det. EPS')) opacity.push(1)
+    if (names.has('Predicción Prob. EPS')) opacity.push(1)
     if (names.has('Percentiles P10-P90')) opacity.push(0.35)
     if (names.has('Percentiles P25-P75')) opacity.push(0.35)
 
@@ -241,19 +338,34 @@
     const widths: number[] = []
     if (names.has('Observado')) widths.push(2)
     if (names.has('Predicción Det. Harmonie')) widths.push(2)
-    if (names.has('Predicción Det. EPS')) widths.push(2)
+    if (names.has('Predicción Prob. EPS')) widths.push(2)
     if (names.has('Percentiles P10-P90')) widths.push(1)
     if (names.has('Percentiles P25-P75')) widths.push(1)
     return widths
   })
 
+  const dynamicStrokeCurve = computed(() =>
+    series.value.map((serie) => (serie.type === 'bar' ? 'straight' : 'smooth'))
+  )
+
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
       type: 'line',
       stacked: false,
-      height: 550,
-      zoom: { enabled: true },
-      toolbar: { show: props.toolbar ?? true },
+      height: chartHeight.value,
+      zoom: { enabled: true, type: 'xy', autoScaleYaxis: false, allowMouseWheelZoom: false },
+      toolbar: {
+        show: props.toolbar,
+        tools: {
+          download: true,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+          reset: true,
+        },
+      },
       events: {
         mounted: (chartContext: { el: HTMLElement }) => {
           try {
@@ -277,7 +389,7 @@
       opacity: dynamicFillOpacity.value,
     },
     stroke: {
-      curve: 'smooth',
+      curve: dynamicStrokeCurve.value,
       lineCap: 'round',
       width: dynamicStrokeWidth.value,
     },
@@ -300,6 +412,15 @@
     yaxis: {
       min: 0,
       title: { text: 'm3/s' },
+      labels: {
+        formatter: function (value) {
+          return Number(value).toFixed(2)
+        },
+      },
+    },
+    annotations: {
+      xaxis: observedEndXAnnotation.value,
+      yaxis: caudalThresholdAnnotations.value,
     },
     tooltip: {
       enabled: true,

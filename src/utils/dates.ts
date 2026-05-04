@@ -45,3 +45,42 @@ export function formatSimulationDate(dateStr: string): string {
     return dateStr
   }
 }
+
+export function parseDate(dateValue: string): Date | null {
+  const compactPattern = /^\d{14}$/
+
+  if (compactPattern.test(dateValue)) {
+    const year = Number.parseInt(dateValue.slice(0, 4), 10)
+    const month = Number.parseInt(dateValue.slice(4, 6), 10) - 1
+    const day = Number.parseInt(dateValue.slice(6, 8), 10)
+    const hour = Number.parseInt(dateValue.slice(8, 10), 10)
+    const minute = Number.parseInt(dateValue.slice(10, 12), 10)
+    const second = Number.parseInt(dateValue.slice(12, 14), 10)
+
+    const parsedCompactDate = new Date(year, month, day, hour, minute, second)
+    return Number.isNaN(parsedCompactDate.getTime()) ? null : parsedCompactDate
+  }
+
+  const parsedDate = new Date(dateValue)
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+}
+
+export function toTimestamp(dateValue: string): number {
+  const parsedDate = parseDate(dateValue)
+  return parsedDate?.getTime() ?? Number.NEGATIVE_INFINITY
+}
+
+export function formatDate(dateValue?: string): string {
+  if (!dateValue) return '--'
+
+  const parsedDate = parseDate(dateValue)
+  if (!parsedDate) return dateValue
+
+  const day = String(parsedDate.getDate()).padStart(2, '0')
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0')
+  const year = parsedDate.getFullYear()
+  const hour = String(parsedDate.getHours()).padStart(2, '0')
+  const minute = String(parsedDate.getMinutes()).padStart(2, '0')
+
+  return `${day}/${month}/${year} ${hour}:${minute}`
+}

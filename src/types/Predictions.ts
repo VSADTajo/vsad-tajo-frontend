@@ -36,6 +36,9 @@ export type PredictionTypeName =
   | 'Q.NAM.ens'
   | 'I.NAM.ens.medio'
   | 'I.NAM.ens'
+  | 'WI__01.historical'
+  | 'FICT98.historical'
+  | 'FICT99.historical'
 
 export type HistoricalPredictionTypeName = 'Q.historical' | 'Precip.historical'
 
@@ -43,8 +46,17 @@ export type PredictionsResponse = {
   predictions: StationPrediction[]
 }
 
+export type AvailableDateItem = {
+  simulationDate: string
+  modmeteo?: string
+  status?: string
+  predictionTypes?: string[]
+}
+
 export type DatesAvailableResponse = {
-  dates: string[]
+  dates?: string[]
+  simulationDates: AvailableDateItem[]
+  totalResults?: number
 }
 
 // Series para el gráfico
