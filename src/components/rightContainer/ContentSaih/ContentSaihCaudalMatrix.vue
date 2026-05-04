@@ -81,17 +81,57 @@
   }
 
   type RawResult = Record<string, unknown>
+  const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
   const rowDefinitions = computed<RowDefinition[]>(() => [
     { id: 'harmonie', label: 'Harmonie', prediction: props.forecastHarmonie },
     { id: 'eps', label: 'EPS medio', prediction: props.forecastEpsat },
   ])
 
+  function toFiniteNumber(value: unknown): number | null {
+    const numericValue = typeof value === 'number' ? value : Number.parseFloat(String(value))
+    return Number.isFinite(numericValue) ? numericValue : null
+  }
+
+  function toTimeSlotMs(dateValue: string): number | null {
+    const timestamp = new Date(dateValue).getTime()
+    if (!Number.isFinite(timestamp)) return null
+    return Math.floor(timestamp / SIX_HOURS_MS) * SIX_HOURS_MS
+  }
+
   function toValuesByDate(prediction?: StationPrediction): Map<string, RawResult> {
-    const map = new Map<string, RawResult>()
+    const groupedValues = new Map<number, number[]>()
+
     prediction?.results?.forEach((item) => {
-      map.set(item.date, item as unknown as RawResult)
+      const slotMs = toTimeSlotMs(item.date)
+      const value = toFiniteNumber(item.value)
+      if (slotMs == null || value == null) return
+
+      const values = groupedValues.get(slotMs) ?? []
+      values.push(value)
+      groupedValues.set(slotMs, values)
     })
+
+    const map = new Map<string, RawResult>()
+
+    Array.from(groupedValues.entries())
+      .sort(([slotA], [slotB]) => slotA - slotB)
+      .forEach(([slotMs, values]) => {
+        if (!values.length) return
+
+        const min = Math.min(...values)
+        const max = Math.max(...values)
+        const mean = values.reduce((sum, value) => sum + value, 0) / values.length
+
+        map.set(String(slotMs), {
+          date: new Date(slotMs).toISOString(),
+          min,
+          max,
+          mean,
+          value: mean,
+        })
+      })
+
     return map
   }
 
@@ -110,22 +150,11 @@
       row.valuesByDate.forEach((_, date) => set.add(date))
     })
 
-    return Array.from(set).sort()
+    return Array.from(set).sort((a, b) => Number(a) - Number(b))
   })
 
-  function isSixHourSlot(dateIso: string, index: number): boolean {
-    const date = new Date(dateIso)
-    if (Number.isNaN(date.getTime())) {
-      return index % 6 === 0
-    }
-
-    return date.getHours() % 6 === 0 && date.getMinutes() === 0
-  }
-
   const timeColumns = computed(() => {
-    const filtered = allDates.value.filter((date, index) => isSixHourSlot(date, index))
-
-    return filtered.slice(0, 28)
+    return allDates.value.slice(0, 28)
   })
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
@@ -160,15 +189,27 @@
   }
 
   const yellowThreshold = computed(
-    () => readNumber(['umbral_amarillo', 'threshold_yellow'], props.thresholds) ?? 40
+    () =>
+      readNumber(
+        ['umbral_caudal_1', 'umbral_cauda_1', 'umbral_amarillo', 'threshold_yellow'],
+        props.thresholds
+      ) ?? 40
   )
 
   const orangeThreshold = computed(
-    () => readNumber(['umbral_naranja', 'threshold_orange'], props.thresholds) ?? 70
+    () =>
+      readNumber(
+        ['umbral_caudal_2', 'umbral_cauda_2', 'umbral_naranja', 'threshold_orange'],
+        props.thresholds
+      ) ?? 70
   )
 
   const redThreshold = computed(
-    () => readNumber(['umbral_rojo', 'threshold_red'], props.thresholds) ?? 90
+    () =>
+      readNumber(
+        ['umbral_caudal_3', 'umbral_cauda_3', 'umbral_rojo', 'threshold_red'],
+        props.thresholds
+      ) ?? 90
   )
 
   function cellClass(value: number | null): string {
@@ -182,7 +223,8 @@
   }
 
   function formatHeader(dateIso: string): string {
-    const date = new Date(dateIso)
+    const numericDate = Number(dateIso)
+    const date = Number.isFinite(numericDate) ? new Date(numericDate) : new Date(dateIso)
     if (Number.isNaN(date.getTime())) return dateIso
 
     return format(date, 'dd/MM HH')
@@ -190,7 +232,7 @@
 
   function formatValue(value: number | null): string {
     if (value == null) return '--'
-    return Number.isInteger(value) ? String(value) : value.toFixed(1)
+    return value.toFixed(2)
   }
 </script>
 

@@ -1,7 +1,14 @@
 <template>
   <div>
-    <apexchart v-if="hasRenderableSeries" height="350" :options="chartOptions" :series="series" />
-    <div v-else class="chart-empty-state" style="height: 350px">Sin datos para mostrar</div>
+    <apexchart
+      v-if="hasRenderableSeries"
+      :height="chartHeight"
+      :options="chartOptions"
+      :series="series"
+    />
+    <div v-else class="chart-empty-state" :style="{ height: `${chartHeight}px` }">
+      Sin datos para mostrar
+    </div>
   </div>
 </template>
 
@@ -13,7 +20,10 @@
 
   const props = defineProps<{
     data: DataStationPrediction
+    height?: number
   }>()
+
+  const chartHeight = computed(() => props.height ?? 510)
 
   function normalizePredictionResults(prediction?: DataStationPrediction['forecastHarmonie']) {
     if (!prediction?.results?.length) return null
@@ -82,6 +92,42 @@
   const xLabels = computed(() =>
     allDates.value.map((date) => dateFormattedWithHours(new Date(date).getTime()))
   )
+
+  const observedEndLabel = computed(() => {
+    if (!historicalData.value?.length) return null
+
+    const lastObserved = [...historicalData.value]
+      .reverse()
+      .find((item) => Number.isFinite(item.value))
+
+    if (!lastObserved) return null
+
+    const index = allDates.value.lastIndexOf(lastObserved.date)
+    if (index < 0) return null
+
+    return xLabels.value[index] ?? null
+  })
+
+  const observedEndXAnnotation = computed(() => {
+    if (!observedEndLabel.value) return []
+
+    return [
+      {
+        x: observedEndLabel.value,
+        borderColor: '#455A64',
+        strokeDashArray: 4,
+        label: {
+          text: 'Tº',
+          orientation: 'horizontal',
+          style: {
+            background: '#455A64',
+            color: '#fff',
+            fontSize: '10px',
+          },
+        },
+      },
+    ]
+  })
 
   function hasFiniteValue(values: Array<number | null>): boolean {
     return values.some((value) => Number.isFinite(value))
@@ -183,7 +229,7 @@
       const values = allDates.value.map((date) => epsatMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
-          name: 'Predicción Det. EPS',
+          name: 'Predicción Prob. EPS',
           type: 'bar',
           data: allDates.value.map((date, i) => ({
             x: labels[i],
@@ -206,7 +252,7 @@
     if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
     if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
     if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
-    if (names.has('Predicción Det. EPS')) colors.push('#FF9800') // Amarillo
+    if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
     return colors
   })
 
@@ -218,7 +264,7 @@
     if (names.has('Percentiles P10-P90')) opacity.push(0.35)
     if (names.has('Percentiles P25-P75')) opacity.push(0.35)
     if (names.has('Predicción Det. Harmonie')) opacity.push(1)
-    if (names.has('Predicción Det. EPS')) opacity.push(1)
+    if (names.has('Predicción Prob. EPS')) opacity.push(1)
     return opacity
   })
 
@@ -230,16 +276,20 @@
     if (names.has('Percentiles P10-P90')) widths.push(1)
     if (names.has('Percentiles P25-P75')) widths.push(1)
     if (names.has('Predicción Det. Harmonie')) widths.push(0)
-    if (names.has('Predicción Det. EPS')) widths.push(0)
+    if (names.has('Predicción Prob. EPS')) widths.push(0)
     return widths
   })
+
+  const dynamicStrokeCurve = computed(() =>
+    series.value.map((serie) => (serie.type === 'bar' ? 'straight' : 'smooth'))
+  )
 
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
       type: 'line',
       stacked: false,
-      height: 550,
-      zoom: { enabled: true },
+      height: chartHeight.value,
+      zoom: { enabled: true, type: 'xy', autoScaleYaxis: false, allowMouseWheelZoom: false },
       toolbar: { show: true },
       events: {
         mounted: (chartContext: { el: HTMLElement }) => {
@@ -264,7 +314,7 @@
       opacity: dynamicFillOpacity.value,
     },
     stroke: {
-      curve: 'smooth',
+      curve: dynamicStrokeCurve.value,
       lineCap: 'round',
       width: dynamicStrokeWidth.value,
     },
@@ -287,6 +337,14 @@
     yaxis: {
       min: 0,
       title: { text: 'mm' },
+      labels: {
+        formatter: function (value) {
+          return Number(value).toFixed(1)
+        },
+      },
+    },
+    annotations: {
+      xaxis: observedEndXAnnotation.value,
     },
     tooltip: {
       enabled: true,
