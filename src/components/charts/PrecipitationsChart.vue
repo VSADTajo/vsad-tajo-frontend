@@ -1,7 +1,10 @@
 <template>
   <div>
+    <div v-if="loading" class="chart-loading-state" :style="{ height: `${chartHeight}px` }">
+      <v-skeleton-loader type="image" class="h-100 w-100" />
+    </div>
     <apexchart
-      v-if="hasRenderableSeries"
+      v-else-if="hasRenderableSeries"
       :height="chartHeight"
       :options="chartOptions"
       :series="series"
@@ -21,6 +24,7 @@
   const props = defineProps<{
     data: DataStationPrediction
     height?: number
+    loading?: boolean
   }>()
 
   const chartHeight = computed(() => props.height ?? 510)
@@ -431,6 +435,12 @@
 </script>
 
 <style>
+  .chart-loading-state {
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
   .chart-empty-state {
     display: flex;
     align-items: center;
