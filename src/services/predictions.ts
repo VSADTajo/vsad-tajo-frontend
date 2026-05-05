@@ -3,8 +3,10 @@ import type {
   AvailableDateItem,
   DatesAvailableResponse,
   HistoricalPredictionTypeName,
+  MaxLatestValuesResponse,
   PredictionsResponse,
   PredictionTypeName,
+  StationMaxLatestValue,
   StationPrediction,
 } from '@/types/Predictions'
 
@@ -93,4 +95,19 @@ export async function getHistoricalPredictionService(
     .json<PredictionsResponse>()
 
   return res.predictions[0]
+}
+
+export async function getMaxAndLatestValuesService(
+  typeName: 'Q.NAM.harmonie' | 'I.NAM.harmonie' | 'P.harmonie.forecast'
+): Promise<StationMaxLatestValue[]> {
+  const response = await api
+    .get('predictions/max-and-latest-values', {
+      searchParams: { typeName },
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+    .json<MaxLatestValuesResponse>()
+
+  return Array.isArray(response.values) ? response.values : []
 }

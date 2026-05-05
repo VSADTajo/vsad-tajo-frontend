@@ -1,7 +1,9 @@
 <template>
   <v-card class="bg-surface" elevation="2">
     <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-3 px-4">
-      <div class="text-subtitle-1 font-weight-bold">Matriz de caudales (7 dias / 6h)</div>
+      <div class="text-subtitle-1 font-weight-bold">
+        {{ title ?? 'Matriz de caudales (7 dias / 6h)' }}
+      </div>
 
       <v-btn-toggle
         v-model="valueMode"
@@ -70,6 +72,8 @@
     forecastEpsat?: StationPrediction
     thresholds?: Record<string, unknown>
     loading?: boolean
+    title?: string
+    noThresholds?: boolean
   }>()
 
   const valueMode = ref<ValueMode>('medio')
@@ -214,6 +218,7 @@
 
   function cellClass(value: number | null): string {
     if (value == null) return 'cell-empty'
+    if (props.noThresholds) return 'cell-normal'
 
     if (value >= redThreshold.value) return 'cell-red'
     if (value >= orangeThreshold.value) return 'cell-orange'

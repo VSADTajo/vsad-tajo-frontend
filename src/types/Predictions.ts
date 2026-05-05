@@ -59,6 +59,20 @@ export type DatesAvailableResponse = {
   totalResults?: number
 }
 
+export type StationMaxLatestValue = {
+  stationId: string
+  stationName: string
+  maxValue: number
+  latestValue: number
+  latestDate: string
+  predictionTypeName: string
+  simulationDate: string
+}
+
+export type MaxLatestValuesResponse = {
+  values: StationMaxLatestValue[]
+}
+
 // Series para el gráfico
 export type RangePoint = { x: string; y: [number | null, number | null] | null }
 export type Point = { x: string; y: number | null }

@@ -61,29 +61,38 @@
     const t2 = readNumber(['umbral_caudal_2', 'umbral_cauda_2'], props.thresholds)
     const t3 = readNumber(['umbral_caudal_3', 'umbral_cauda_3'], props.thresholds)
 
-    const annotations: Array<{ y: number; borderColor: string; label: { text: string } }> = []
+    const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
     if (t1 != null) {
       annotations.push({
         y: t1,
-        borderColor: '#FBC02D',
-        label: { text: `Umbral 1: ${t1.toFixed(2)} m3/s` },
+        borderColor: '#fde68a',
+        label: {
+          text: `Nivel 1: ${t1.toFixed(2)} m3/s`,
+          style: { background: '#fde68a', color: '#7c2d12' },
+        },
       })
     }
 
     if (t2 != null) {
       annotations.push({
         y: t2,
-        borderColor: '#EF6C00',
-        label: { text: `Umbral 2: ${t2.toFixed(2)} m3/s` },
+        borderColor: '#fdba74',
+        label: {
+          text: `Nivel 2: ${t2.toFixed(2)} m3/s`,
+          style: { background: '#fdba74', color: '#7c2d12' },
+        },
       })
     }
 
     if (t3 != null) {
       annotations.push({
         y: t3,
-        borderColor: '#C62828',
-        label: { text: `Umbral 3: ${t3.toFixed(2)} m3/s` },
+        borderColor: '#fca5a5',
+        label: {
+          text: `Nivel 3: ${t3.toFixed(2)} m3/s`,
+          style: { background: '#fca5a5', color: '#7c2d12' },
+        },
       })
     }
 
