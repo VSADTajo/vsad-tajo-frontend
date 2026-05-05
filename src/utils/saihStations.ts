@@ -1,3 +1,5 @@
+import { getSaihAlertInfo, getSaihPrecipMaxInfo } from '@/utils/saihAlerts'
+
 export const SAIH_TYPE_COLORS: Record<string, string> = {
   AR: '#4775a8',
   E: '#101c44',
@@ -61,7 +63,11 @@ function readNumericValue(props: Record<string, unknown>, keys: string[]): numbe
   return null
 }
 
-function buildAlertChip(value: number | null, props: Record<string, unknown>): string {
+function buildAlertChip(
+  value: number | null,
+  props: Record<string, unknown>,
+  backgroundColor?: string | null
+): string {
   if (value == null) {
     return '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">--</span>'
   }
@@ -72,19 +78,55 @@ function buildAlertChip(value: number | null, props: Record<string, unknown>): s
 
   const formatValue = Number.isInteger(value) ? String(value) : value.toFixed(1)
 
+  if (backgroundColor === '#fca5a5') {
+    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fca5a5;color:#fff;font-weight:700">${formatValue} m3/s</span>`
+  }
+
+  if (backgroundColor === '#fdba74') {
+    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fdba74;color:#fff;font-weight:700">${formatValue} m3/s</span>`
+  }
+
+  if (backgroundColor === '#fde68a') {
+    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fde68a;color:#1f2937;font-weight:700">${formatValue} m3/s</span>`
+  }
+
   if (value >= redThreshold) {
-    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#dc2626;color:#fff;font-weight:700">${formatValue}</span>`
+    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fca5a5;color:#fff;font-weight:700">${formatValue} m3/s</span>`
   }
 
   if (value >= orangeThreshold) {
-    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#f97316;color:#fff;font-weight:700">${formatValue}</span>`
+    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fdba74;color:#fff;font-weight:700">${formatValue} m3/s</span>`
   }
 
   if (value >= yellowThreshold) {
-    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#facc15;color:#1f2937;font-weight:700">${formatValue}</span>`
+    return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fde68a;color:#1f2937;font-weight:700">${formatValue} m3/s</span>`
   }
 
-  return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">${formatValue}</span>`
+  return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">${formatValue} m3/s</span>`
+}
+
+function formatPopupDate(value: string | null): string {
+  if (!value) return '-'
+
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) {
+    return new Intl.DateTimeFormat('es-ES', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'UTC',
+    }).format(parsed)
+  }
+
+  if (value.length === 14) {
+    const year = value.slice(0, 4)
+    const month = value.slice(4, 6)
+    const day = value.slice(6, 8)
+    const hour = value.slice(8, 10)
+    const minute = value.slice(10, 12)
+    return `${day}/${month}/${year} ${hour}:${minute}`
+  }
+
+  return value
 }
 
 export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
@@ -93,14 +135,41 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   const tipo = String(props.tipo_cod ?? props.tipo ?? '')
   const headerColor = getSaihTypeColor(tipo)
   const headerColorDark = darkenHex(headerColor, 0.72)
+  const alertInfo = getSaihAlertInfo(feature)
+  const precipInfo = getSaihPrecipMaxInfo(feature)
 
   const codigo = escapeHtml(props.codigo)
   const nombre = escapeHtml(props.nombre)
   const municipio = escapeHtml(props.municipio)
-  const mockValue = 82.4
-  const mockValueTime = '2026-04-09 12:00'
-  const valueChip = buildAlertChip(mockValue, props)
-  const valueTime = escapeHtml(mockValueTime)
+  const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
+  const maxTime = escapeHtml(formatPopupDate(alertInfo.simulationDate))
+
+  const caudalSection =
+    alertInfo.maxValue != null
+      ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+          <strong>Caudal Máximo Previsto</strong>
+          ${maxValueChip}
+        </div>
+        <div style="margin-bottom:6px"><strong>Fecha Prevista</strong> ${maxTime}</div>`
+      : ''
+
+  const precipValue =
+    precipInfo.maxValue != null
+      ? (Number.isInteger(precipInfo.maxValue)
+          ? String(precipInfo.maxValue)
+          : precipInfo.maxValue.toFixed(1)) + ' mm'
+      : '-'
+  const precipTime = escapeHtml(formatPopupDate(precipInfo.simulationDate))
+  const precipSection =
+    precipInfo.maxValue != null
+      ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+          <strong>Precipitación Máx. Prevista</strong>
+          <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#bfdbfe;color:#1e3a5f;font-weight:700">${precipValue}</span>
+        </div>
+        <div style="margin-bottom:6px"><strong>Fecha Prevista</strong> ${precipTime}</div>`
+      : ''
 
   return `
     <div style="min-width:220px;border-radius:12px;overflow:hidden;font-family:Montserrat,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,0.16)">
@@ -109,11 +178,8 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
         <div style="font-size:12px;opacity:.92;margin-top:2px;line-height:1.2">${nombre}</div>
       </div>
       <div style="padding:10px 12px;background:#fff;color:#1f2937;font-size:12px;line-height:1.5">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <strong>Valor</strong>
-          ${valueChip}
-        </div>
-        <div style="margin-bottom:6px"><strong>Hora:</strong> ${valueTime}</div>
+        ${caudalSection}
+        ${precipSection}
         <div><strong>Municipio:</strong> ${municipio}</div>
       </div>
     </div>

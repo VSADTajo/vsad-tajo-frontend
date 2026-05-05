@@ -112,6 +112,17 @@
     return xLabels.value[index] ?? null
   })
 
+  const observedLastIndex = computed(() => {
+    if (!historicalData.value?.length) return -1
+
+    const lastObserved = [...historicalData.value]
+      .reverse()
+      .find((item) => Number.isFinite(item.value))
+
+    if (!lastObserved) return -1
+    return allDates.value.lastIndexOf(lastObserved.date)
+  })
+
   const observedEndXAnnotation = computed(() => {
     if (!observedEndLabel.value) return []
 
@@ -160,7 +171,7 @@
       if (hasFiniteValue(values)) {
         result.push({
           name: 'Observado',
-          type: 'line',
+          type: 'bar',
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
@@ -243,6 +254,42 @@
       }
     }
 
+    // Acumulado: observado hasta su fin + EPS desde ese punto en adelante
+    {
+      const observedMap = historicalData.value
+        ? new Map(historicalData.value.map((d) => [d.date, d.value]))
+        : null
+      const epsMap = epsatData.value ? new Map(epsatData.value.map((d) => [d.date, d.value])) : null
+
+      if (observedMap || epsMap) {
+        let cumulative = 0
+        let hasStarted = false
+
+        const cumulativeData = allDates.value.map((date, i) => {
+          const useObserved = observedLastIndex.value >= 0 && i <= observedLastIndex.value
+          const sourceValue = useObserved
+            ? (observedMap?.get(date) ?? null)
+            : (epsMap?.get(date) ?? null)
+
+          if (Number.isFinite(sourceValue)) {
+            cumulative += Number(sourceValue)
+            hasStarted = true
+            return { x: labels[i], y: cumulative }
+          }
+
+          return { x: labels[i], y: hasStarted ? cumulative : null }
+        })
+
+        if (hasFiniteValue(cumulativeData.map((point) => point.y))) {
+          result.push({
+            name: 'Precipitación acumulada (Obs + EPS)',
+            type: 'line',
+            data: cumulativeData,
+          })
+        }
+      }
+    }
+
     return result
   })
 
@@ -257,6 +304,7 @@
     if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
     if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
     if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
+    if (names.has('Precipitación acumulada (Obs + EPS)')) colors.push('#00695C') // Verde azulado
     return colors
   })
 
@@ -269,6 +317,7 @@
     if (names.has('Percentiles P25-P75')) opacity.push(0.35)
     if (names.has('Predicción Det. Harmonie')) opacity.push(1)
     if (names.has('Predicción Prob. EPS')) opacity.push(1)
+    if (names.has('Precipitación acumulada (Obs + EPS)')) opacity.push(1)
     return opacity
   })
 
@@ -281,6 +330,7 @@
     if (names.has('Percentiles P25-P75')) widths.push(1)
     if (names.has('Predicción Det. Harmonie')) widths.push(0)
     if (names.has('Predicción Prob. EPS')) widths.push(0)
+    if (names.has('Precipitación acumulada (Obs + EPS)')) widths.push(3)
     return widths
   })
 

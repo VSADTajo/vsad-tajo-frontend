@@ -99,7 +99,7 @@
             <v-divider></v-divider>
 
             <v-tabs-window v-model="tab">
-              <v-tabs-window-item v-if="hasCaudal" value="caudal">
+              <v-tabs-window-item v-if="hasCaudal" value="caudal" eager>
                 <v-sheet
                   v-if="
                     loadingCaudales ||
@@ -135,7 +135,7 @@
                 </div>
               </v-tabs-window-item>
 
-              <v-tabs-window-item value="precipitaciones">
+              <v-tabs-window-item value="precipitaciones" eager>
                 <v-sheet
                   v-if="
                     loadingPrecipitaciones ||
@@ -210,8 +210,8 @@
     </v-col>
   </v-row>
 
-  <v-row v-if="hasCaudal" class="px-2">
-    <v-col cols="12" md="7" class="mb-2 mb-md-0">
+  <v-row class="px-2">
+    <v-col v-if="tab === 'caudal'" cols="12" md="7" class="mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
           :forecast-harmonie="caudalForecastHarmonie"
@@ -222,31 +222,15 @@
       </v-card>
     </v-col>
 
-    <v-col cols="12" md="5" class="px-2">
-      <v-card class="bg-surface" elevation="2">
-        <v-card-title class="text-subtitle-1 font-weight-bold">Percentiles de caudal</v-card-title>
-        <v-divider />
-
-        <v-card-text>
-          <div
-            v-if="
-              caudalForecastEnsP10 ||
-              caudalForecastEnsP25 ||
-              caudalForecastEnsP75 ||
-              caudalForecastEnsP90
-            "
-          >
-            <!-- <ForecastChartNew :data="caudalPercentilesChartData" :toolbar="false" :height="220" /> -->
-          </div>
-
-          <div v-else-if="loadingCaudales" class="chart-placeholder chart-placeholder--percentiles">
-            <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-          </div>
-
-          <div v-else class="chart-placeholder chart-placeholder--percentiles">
-            No hay datos de percentiles disponibles
-          </div>
-        </v-card-text>
+    <v-col v-else cols="12" md="7" class="px-2 mb-2 mb-md-0">
+      <v-card class="pa-2 bg-background" elevation="2">
+        <ContentSaihCaudalMatrix
+          :forecast-harmonie="precipitationsForecastHarmonie"
+          :forecast-epsat="precipitationsForecastEpstat"
+          :loading="matrixLoading"
+          title="Matriz de precipitaciones (7 dias / 6h)"
+          no-thresholds
+        />
       </v-card>
     </v-col>
   </v-row>
@@ -277,6 +261,7 @@
     embalsesWithCaudalPredictions,
   } from '@/constants/predictionsAvailableData'
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
+  import HydroCombinedChart from '../charts/HydroCombinedChart.vue'
 
   const route = useRoute()
   const router = useRouter()

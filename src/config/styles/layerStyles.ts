@@ -3,20 +3,7 @@ import type { Feature } from 'geojson'
 import type { LayerStyle } from '@/types/Layers'
 import { getSaihTypeColor } from '@/utils/saihStations'
 import { MAP_PANES } from '@/config/panes/mapPanes'
-
-const temporaryAlertPool = [
-  '#facc15',
-  '#facc15',
-  '#facc15',
-  '#f97316',
-  '#f97316',
-  '#f97316',
-  '#dc2626',
-  '#dc2626',
-  '#dc2626',
-]
-
-const temporaryAlertByFeature = new Map<string, string>()
+import { getSaihAlertInfo } from '@/utils/saihAlerts'
 
 function getFeatureKey(feature: Feature): string {
   const props = feature.properties ?? {}
@@ -30,27 +17,20 @@ function getFeatureKey(feature: Feature): string {
   return JSON.stringify(feature.geometry)
 }
 
-function getTemporaryAlertBackground(featureKey: string): string | null {
-  const existing = temporaryAlertByFeature.get(featureKey)
-  if (existing) return existing
+function getAlertBackground(feature: Feature): string | null {
+  const featureKey = getFeatureKey(feature)
+  if (!featureKey) return null
 
-  if (!temporaryAlertPool.length) return null
-
-  const randomIndex = Math.floor(Math.random() * temporaryAlertPool.length)
-  const [selected] = temporaryAlertPool.splice(randomIndex, 1)
-
-  temporaryAlertByFeature.set(featureKey, selected)
-  return selected
+  return getSaihAlertInfo(feature).backgroundColor
 }
 
 export const saihPointStyle = (feature: Feature, latlng: L.LatLng) => {
   const tipo = String(feature.properties?.tipo_cod ?? '').toUpperCase()
   const color = getSaihTypeColor(tipo)
-  const featureKey = getFeatureKey(feature)
-  const temporaryAlertBackground = getTemporaryAlertBackground(featureKey)
+  const alertBackground = getAlertBackground(feature)
 
   const safeTipo = tipo.replace(/[^A-Z0-9]/g, '') || 'NA'
-  const bgStyle = temporaryAlertBackground ? `;--saih-bg:${temporaryAlertBackground}` : ''
+  const bgStyle = alertBackground ? `;--saih-bg:${alertBackground}` : ''
 
   const marker = L.marker(latlng, {
     icon: L.divIcon({

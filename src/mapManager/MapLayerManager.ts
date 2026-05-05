@@ -12,6 +12,7 @@ import { isSelectableLayerId, type SelectableLayerId } from './layerConstants'
 import { TemporalLayerManager } from './TemporalLayerManager'
 import { LayerInteractionManager } from './LayerInteractionManager'
 import { getCustomLegendInfo } from '@/config/styles/customLegends'
+import { ensureSaihAlertsLoaded } from '@/utils/saihAlerts'
 
 export class MapLayerManager {
   private map: L.Map
@@ -79,6 +80,10 @@ export class MapLayerManager {
       }
 
       const cql = `${field} IN (${activeChildren.map((v) => `'${v}'`).join(',')})`
+
+      if (config.id === 'saih') {
+        await ensureSaihAlertsLoaded()
+      }
 
       // Crear callback para capas agrupadas
       const callback = (feature: GeoJSON.Feature) => {
