@@ -14,7 +14,7 @@
           contain
         />
 
-        <v-img v-if="mdAndUp" :src="ministerio" max-width="300" class="ml-5" contain />
+        <v-img v-if="mdAndUp" :src="ministerio" max-width="400" class="ml-5" contain />
       </div>
     </v-toolbar-title>
 

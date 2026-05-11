@@ -63,24 +63,11 @@
             <ContentObservedData
               :active-tab="tab"
               :loading="sidePanelsLoading"
-              :selected-observed-caudal-date="selectedObservedCaudalDate"
-              :selected-observed-precip-date="selectedObservedPrecipDate"
-              :observed-caudal-dates="observedCaudalDates"
-              :observed-precip-dates="observedPrecipDates"
+              :is-embalse="isEmbalse"
               :caudal-historical="caudalHistorical"
+              :caudal-outflow-historical="caudalOutflowHistorical"
+              :embalse-volume-historical="embalseVolumeHistorical"
               :precipitations-historical="precipitationsHistorical"
-              :thresholds="feature?.properties as Record<string, unknown>"
-              @update:selected-observed-caudal-date="selectedObservedCaudalDate = $event"
-              @update:selected-observed-precip-date="selectedObservedPrecipDate = $event"
-            />
-          </v-col>
-        </v-row>
-      </v-card>
-      <v-card class="ma-2 pa-2 bg-background mt-6" elevation="2">
-        <v-row>
-          <v-col cols="6" md="12">
-            <ContentUmbralesData
-              :active-tab="tab"
               :thresholds="feature?.properties as Record<string, unknown>"
             />
           </v-col>
@@ -196,6 +183,7 @@
               :harmonie-precip-dates="harmoniePrecipDates"
               :eps-caudal-dates="epsCaudalDates"
               :eps-precip-dates="epsPrecipDates"
+              :thresholds="feature?.properties as Record<string, unknown>"
               @update:selected-harmonie-caudal-date="selectedHarmonieCaudalDate = $event"
               @update:selected-harmonie-precip-date="selectedHarmoniePrecipDate = $event"
               @update:selected-eps-caudal-date="selectedEpsCaudalDate = $event"
@@ -233,6 +221,16 @@
         />
       </v-card>
     </v-col>
+
+    <v-col cols="12" md="5">
+      <v-card class="pa-2 bg-background" elevation="2">
+        <ContentUmbralesData
+          :active-tab="tab"
+          :is-embalse="isEmbalse"
+          :thresholds="feature?.properties as Record<string, unknown>"
+        />
+      </v-card>
+    </v-col>
   </v-row>
 </template>
 
@@ -243,6 +241,7 @@
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
   import type {
+    AvailableDateItem,
     DataStationPrediction,
     DatesAvailableResponse,
     PredictionTypeName,
@@ -261,7 +260,6 @@
     embalsesWithCaudalPredictions,
   } from '@/constants/predictionsAvailableData'
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
-  import HydroCombinedChart from '../charts/HydroCombinedChart.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -289,6 +287,8 @@
   const caudalForecastEnsP75 = ref<StationPrediction>()
   const caudalForecastEnsP90 = ref<StationPrediction>()
   const caudalHistorical = ref<StationPrediction>()
+  const caudalOutflowHistorical = ref<StationPrediction>()
+  const embalseVolumeHistorical = ref<StationPrediction>()
 
   const availableDates = ref<DatesAvailableResponse>({ simulationDates: [], totalResults: 0 })
   const selectedObservedCaudalDate = ref<string>('')
@@ -358,6 +358,8 @@
   })
 
   const hasCaudal = computed(() => stationsWithCaudalPredictions.has(normalizedStationCode.value))
+  const embalseCodes = new Set(embalsesWithCaudalPredictions)
+  const isEmbalse = computed(() => embalseCodes.has(normalizedStationCode.value))
 
   const tab = ref<'caudal' | 'precipitaciones'>(hasCaudal.value ? 'caudal' : 'precipitaciones')
 
@@ -378,57 +380,12 @@
     percentile?: string
   }
 
-  function onType(
-    data: DatesAvailableResponse['simulationDates'],
-    predictionType: string
-  ): string[] {
-    return data
-      .filter(
-        (item) =>
-          Array.isArray(item.predictionTypes) && item.predictionTypes.includes(predictionType)
-      )
-      .map((item) => item.simulationDate)
-      .filter((value): value is string => Boolean(value))
-      .sort((a, b) => b.localeCompare(a))
-  }
-
-  function mergeUniqueDates(...groups: string[][]): string[] {
-    return Array.from(new Set(groups.flat())).sort((a, b) => b.localeCompare(a))
-  }
-
-  const observedCaudalDates = computed(() =>
-    onType(
-      availableDates.value.simulationDates,
-      codeType.value === 'E' ? 'FICT99.historical' : 'FICT98.historical'
-    )
-  )
-  const observedPrecipDates = computed(() =>
-    onType(availableDates.value.simulationDates, 'WI__01.historical')
-  )
-
-  const harmonieCaudalDates = computed(() =>
-    onType(
-      availableDates.value.simulationDates,
-      codeType.value === 'E' ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
-    )
-  )
-
-  const harmoniePrecipDates = computed(() =>
-    onType(availableDates.value.simulationDates, 'P.harmonie.forecast')
-  )
-
-  const epsCaudalDates = computed(() =>
-    codeType.value === 'E'
-      ? mergeUniqueDates(
-          onType(availableDates.value.simulationDates, 'I.NAM.ens.medio'),
-          onType(availableDates.value.simulationDates, 'I.NAM.ens')
-        )
-      : onType(availableDates.value.simulationDates, 'Q.NAM.ens')
-  )
-
-  const epsPrecipDates = computed(() =>
-    onType(availableDates.value.simulationDates, 'P.ens.forecast')
-  )
+  const observedCaudalDates = ref<string[]>([])
+  const observedPrecipDates = ref<string[]>([])
+  const harmonieCaudalDates = ref<string[]>([])
+  const harmoniePrecipDates = ref<string[]>([])
+  const epsCaudalDates = ref<string[]>([])
+  const epsPrecipDates = ref<string[]>([])
 
   const hasSelectedDateForTab = computed(() =>
     tab.value === 'caudal'
@@ -599,6 +556,8 @@
 
   const caudalChartData = computed(() => ({
     historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    historicalVolume: embalseVolumeHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
     forecastEnsP10: caudalForecastEnsP10.value,
@@ -633,8 +592,6 @@
     stationId: string,
     requests: ForecastRequestDef[]
   ): Promise<Partial<DataStationPrediction>> {
-    console.log('Fetching predictions for', stationId, requests)
-
     const entries = await Promise.all(
       requests.map(async (requestDef) => {
         if (!requestDef.simulationDate) {
@@ -663,12 +620,77 @@
 
   async function getAvailableDates(code: string): Promise<DatesAvailableResponse> {
     try {
-      const response = await getAvailablePredictionsService(code)
-      availableDates.value = response
-      return response
+      const selectedCodeType = codeType.value === 'E' ? 'E' : 'default'
+      const observedCaudalType: PredictionTypeName =
+        selectedCodeType === 'E' ? 'FICT99.historical' : 'FICT98.historical'
+      const harmonieCaudalType: PredictionTypeName =
+        selectedCodeType === 'E' ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
+      const epsCaudalTypes: PredictionTypeName[] =
+        selectedCodeType === 'E' ? ['I.NAM.ens.medio', 'I.NAM.ens'] : ['Q.NAM.ens']
+
+      const [
+        observedCaudalResponse,
+        observedPrecipResponse,
+        harmonieCaudalResponse,
+        harmoniePrecipResponse,
+        ...epsResponses
+      ] = await Promise.all([
+        getAvailablePredictionsService(code, observedCaudalType),
+        getAvailablePredictionsService(code, 'WI__01.historical'),
+        getAvailablePredictionsService(code, harmonieCaudalType),
+        getAvailablePredictionsService(code, 'P.harmonie.forecast'),
+        ...epsCaudalTypes.map((typeName) => getAvailablePredictionsService(code, typeName)),
+      ])
+
+      const epsPrecipResponse = await getAvailablePredictionsService(code, 'P.ens.forecast')
+
+      const toDateList = (response: DatesAvailableResponse): string[] => {
+        const fromSimulationDates = (response.simulationDates ?? [])
+          .map((item) => item.simulationDate)
+          .filter((value): value is string => Boolean(value))
+        const fromDates = (response.dates ?? []).filter((value): value is string => Boolean(value))
+
+        return Array.from(new Set([...fromSimulationDates, ...fromDates])).sort((a, b) =>
+          b.localeCompare(a)
+        )
+      }
+
+      observedCaudalDates.value = toDateList(observedCaudalResponse)
+      observedPrecipDates.value = toDateList(observedPrecipResponse)
+      harmonieCaudalDates.value = toDateList(harmonieCaudalResponse)
+      harmoniePrecipDates.value = toDateList(harmoniePrecipResponse)
+      epsCaudalDates.value = Array.from(new Set(epsResponses.flatMap(toDateList))).sort((a, b) =>
+        b.localeCompare(a)
+      )
+      epsPrecipDates.value = toDateList(epsPrecipResponse)
+
+      const allDates = Array.from(
+        new Set([
+          ...observedCaudalDates.value,
+          ...observedPrecipDates.value,
+          ...harmonieCaudalDates.value,
+          ...harmoniePrecipDates.value,
+          ...epsCaudalDates.value,
+          ...epsPrecipDates.value,
+        ])
+      ).sort((a, b) => b.localeCompare(a))
+
+      const normalized: DatesAvailableResponse = {
+        simulationDates: allDates.map((simulationDate): AvailableDateItem => ({ simulationDate })),
+        totalResults: allDates.length,
+      }
+
+      availableDates.value = normalized
+      return normalized
     } catch (err) {
       console.error('Error loading Available Dates', err)
       const fallback: DatesAvailableResponse = { simulationDates: [], totalResults: 0 }
+      observedCaudalDates.value = []
+      observedPrecipDates.value = []
+      harmonieCaudalDates.value = []
+      harmoniePrecipDates.value = []
+      epsCaudalDates.value = []
+      epsPrecipDates.value = []
       availableDates.value = fallback
       return fallback
     }
@@ -692,6 +714,8 @@
     if (!currentStation || !hasAnySelectedDate) {
       clearForecasts(precipitationRefs)
       clearForecasts(caudalRefs)
+      caudalOutflowHistorical.value = undefined
+      embalseVolumeHistorical.value = undefined
       loadingPrecipitaciones.value = false
       loadingCaudales.value = false
       return
@@ -713,9 +737,29 @@
           )
         : Promise.resolve({} as Partial<DataStationPrediction>)
 
-      const [precipitationData, caudalData] = await Promise.all([
+      const outflowPromise =
+        hasCaudal.value && isEmbalse.value && Boolean(selectedObservedCaudalDate.value)
+          ? getPredictionsService(
+              currentStation,
+              'FICT95.historical',
+              selectedObservedCaudalDate.value
+            )
+          : Promise.resolve(undefined)
+
+      const volumePromise =
+        hasCaudal.value && isEmbalse.value && Boolean(selectedObservedCaudalDate.value)
+          ? getPredictionsService(
+              currentStation,
+              'VICT01.historical',
+              selectedObservedCaudalDate.value
+            )
+          : Promise.resolve(undefined)
+
+      const [precipitationData, caudalData, outflowData, volumeData] = await Promise.all([
         precipitationPromise,
         caudalPromise,
+        outflowPromise,
+        volumePromise,
       ])
 
       if (requestId !== predictionsRequestId) {
@@ -724,6 +768,8 @@
 
       applyForecastData(precipitationRefs, precipitationData)
       applyForecastData(caudalRefs, caudalData)
+      caudalOutflowHistorical.value = outflowData
+      embalseVolumeHistorical.value = volumeData
     } catch (err) {
       console.error('Error loading predictions:', err)
       if (requestId !== predictionsRequestId) {
@@ -731,6 +777,8 @@
       }
       clearForecasts(precipitationRefs)
       clearForecasts(caudalRefs)
+      caudalOutflowHistorical.value = undefined
+      embalseVolumeHistorical.value = undefined
     } finally {
       if (requestId === predictionsRequestId) {
         loadingPrecipitaciones.value = false
@@ -756,10 +804,7 @@
     error.value = null
 
     try {
-      const [result, datesAvailable] = await Promise.all([
-        getWFSFeatureById(saihConfig.value, 'codigo', code),
-        getAvailableDates(code),
-      ])
+      const result = await getWFSFeatureById(saihConfig.value, 'codigo', code)
 
       if (requestId !== featureRequestId) {
         return false
@@ -773,6 +818,10 @@
 
       feature.value = result
       console.log('Loaded feature', feature.value)
+      const datesAvailable = await getAvailableDates(code)
+      if (requestId !== featureRequestId) {
+        return false
+      }
       availableDates.value = datesAvailable
 
       selectedObservedCaudalDate.value = pickDefaultDate(
@@ -867,6 +916,14 @@
         selectedHarmoniePrecipDate.value = ''
         selectedEpsCaudalDate.value = ''
         selectedEpsPrecipDate.value = ''
+        caudalOutflowHistorical.value = undefined
+        embalseVolumeHistorical.value = undefined
+        observedCaudalDates.value = []
+        observedPrecipDates.value = []
+        harmonieCaudalDates.value = []
+        harmoniePrecipDates.value = []
+        epsCaudalDates.value = []
+        epsPrecipDates.value = []
         availableDates.value = { simulationDates: [], totalResults: 0 }
         clearForecasts(precipitationRefs)
         clearForecasts(caudalRefs)

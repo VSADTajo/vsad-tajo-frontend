@@ -203,3 +203,42 @@ export async function getWFSFeatureById(
 
   return fc.features?.[0] ?? null
 }
+
+/**
+ * Obtiene el feature (polígono) que contiene un punto dado
+ */
+export async function getFeatureContainingPoint(
+  url: string,
+  typeName: string,
+  lat: number,
+  lng: number
+): Promise<GeoJSON.Feature | null> {
+  try {
+    const params = {
+      service: 'WFS',
+      version: '1.0.0',
+      request: 'GetFeature',
+      typeName,
+      outputFormat: 'application/json',
+      srsName: 'EPSG:4326',
+      CQL_FILTER: `CONTAINS(geom, POINT(${lng} ${lat}))`,
+    }
+
+    const response = await ky.get(url, { searchParams: params })
+    const contentType = response.headers.get('content-type')
+
+    const text = await response.text()
+
+    if (contentType?.includes('xml')) {
+      console.error('[getFeatureContainingPoint] GeoServer returned XML error:', text)
+      return null
+    }
+
+    const fc = JSON.parse(text) as GeoJSON.FeatureCollection
+
+    return fc.features?.[0] ?? null
+  } catch (err) {
+    console.error('[getFeatureContainingPoint] Error for', typeName, 'at', lat, lng, err)
+    return null
+  }
+}

@@ -39,6 +39,8 @@ export type PredictionTypeName =
   | 'WI__01.historical'
   | 'FICT98.historical'
   | 'FICT99.historical'
+  | 'FICT95.historical'
+  | 'VICT01.historical'
 
 export type HistoricalPredictionTypeName = 'Q.historical' | 'Precip.historical'
 
