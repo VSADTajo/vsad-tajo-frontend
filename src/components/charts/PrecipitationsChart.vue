@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="precipitations-chart">
     <div v-if="loading" class="chart-loading-state" :style="{ height: `${chartHeight}px` }">
       <v-skeleton-loader type="image" class="h-100 w-100" />
     </div>
@@ -254,23 +254,64 @@
       }
     }
 
-    // Acumulado: observado hasta su fin + EPS desde ese punto en adelante
+    // Acumulados: observado, EPS medio y percentiles, todos partiendo del observado
     {
       const observedMap = historicalData.value
         ? new Map(historicalData.value.map((d) => [d.date, d.value]))
         : null
-      const epsMap = epsatData.value ? new Map(epsatData.value.map((d) => [d.date, d.value])) : null
+      const lastObservedIndex = observedLastIndex.value
 
-      if (observedMap || epsMap) {
-        let cumulative = 0
+      let observedCumulative = 0
+      let hasObservedCumulative = false
+      const observedCumulativeByIndex = allDates.value.map((date, i) => {
+        if (lastObservedIndex < 0 || i > lastObservedIndex) return null
+
+        const observedValue = observedMap?.get(date) ?? null
+        if (Number.isFinite(observedValue)) {
+          observedCumulative += Number(observedValue)
+          hasObservedCumulative = true
+          return observedCumulative
+        }
+
+        return hasObservedCumulative ? observedCumulative : null
+      })
+
+      const observedBaseline =
+        lastObservedIndex >= 0 ? (observedCumulativeByIndex[lastObservedIndex] ?? null) : null
+
+      const buildCumulativeSeries = (
+        seriesName: string,
+        futureMap: Map<string, number | null> | null,
+        forceObservedOnly = false
+      ) => {
+        if (!observedMap && !futureMap) return
+
+        let cumulative = Number(observedBaseline ?? 0)
         let hasStarted = false
 
         const cumulativeData = allDates.value.map((date, i) => {
-          const useObserved = observedLastIndex.value >= 0 && i <= observedLastIndex.value
-          const sourceValue = useObserved
-            ? (observedMap?.get(date) ?? null)
-            : (epsMap?.get(date) ?? null)
+          if (forceObservedOnly) {
+            return {
+              x: labels[i],
+              y: observedCumulativeByIndex[i] ?? null,
+            }
+          }
 
+          if (lastObservedIndex >= 0) {
+            if (i < lastObservedIndex) {
+              return { x: labels[i], y: null }
+            }
+
+            if (i === lastObservedIndex) {
+              hasStarted = Number.isFinite(observedBaseline)
+              return {
+                x: labels[i],
+                y: observedBaseline,
+              }
+            }
+          }
+
+          const sourceValue = futureMap?.get(date) ?? null
           if (Number.isFinite(sourceValue)) {
             cumulative += Number(sourceValue)
             hasStarted = true
@@ -282,12 +323,25 @@
 
         if (hasFiniteValue(cumulativeData.map((point) => point.y))) {
           result.push({
-            name: 'Precipitación acumulada (Obs + EPS)',
+            name: seriesName,
             type: 'line',
             data: cumulativeData,
           })
         }
       }
+
+      const epsMap = epsatData.value ? new Map(epsatData.value.map((d) => [d.date, d.value])) : null
+      const p10Map = p10Data.value ? new Map(p10Data.value.map((d) => [d.date, d.value])) : null
+      const p25Map = p25Data.value ? new Map(p25Data.value.map((d) => [d.date, d.value])) : null
+      const p75Map = p75Data.value ? new Map(p75Data.value.map((d) => [d.date, d.value])) : null
+      const p90Map = p90Data.value ? new Map(p90Data.value.map((d) => [d.date, d.value])) : null
+
+      buildCumulativeSeries('Acumulado observado', null, true)
+      buildCumulativeSeries('Acumulado EPS medio', epsMap)
+      buildCumulativeSeries('Acumulado P10', p10Map)
+      buildCumulativeSeries('Acumulado P25', p25Map)
+      buildCumulativeSeries('Acumulado P75', p75Map)
+      buildCumulativeSeries('Acumulado P90', p90Map)
     }
 
     return result
@@ -304,7 +358,12 @@
     if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
     if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
     if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
-    if (names.has('Precipitación acumulada (Obs + EPS)')) colors.push('#00695C') // Verde azulado
+    if (names.has('Acumulado observado')) colors.push('#2E7D32')
+    if (names.has('Acumulado EPS medio')) colors.push('#FF9800')
+    if (names.has('Acumulado P10')) colors.push('#D3D3D3')
+    if (names.has('Acumulado P25')) colors.push('#696969')
+    if (names.has('Acumulado P75')) colors.push('#696969')
+    if (names.has('Acumulado P90')) colors.push('#D3D3D3')
     return colors
   })
 
@@ -317,7 +376,12 @@
     if (names.has('Percentiles P25-P75')) opacity.push(0.35)
     if (names.has('Predicción Det. Harmonie')) opacity.push(1)
     if (names.has('Predicción Prob. EPS')) opacity.push(1)
-    if (names.has('Precipitación acumulada (Obs + EPS)')) opacity.push(1)
+    if (names.has('Acumulado observado')) opacity.push(1)
+    if (names.has('Acumulado EPS medio')) opacity.push(1)
+    if (names.has('Acumulado P10')) opacity.push(1)
+    if (names.has('Acumulado P25')) opacity.push(1)
+    if (names.has('Acumulado P75')) opacity.push(1)
+    if (names.has('Acumulado P90')) opacity.push(1)
     return opacity
   })
 
@@ -330,7 +394,12 @@
     if (names.has('Percentiles P25-P75')) widths.push(1)
     if (names.has('Predicción Det. Harmonie')) widths.push(0)
     if (names.has('Predicción Prob. EPS')) widths.push(0)
-    if (names.has('Precipitación acumulada (Obs + EPS)')) widths.push(3)
+    if (names.has('Acumulado observado')) widths.push(3)
+    if (names.has('Acumulado EPS medio')) widths.push(2)
+    if (names.has('Acumulado P10')) widths.push(2)
+    if (names.has('Acumulado P25')) widths.push(2)
+    if (names.has('Acumulado P75')) widths.push(2)
+    if (names.has('Acumulado P90')) widths.push(2)
     return widths
   })
 
@@ -502,5 +571,30 @@
   /* Oculta el pequeño tooltip nativo del eje X que aparece bajo el gráfico */
   .apexcharts-xaxistooltip {
     display: none !important;
+  }
+
+  .precipitations-chart .apexcharts-legend {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: start !important;
+    gap: 6px 12px;
+    overflow-x: hidden !important;
+  }
+
+  /* Fuerza hasta 6 elementos por fila para quedar en 2 filas con esta serie de leyendas. */
+  .precipitations-chart .apexcharts-legend-series {
+    margin: 0 !important;
+    flex: 0 0 calc(16.666% - 12px) !important;
+    min-width: 0;
+  }
+
+  .precipitations-chart .apexcharts-legend-text {
+    white-space: normal !important;
+  }
+
+  @media (max-width: 960px) {
+    .precipitations-chart .apexcharts-legend-series {
+      flex: 0 0 calc(33.333% - 12px) !important;
+    }
   }
 </style>

@@ -44,8 +44,10 @@
         <template v-else>
           <v-row>
             <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium rounded pr-4">
-              {{ model.lastValueLabel }}
+            <v-col cols="5" class="text-right font-weight-medium pr-4">
+              <v-chip :color="getThresholdClass(model.lastValue)" size="small" variant="flat">
+                {{ model.lastValueLabel }}
+              </v-chip>
             </v-col>
           </v-row>
           <v-row>
@@ -56,8 +58,10 @@
           </v-row>
           <v-row>
             <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium rounded pr-4">
-              {{ model.maxValueLabel }}
+            <v-col cols="5" class="text-right font-weight-medium pr-4">
+              <v-chip :color="getThresholdClass(model.maxValue)" size="small" variant="flat">
+                {{ model.maxValueLabel }}
+              </v-chip>
             </v-col>
           </v-row>
           <v-row>
@@ -97,6 +101,7 @@
     harmoniePrecipDates?: string[]
     epsCaudalDates?: string[]
     epsPrecipDates?: string[]
+    thresholds?: Record<string, unknown>
   }>()
 
   const emit = defineEmits<{
@@ -127,6 +132,40 @@
     return `${value.toFixed(2)} ${unit}`
   }
 
+  function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
+    if (!source) return null
+    for (const key of keys) {
+      const raw = source[key]
+      if (raw == null) continue
+      if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+      if (typeof raw === 'string') {
+        const parsed = Number.parseFloat(raw.replace(',', '.'))
+        if (Number.isFinite(parsed)) return parsed
+      }
+    }
+    return null
+  }
+
+  const yellowThreshold = computed(() =>
+    readNumber(['umbral_cauda_1', 'umbral_caudal_1', 'threshold_yellow'], props.thresholds)
+  )
+
+  const orangeThreshold = computed(() =>
+    readNumber(['umbral_cauda_2', 'umbral_caudal_2', 'threshold_orange'], props.thresholds)
+  )
+
+  const redThreshold = computed(() =>
+    readNumber(['umbral_cauda_3', 'umbral_caudal_3', 'threshold_red'], props.thresholds)
+  )
+
+  function getThresholdClass(value: number | undefined): string {
+    if (props.activeTab !== 'caudal' || value == null || !Number.isFinite(value)) return ''
+    if (redThreshold.value != null && value >= redThreshold.value) return 'red-lighten-3'
+    if (orangeThreshold.value != null && value >= orangeThreshold.value) return 'orange-lighten-3'
+    if (yellowThreshold.value != null && value >= yellowThreshold.value) return 'amber-lighten-3'
+    return ''
+  }
+
   function toTimestamp(dateValue: string): number {
     return parseDate(dateValue)?.getTime() ?? Number.NEGATIVE_INFINITY
   }
@@ -141,8 +180,10 @@
       : undefined
 
     return {
+      lastValue: last?.value,
       lastValueLabel: fmtValue(last?.value, unit),
       lastDateLabel: formatDate(last?.date),
+      maxValue: max?.value,
       maxValueLabel: fmtValue(max?.value, unit),
       maxDateLabel: formatDate(max?.date),
     }
@@ -234,3 +275,5 @@
     },
   ])
 </script>
+
+<style scoped></style>

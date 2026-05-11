@@ -1,4 +1,5 @@
 import ky from 'ky'
+import { addHours } from 'date-fns'
 
 export interface WmsLayerTime {
   layerName: string
@@ -190,4 +191,201 @@ export function getGeoServerLegendUrl(options: {
   }
 
   return `${options.url}?${params.toString()}`
+}
+
+export interface WmsPointTimeValue {
+  time: string
+  value: number | null
+}
+
+function extractNumericValueFromFeatureInfo(data: unknown): number | null {
+  if (!data || typeof data !== 'object') {
+    return null
+  }
+
+  const featureCollection = data as {
+    features?: Array<{
+      properties?: Record<string, unknown>
+    }>
+  }
+
+  const properties = featureCollection.features?.[0]?.properties
+  if (!properties) {
+    return null
+  }
+
+  for (const rawValue of Object.values(properties)) {
+    const numericValue = Number(rawValue)
+    if (Number.isFinite(numericValue)) {
+      return numericValue
+    }
+  }
+
+  return null
+}
+
+function buildTimeline(startIso: string, endIso: string, stepHours: number): string[] {
+  const start = new Date(startIso)
+  const end = new Date(endIso)
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return []
+  }
+
+  const safeStepHours = stepHours > 0 ? stepHours : 1
+  const result: string[] = []
+
+  let cursor = new Date(start)
+  while (cursor <= end) {
+    result.push(cursor.toISOString())
+    cursor = addHours(cursor, safeStepHours)
+  }
+
+  return result
+}
+
+async function fetchGeoServerPointValueAtTime(options: {
+  url: string
+  layerName: string
+  lat: number
+  lng: number
+  time: string
+}): Promise<number | null> {
+  const delta = 0.001
+  const minX = options.lng - delta
+  const minY = options.lat - delta
+  const maxX = options.lng + delta
+  const maxY = options.lat + delta
+
+  const params = {
+    service: 'WMS',
+    request: 'GetFeatureInfo',
+    version: '1.1.1',
+    srs: 'EPSG:4326',
+    layers: options.layerName,
+    query_layers: options.layerName,
+    info_format: 'application/json',
+    feature_count: '1',
+    x: '50',
+    y: '50',
+    width: '101',
+    height: '101',
+    bbox: `${minX},${minY},${maxX},${maxY}`,
+    format: 'image/png',
+    transparent: 'true',
+    time: options.time,
+  }
+
+  try {
+    console.log('[geoserverWmsService] GetFeatureInfo request', {
+      url: options.url,
+      layerName: options.layerName,
+      time: options.time,
+      bbox: params.bbox,
+    })
+
+    const response = await ky.get(options.url, { searchParams: params })
+    const contentType = response.headers.get('content-type') ?? ''
+
+    console.log('[geoserverWmsService] GetFeatureInfo response content-type', {
+      layerName: options.layerName,
+      time: options.time,
+      contentType,
+    })
+
+    if (!contentType.includes('application/json')) {
+      console.warn('[geoserverWmsService] Non-JSON response, skipping point', {
+        layerName: options.layerName,
+        time: options.time,
+      })
+      return null
+    }
+
+    const data = await response.json<unknown>()
+    const extracted = extractNumericValueFromFeatureInfo(data)
+
+    console.log('[geoserverWmsService] Extracted point value', {
+      layerName: options.layerName,
+      time: options.time,
+      value: extracted,
+    })
+
+    return extracted
+  } catch (err) {
+    console.error('[geoserverWmsService] GetFeatureInfo failed', {
+      layerName: options.layerName,
+      time: options.time,
+      error: err,
+    })
+    return null
+  }
+}
+
+export async function fetchGeoServerLayerPointTimeSeries(options: {
+  url: string
+  layerName: string
+  lat: number
+  lng: number
+  startIso: string
+  endIso: string
+  stepHours: number
+}): Promise<WmsPointTimeValue[]> {
+  console.log('[geoserverWmsService] fetchGeoServerLayerPointTimeSeries start', options)
+
+  const timeline = buildTimeline(options.startIso, options.endIso, options.stepHours)
+
+  if (!timeline.length) {
+    console.warn('[geoserverWmsService] Empty timeline for series request', options)
+    return []
+  }
+
+  const maxPoints = 120
+  const sampledTimeline = timeline.slice(-maxPoints)
+
+  console.log('[geoserverWmsService] Timeline built', {
+    originalPoints: timeline.length,
+    sampledPoints: sampledTimeline.length,
+    first: sampledTimeline[0],
+    last: sampledTimeline[sampledTimeline.length - 1],
+  })
+
+  const chunkSize = 8
+  const result: WmsPointTimeValue[] = []
+
+  for (let index = 0; index < sampledTimeline.length; index += chunkSize) {
+    const chunk = sampledTimeline.slice(index, index + chunkSize)
+
+    console.log('[geoserverWmsService] Fetching chunk', {
+      index,
+      chunkSize: chunk.length,
+      from: chunk[0],
+      to: chunk[chunk.length - 1],
+    })
+
+    const values = await Promise.all(
+      chunk.map(async (time) => {
+        const value = await fetchGeoServerPointValueAtTime({
+          url: options.url,
+          layerName: options.layerName,
+          lat: options.lat,
+          lng: options.lng,
+          time,
+        })
+
+        return {
+          time,
+          value,
+        }
+      })
+    )
+
+    result.push(...values)
+  }
+
+  console.log('[geoserverWmsService] Time series complete', {
+    points: result.length,
+    withValue: result.filter((point) => Number.isFinite(point.value)).length,
+  })
+
+  return result
 }

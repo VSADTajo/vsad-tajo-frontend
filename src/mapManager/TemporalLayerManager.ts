@@ -6,6 +6,8 @@ import { getLayerTimeDimension } from '@/services/efasWmsService'
 import { getGeoServerLayerTimeDimension } from '@/services/geoserverWmsService'
 import { efas_url } from '@/config/efasConfig'
 import type { LayerConfig, LayerState, WMSLayerConfig } from '@/types/Layers'
+import { LayerInteractionManager } from './LayerInteractionManager'
+import { isPrecipitacionLayerId } from './layerConstants'
 
 type LayerById = Record<string, L.Layer>
 type TemporalLayerById = Record<string, L.TileLayer.WMS[]>
@@ -17,19 +19,22 @@ export class TemporalLayerManager {
   private activeLayers: LayerById
   private temporalLayers: TemporalLayerById
   private layerGeneration: GenerationById
+  private interactionManager: LayerInteractionManager
 
   constructor(
     map: L.Map,
     configMap: Map<string, LayerConfig>,
     activeLayers: LayerById,
     temporalLayers: TemporalLayerById,
-    layerGeneration: GenerationById
+    layerGeneration: GenerationById,
+    interactionManager: LayerInteractionManager
   ) {
     this.map = map
     this.configMap = configMap
     this.activeLayers = activeLayers
     this.temporalLayers = temporalLayers
     this.layerGeneration = layerGeneration
+    this.interactionManager = interactionManager
   }
 
   invalidateLayerGeneration(layerId: string): void {
@@ -123,6 +128,13 @@ export class TemporalLayerManager {
       })
 
       this.activeLayers[layerState.id] = newLayer
+      this.interactionManager.detachWMSClick(layerState.id)
+      this.interactionManager.attachWMSClick(layerState.id, newLayer)
+
+      if (isPrecipitacionLayerId(layerState.id)) {
+        this.interactionManager.detachPrecipitacionClick(layerState.id)
+        this.interactionManager.attachPrecipitacionClick(layerState.id, newLayer)
+      }
     })
   }
 

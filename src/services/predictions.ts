@@ -34,10 +34,15 @@ export async function getPredictionsService(
 }
 
 export async function getAvailablePredictionsService(
-  station: string
+  station: string,
+  predictionType?: PredictionTypeName
 ): Promise<DatesAvailableResponse> {
   const result = await api
-    .get(`predictions/available-dates?stationId=${station}`, {
+    .get('predictions/available-dates', {
+      searchParams: {
+        stationId: station,
+        predictionType,
+      },
       headers: {
         Accept: 'application/json',
       },

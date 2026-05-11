@@ -13,6 +13,7 @@ import { TemporalLayerManager } from './TemporalLayerManager'
 import { LayerInteractionManager } from './LayerInteractionManager'
 import { getCustomLegendInfo } from '@/config/styles/customLegends'
 import { ensureSaihAlertsLoaded } from '@/utils/saihAlerts'
+import { isPrecipitacionLayerId } from './layerConstants'
 
 export class MapLayerManager {
   private map: L.Map
@@ -34,14 +35,6 @@ export class MapLayerManager {
   constructor(map: L.Map) {
     this.map = map
     this.legendManager = new LegendManager(map)
-    this.temporalLayerManager = new TemporalLayerManager(
-      map,
-      this.configMap,
-      this.activeLayers,
-      this.temporalLayers,
-      this.layerGeneration
-    )
-
     this.interactionManager = new LayerInteractionManager(map, {
       getActiveLayers: () => this.activeLayers,
       getGroupedLayers: () => this.groupedLayers,
@@ -49,6 +42,15 @@ export class MapLayerManager {
         this.handleFeatureClick(layerId, feature)
       },
     })
+
+    this.temporalLayerManager = new TemporalLayerManager(
+      map,
+      this.configMap,
+      this.activeLayers,
+      this.temporalLayers,
+      this.layerGeneration,
+      this.interactionManager
+    )
   }
 
   async sync(layersState: Record<string, LayerState>) {
@@ -193,6 +195,10 @@ export class MapLayerManager {
         this.interactionManager.attachVectorClick(layerState.id, layer)
         this.interactionManager.attachWMSClick(layerState.id, layer)
 
+        if (isPrecipitacionLayerId(layerState.id)) {
+          this.interactionManager.attachPrecipitacionClick(layerState.id, layer)
+        }
+
         this.activeLayers[layerState.id] = layer
         if (canUseCache) {
           this.cache[layerState.id] = layer
@@ -266,6 +272,11 @@ export class MapLayerManager {
         }
 
         this.interactionManager.detachWMSClick(layerState.id)
+
+        if (isPrecipitacionLayerId(layerState.id)) {
+          this.interactionManager.detachPrecipitacionClick(layerState.id)
+        }
+
         this.temporalLayerManager.invalidateLayerGeneration(layerState.id)
 
         this.map.removeLayer(existing)

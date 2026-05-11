@@ -14,6 +14,7 @@
     <right-content-subcuenca v-if="subcuenca" />
     <RightContentSistemas v-if="sistema" />
     <RightContentZonas v-if="zona" />
+    <RightContentPrecipitacion v-if="precipitacion" />
   </v-navigation-drawer>
 </template>
 
@@ -26,6 +27,7 @@
   import RightContentSubcuenca from './RightContentSubcuenca.vue'
   import RightContentSistemas from './RightContentSistemas.vue'
   import RightContentZonas from './RightContentZonas.vue'
+  import RightContentPrecipitacion from './RightContentPrecipitacion.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -41,10 +43,17 @@
 
   const zona = computed(() => route.query.zona as string | undefined)
 
+  const precipitacion = computed(() => route.query.precipitacion as string | undefined)
+
   // drawer abierto si hay station
   const drawerOpen = computed(
     () =>
-      !!station.value || !!reporting.value || !!subcuenca.value || !!sistema.value || !!zona.value
+      !!station.value ||
+      !!reporting.value ||
+      !!subcuenca.value ||
+      !!sistema.value ||
+      !!zona.value ||
+      !!precipitacion.value
   )
 
   // ignorar cierre inmediato por scrim
@@ -59,8 +68,9 @@
 
   function onDrawerChange(val: boolean) {
     if (!val && station.value && !ignoreNextClose) {
-      const { station, ...query } = route.query
-      router.replace({ query })
+      const queryObj = { ...route.query }
+      delete queryObj.station
+      router.replace({ query: queryObj })
     }
   }
 

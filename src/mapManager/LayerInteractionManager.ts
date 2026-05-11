@@ -4,6 +4,8 @@ import { useReportingPointStore } from '@/stores/reportingPointsStore'
 import { buildFeatureInfoUrl } from '@/services/efasWmsService'
 import { MAP_PANES } from '@/config/panes/mapPanes'
 import { isSelectableLayerId, type SelectableLayerId } from './layerConstants'
+import { boundaryStore } from '@/stores/boundaryStore'
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
 
 type ManagedStyleLayer = {
   clearAll: () => void
@@ -29,6 +31,7 @@ export class LayerInteractionManager {
   private mapClickDebounce: ReturnType<typeof setTimeout> | null = null
   private styleManagers: Record<string, ManagedStyleLayer> = {}
   private wmsClickHandlers: Record<string, (e: L.LeafletMouseEvent) => void> = {}
+  private precipitacionClickHandlers: Record<string, (e: L.LeafletMouseEvent) => void> = {}
   private readonly getActiveLayers: () => LayerLookup
   private readonly getGroupedLayers: () => LayerLookup
   private readonly onFeatureClick: (layerId: string, feature: GeoJSON.Feature) => void
@@ -149,6 +152,76 @@ export class LayerInteractionManager {
 
     this.map.off('click', handler)
     delete this.wmsClickHandlers[layerId]
+  }
+
+  attachPrecipitacionClick(layerId: string, layer: L.Layer) {
+    if (this.precipitacionClickHandlers[layerId]) {
+      console.log('[LayerInteractionManager] attachPrecipitacionClick ya registrado para', layerId)
+      return
+    }
+
+    console.log('[LayerInteractionManager] Registrando attachPrecipitacionClick para', layerId)
+
+    const handler = (e: L.LeafletMouseEvent) => {
+      if (!this.map.hasLayer(layer)) {
+        return
+      }
+
+      console.log('[LayerInteractionManager] Click en precipitacion layer', layerId, 'en', e.latlng)
+
+      const { lat, lng } = e.latlng
+
+      // Verificar si el punto está dentro del contorno
+      const boundary = boundaryStore['contorno']
+      if (!boundary) {
+        console.log('[LayerInteractionManager] No boundary encontrado')
+        return
+      }
+
+      const point: GeoJSON.Point = {
+        type: 'Point',
+        coordinates: [lng, lat],
+      }
+
+      const isInside = boundary.geojson.features.some((feature) => {
+        if (feature.geometry.type !== 'Polygon' && feature.geometry.type !== 'MultiPolygon') {
+          return false
+        }
+        const polygonFeature = feature as GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>
+        return booleanPointInPolygon(point, polygonFeature)
+      })
+
+      console.log('[LayerInteractionManager] Punto dentro del contorno?', isInside)
+
+      if (!isInside) {
+        return
+      }
+
+      console.log('[LayerInteractionManager] Abriendo panel para', layerId, 'en', lat, lng)
+
+      router.replace({
+        query: {
+          ...router.currentRoute.value.query,
+          precipitacion: `${lat.toFixed(5)},${lng.toFixed(5)}`,
+          precipitacionLayer: layerId,
+        },
+      })
+    }
+
+    this.precipitacionClickHandlers[layerId] = handler
+    this.map.on('click', handler)
+    console.log('[LayerInteractionManager] Handler registrado para', layerId)
+  }
+
+  detachPrecipitacionClick(layerId: string) {
+    const handler = this.precipitacionClickHandlers[layerId]
+
+    if (!handler) {
+      return
+    }
+
+    this.map.off('click', handler)
+    delete this.precipitacionClickHandlers[layerId]
   }
 
   clearStyleManager(layerId: string): void {

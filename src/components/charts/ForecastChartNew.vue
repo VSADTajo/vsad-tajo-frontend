@@ -5,6 +5,7 @@
     </div>
     <apexchart
       v-else-if="hasRenderableSeries"
+      :key="chartInstanceKey"
       :height="chartHeight"
       :options="chartOptions"
       :series="series"
@@ -18,12 +19,27 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import type { ApexOptions } from 'apexcharts'
-  import type { DataStationPrediction, Point, RangePoint, SeriesItem } from '@/types/Predictions'
+  import type {
+    DataStationPrediction,
+    Point,
+    RangePoint,
+    SeriesItem,
+    StationPrediction,
+  } from '@/types/Predictions'
   import { dateFormattedWithHours } from '@/utils/dates'
+
+  type CaudalChartData = DataStationPrediction & {
+    historicalOutflow?: StationPrediction
+    historicalVolume?: StationPrediction
+  }
+
+  type ApexSeriesItem = SeriesItem & {
+    yAxisIndex?: number
+  }
 
   const props = withDefaults(
     defineProps<{
-      data: DataStationPrediction
+      data: CaudalChartData
       loading?: boolean
       toolbar?: boolean
       height?: number
@@ -99,6 +115,52 @@
     return annotations
   })
 
+  const volumeThresholdAnnotations = computed(() => {
+    const t1 = readNumber(['umbral_1_volumen'], props.thresholds)
+    const t2 = readNumber(['umbral_2_volumen'], props.thresholds)
+    const t3 = readNumber(['umbral_3_volumen'], props.thresholds)
+
+    const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
+
+    if (t1 != null) {
+      annotations.push({
+        y: t1,
+        yAxisIndex: 1,
+        borderColor: '#fde68a',
+        label: {
+          text: `Nivel Vol 1: ${t1.toFixed(2)} hm3`,
+          style: { background: '#fde68a', color: '#7c2d12' },
+        },
+      })
+    }
+
+    if (t2 != null) {
+      annotations.push({
+        y: t2,
+        yAxisIndex: 1,
+        borderColor: '#fdba74',
+        label: {
+          text: `Nivel Vol 2: ${t2.toFixed(2)} hm3`,
+          style: { background: '#fdba74', color: '#7c2d12' },
+        },
+      })
+    }
+
+    if (t3 != null) {
+      annotations.push({
+        y: t3,
+        yAxisIndex: 1,
+        borderColor: '#fca5a5',
+        label: {
+          text: `Nivel Vol 3: ${t3.toFixed(2)} hm3`,
+          style: { background: '#fca5a5', color: '#7c2d12' },
+        },
+      })
+    }
+
+    return annotations
+  })
+
   function normalizePredictionResults(prediction?: DataStationPrediction['forecastHarmonie']) {
     if (!prediction?.results?.length) return null
 
@@ -119,6 +181,14 @@
   // Extraer fechas y valores de det
   const historicalData = computed(() => {
     return normalizePredictionResults(props.data.historical)
+  })
+
+  const historicalOutflowData = computed(() => {
+    return normalizePredictionResults(props.data.historicalOutflow)
+  })
+
+  const historicalVolumeData = computed(() => {
+    return normalizePredictionResults(props.data.historicalVolume)
   })
 
   const HarmonieData = computed(() => {
@@ -154,6 +224,8 @@
     const dateSet = new Set<string>()
 
     historicalData.value?.forEach((d) => dateSet.add(d.date))
+    historicalOutflowData.value?.forEach((d) => dateSet.add(d.date))
+    historicalVolumeData.value?.forEach((d) => dateSet.add(d.date))
     HarmonieData.value?.forEach((d) => dateSet.add(d.date))
     epsatData.value?.forEach((d) => dateSet.add(d.date))
     p10Data.value?.forEach((d) => dateSet.add(d.date))
@@ -220,10 +292,10 @@
   }
 
   // Series para el gráfico
-  const series = computed<SeriesItem[]>(() => {
+  const series = computed<ApexSeriesItem[]>(() => {
     if (allDates.value.length === 0) return []
 
-    const result: SeriesItem[] = []
+    const result: ApexSeriesItem[] = []
     const labels = xLabels.value
 
     // Observado
@@ -234,6 +306,39 @@
         result.push({
           name: 'Observado',
           type: 'line',
+          yAxisIndex: 0,
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: values[i],
+          })),
+        })
+      }
+    }
+
+    if (historicalOutflowData.value) {
+      const outflowMap = new Map(historicalOutflowData.value.map((d) => [d.date, d.value]))
+      const values = allDates.value.map((date) => outflowMap.get(date) ?? null)
+      if (hasFiniteValue(values)) {
+        result.push({
+          name: 'Observado salida',
+          type: 'line',
+          yAxisIndex: 0,
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: values[i],
+          })),
+        })
+      }
+    }
+
+    if (historicalVolumeData.value) {
+      const volumeMap = new Map(historicalVolumeData.value.map((d) => [d.date, d.value]))
+      const values = allDates.value.map((date) => volumeMap.get(date) ?? null)
+      if (hasFiniteValue(values)) {
+        result.push({
+          name: 'Volumen observado',
+          type: 'line',
+          yAxisIndex: 1,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
@@ -250,6 +355,7 @@
         result.push({
           name: 'Predicción Det. Harmonie',
           type: 'line',
+          yAxisIndex: 0,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
@@ -266,6 +372,7 @@
         result.push({
           name: 'Predicción Prob. EPS',
           type: 'line',
+          yAxisIndex: 0,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
@@ -287,6 +394,7 @@
         result.push({
           name: 'Percentiles P10-P90',
           type: 'rangeArea',
+          yAxisIndex: 0,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: ranges[i],
@@ -308,6 +416,7 @@
         result.push({
           name: 'Percentiles P25-P75',
           type: 'rangeArea',
+          yAxisIndex: 0,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: ranges[i],
@@ -321,11 +430,19 @@
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
 
+  const chartInstanceKey = computed(() => {
+    const axisMode = hasVolumeSeries.value ? 'dual' : 'single'
+    const names = series.value.map((s) => s.name).join('|')
+    return `${axisMode}:${names}`
+  })
+
   // Colores dinámicos basados en qué series existen (mismo orden que series)
   const dynamicColors = computed(() => {
     const names = new Set(series.value.map((serie) => serie.name))
     const colors: string[] = []
     if (names.has('Observado')) colors.push('#2E7D32') // Verde
+    if (names.has('Observado salida')) colors.push('#00897B') // Verde azulado
+    if (names.has('Volumen observado')) colors.push('#8E24AA') // Morado
     if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
     if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
     if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
@@ -338,6 +455,8 @@
     const names = new Set(series.value.map((serie) => serie.name))
     const opacity: number[] = []
     if (names.has('Observado')) opacity.push(1)
+    if (names.has('Observado salida')) opacity.push(1)
+    if (names.has('Volumen observado')) opacity.push(1)
     if (names.has('Predicción Det. Harmonie')) opacity.push(1)
     if (names.has('Predicción Prob. EPS')) opacity.push(1)
     if (names.has('Percentiles P10-P90')) opacity.push(0.35)
@@ -351,6 +470,8 @@
     const names = new Set(series.value.map((serie) => serie.name))
     const widths: number[] = []
     if (names.has('Observado')) widths.push(2)
+    if (names.has('Observado salida')) widths.push(2)
+    if (names.has('Volumen observado')) widths.push(2)
     if (names.has('Predicción Det. Harmonie')) widths.push(2)
     if (names.has('Predicción Prob. EPS')) widths.push(2)
     if (names.has('Percentiles P10-P90')) widths.push(1)
@@ -361,6 +482,36 @@
   const dynamicStrokeCurve = computed(() =>
     series.value.map((serie) => (serie.type === 'bar' ? 'straight' : 'smooth'))
   )
+
+  const hasVolumeSeries = computed(() =>
+    series.value.some((serie) => serie.name === 'Volumen observado')
+  )
+
+  const dynamicYAxis = computed<ApexOptions['yaxis']>(() => {
+    const caudalAxis = {
+      min: 0,
+      title: { text: 'm3/s' },
+      labels: {
+        formatter: (value: number) => Number(value).toFixed(2),
+      },
+    }
+
+    if (!hasVolumeSeries.value) {
+      return caudalAxis
+    }
+
+    return [
+      caudalAxis,
+      {
+        opposite: true,
+        min: 0,
+        title: { text: 'hm3' },
+        labels: {
+          formatter: (value: number) => Number(value).toFixed(2),
+        },
+      },
+    ]
+  })
 
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
@@ -409,6 +560,8 @@
     },
     legend: {
       position: 'bottom' as const,
+      horizontalAlign: 'center',
+      floating: false,
     },
     dataLabels: {
       enabled: false,
@@ -423,18 +576,13 @@
         hideOverlappingLabels: true,
       },
     },
-    yaxis: {
-      min: 0,
-      title: { text: 'm3/s' },
-      labels: {
-        formatter: function (value) {
-          return Number(value).toFixed(2)
-        },
-      },
-    },
+    yaxis: dynamicYAxis.value,
     annotations: {
       xaxis: observedEndXAnnotation.value,
-      yaxis: caudalThresholdAnnotations.value,
+      yaxis: [
+        ...caudalThresholdAnnotations.value,
+        ...(hasVolumeSeries.value ? volumeThresholdAnnotations.value : []),
+      ],
     },
     tooltip: {
       enabled: true,
@@ -482,6 +630,7 @@
 
           const name = s.name ?? `Serie ${idx + 1}`
           const color = w.globals?.colors?.[idx] ?? '#ccc'
+          const unit = name === 'Volumen observado' ? 'hm3' : 'm3/s'
           const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
 
           if (Array.isArray(raw) && raw.length === 2) {
@@ -491,7 +640,7 @@
               rows += `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
                   <span style="display:flex;align-items:center;">${dot}${name}</span>
-                  <strong style="margin-left:16px;">${Math.min(a, b).toFixed(2)} - ${Math.max(a, b).toFixed(2)} m3/s</strong>
+                  <strong style="margin-left:16px;">${Math.min(a, b).toFixed(2)} - ${Math.max(a, b).toFixed(2)} ${unit}</strong>
                 </div>`
             }
           } else {
@@ -500,7 +649,7 @@
               rows += `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
                   <span style="display:flex;align-items:center;">${dot}${name}</span>
-                  <strong style="margin-left:16px;">${val.toFixed(2)} m3/s</strong>
+                  <strong style="margin-left:16px;">${val.toFixed(2)} ${unit}</strong>
                 </div>`
             }
           }
