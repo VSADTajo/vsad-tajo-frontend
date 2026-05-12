@@ -83,7 +83,7 @@ export async function createWFSLayer(
       ...extraParams,
     }
 
-    const geojson = await ky.get(baseUrl, { searchParams: params }).json()
+    const geojson = await ky.get(baseUrl, { searchParams: params, timeout: false }).json()
 
     const geojsonLayer = L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
       style: config.style?.normal,

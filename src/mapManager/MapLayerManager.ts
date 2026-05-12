@@ -14,6 +14,7 @@ import { LayerInteractionManager } from './LayerInteractionManager'
 import { getCustomLegendInfo } from '@/config/styles/customLegends'
 import { ensureSaihAlertsLoaded } from '@/utils/saihAlerts'
 import { isPrecipitacionLayerId } from './layerConstants'
+import { useLayersStore } from '@/stores/layersStore'
 
 export class MapLayerManager {
   private map: L.Map
@@ -31,6 +32,7 @@ export class MapLayerManager {
   private groupedLayers: Record<string, L.Layer> = {}
   private temporalLayers: Record<string, L.TileLayer.WMS[]> = {}
   private layerGeneration: Record<string, number> = {}
+  private layersStore = useLayersStore()
 
   constructor(map: L.Map) {
     this.map = map
@@ -169,7 +171,7 @@ export class MapLayerManager {
           await this.temporalLayerManager.loadTemporalDimension(config)
         }
 
-        const layerStateObj = layersState[layerState.id]
+        const layerStateObj = this.layersStore.layers[layerState.id] ?? layersState[layerState.id]
 
         // Si sigue sin time → NO crear capa
         const time = layerStateObj?.params?.time
@@ -286,6 +288,10 @@ export class MapLayerManager {
 
         if (layerState.temporal) {
           layerState.temporal = undefined
+        }
+
+        if (layerState.temporalLoadState) {
+          layerState.temporalLoadState = undefined
         }
 
         if (layerState.params?.time) {

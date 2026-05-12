@@ -75,6 +75,14 @@ export const meteoMaps: LayerNode[] = [
       },
 
       {
+        id: 'eps_precipitacion_media_acumulada',
+        title: 'Precipitaciones Media Acumulada',
+        parentLayer: 'eps',
+        opacityEnabled: true,
+        opacity: 1,
+      },
+
+      {
         id: 'eps_temperatura_media',
         title: 'Temperatura Media',
         parentLayer: 'eps',

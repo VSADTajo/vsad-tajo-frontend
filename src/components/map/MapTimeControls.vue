@@ -42,6 +42,8 @@
           track-color="green"
           thumb-color="white"
           class="timeline-slider mr-5 ml-5"
+          @start="onSliderStart"
+          @end="onSliderEnd"
         />
       </div>
 
@@ -58,6 +60,7 @@
   import { computed, ref, watch, onUnmounted } from 'vue'
   import { addHours } from 'date-fns'
   import { useLayersStore } from '@/stores/layersStore'
+  import { dynamicLayersConfig } from '@/config/layers.config'
   import {
     dateFormattedFromDate,
     dateFormattedWithHoursAndMinutesFromDate,
@@ -65,17 +68,39 @@
   } from '@/utils/dates'
 
   const layersStore = useLayersStore()
+  const DEBUG_TIME = true
+
+  function debugLog(message: string, payload?: unknown) {
+    if (!DEBUG_TIME) return
+    if (payload === undefined) {
+      console.log(`[TimeDebug] ${message}`)
+      return
+    }
+
+    console.log(`[TimeDebug] ${message}`, payload)
+  }
+
+  const rangeLayerIds = new Set(
+    dynamicLayersConfig
+      .filter((config) => config.temporalControlMode === 'range')
+      .map((config) => config.id)
+  )
 
   const timeIndex = ref(0)
   const playing = ref(false)
-  let timer: number | null = null
+  const isUserSliding = ref(false)
+  let timeUpdateTimer: number | null = null
+  let playRunId = 0
+  const playStepMs = 2000
 
   // ==============================
   // 🕒 Capas temporales activas
   // ==============================
 
   const temporalLayers = computed(() =>
-    Object.values(layersStore.layers).filter((layer) => layer.visible && layer.temporal)
+    Object.values(layersStore.layers).filter(
+      (layer) => layer.visible && layer.temporal && !rangeLayerIds.has(layer.id)
+    )
   )
 
   // ==============================
@@ -99,6 +124,15 @@
       current = addHours(current, stepHours)
     }
 
+    debugLog('Timeline rebuilt', {
+      length: times.length,
+      stepHours,
+      startIso: times[0]?.toISOString(),
+      endIso: times[times.length - 1]?.toISOString(),
+      startLocal: times[0]?.toString(),
+      endLocal: times[times.length - 1]?.toString(),
+    })
+
     return times
   })
 
@@ -106,9 +140,7 @@
   // 📅 Tiempo actual
   // ==============================
 
-  const currentTime = computed(() => {
-    return timeline.value[timeIndex.value]
-  })
+  const currentTime = computed(() => timeline.value[timeIndex.value])
 
   const formattedDate = computed(() => {
     const t = currentTime.value
@@ -132,58 +164,217 @@
     return dateFormattedWithHoursAndMinutesFromDate(timeline.value[timeline.value.length - 1])
   })
 
-  watch(currentTime, (t) => {
+  function applyCurrentTime(t: Date | undefined) {
     if (!t) return
 
+    const nextIso = t.toISOString()
+
+    debugLog('applyCurrentTime', {
+      index: timeIndex.value,
+      local: t.toString(),
+      iso: nextIso,
+      layerIds: temporalLayers.value.map((layer) => layer.id),
+    })
+
     temporalLayers.value.forEach((layer) => {
+      if (layer.params?.time === nextIso) {
+        debugLog('skip setTimeParams (already equal)', {
+          layerId: layer.id,
+          time: layer.params.time,
+        })
+        return
+      }
+
+      debugLog('setTimeParams', {
+        layerId: layer.id,
+        previous: layer.params?.time,
+        next: nextIso,
+      })
       layersStore.setTimeParams(layer.id, {
-        time: t.toISOString(),
+        time: nextIso,
       })
     })
+  }
+
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms)
+    })
+  }
+
+  function allTemporalLayersLoadedForTime(targetIso: string): boolean {
+    if (!temporalLayers.value.length) {
+      return true
+    }
+
+    return temporalLayers.value.every(
+      (layer) =>
+        layer.temporalLoadState?.loadedTime === targetIso &&
+        layer.temporalLoadState.loading !== true
+    )
+  }
+
+  function waitForTemporalLayersLoaded(targetIso: string, runId: number): Promise<void> {
+    if (allTemporalLayersLoadedForTime(targetIso)) {
+      return Promise.resolve()
+    }
+
+    return new Promise((resolve) => {
+      const stop = watch(
+        () =>
+          temporalLayers.value.map(
+            (layer) =>
+              `${layer.id}:${layer.temporalLoadState?.loadedTime ?? ''}:${layer.temporalLoadState?.loading ? '1' : '0'}`
+          ),
+        () => {
+          if (runId !== playRunId) {
+            stop()
+            resolve()
+            return
+          }
+
+          if (allTemporalLayersLoadedForTime(targetIso)) {
+            stop()
+            resolve()
+          }
+        },
+        { immediate: true }
+      )
+    })
+  }
+
+  watch(currentTime, (t) => {
+    debugLog('watch currentTime', {
+      index: timeIndex.value,
+      local: t?.toString(),
+      iso: t?.toISOString(),
+      playing: playing.value,
+    })
+
+    if (playing.value) {
+      if (timeUpdateTimer) {
+        clearTimeout(timeUpdateTimer)
+        timeUpdateTimer = null
+      }
+
+      applyCurrentTime(t)
+      return
+    }
+
+    if (timeUpdateTimer) {
+      clearTimeout(timeUpdateTimer)
+      timeUpdateTimer = null
+    }
+
+    timeUpdateTimer = window.setTimeout(() => {
+      applyCurrentTime(t)
+      timeUpdateTimer = null
+    }, 250)
   })
 
   watch(
-    () => temporalLayers.value.map((l) => l.params?.time),
-    (times) => {
-      const time = times.find(Boolean)
-      if (!time) return
-
-      const target = new Date(time).getTime()
-
-      const index = timeline.value.findIndex((t) => t.getTime() === target)
-
-      if (index !== -1) {
-        timeIndex.value = index
+    timeline,
+    (value) => {
+      if (!value.length) return
+      if (timeIndex.value > value.length - 1) {
+        debugLog('clamp timeIndex after timeline rebuild', {
+          previousIndex: timeIndex.value,
+          nextIndex: value.length - 1,
+        })
+        timeIndex.value = value.length - 1
       }
     },
     { immediate: true }
   )
+
+  function onSliderStart() {
+    isUserSliding.value = true
+    debugLog('slider start', {
+      index: timeIndex.value,
+      playing: playing.value,
+    })
+
+    if (playing.value) {
+      stopPlay()
+      debugLog('stopPlay because user started dragging slider')
+    }
+  }
+
+  function onSliderEnd() {
+    isUserSliding.value = false
+    debugLog('slider end', {
+      index: timeIndex.value,
+      local: currentTime.value?.toString(),
+      iso: currentTime.value?.toISOString(),
+    })
+  }
+
+  async function runPlayLoop(runId: number) {
+    while (playing.value && runId === playRunId) {
+      if (!timeline.value.length) {
+        break
+      }
+
+      const nextIndex = timeIndex.value >= timeline.value.length - 1 ? 0 : timeIndex.value + 1
+      const stepStartedAt = Date.now()
+
+      debugLog('runPlayLoop step', {
+        runId,
+        currentIndex: timeIndex.value,
+        nextIndex,
+      })
+
+      timeIndex.value = nextIndex
+
+      const targetTime = timeline.value[nextIndex]
+      if (targetTime) {
+        await waitForTemporalLayersLoaded(targetTime.toISOString(), runId)
+      }
+
+      if (!playing.value || runId !== playRunId) {
+        break
+      }
+
+      const elapsed = Date.now() - stepStartedAt
+      const remainingDelay = Math.max(0, playStepMs - elapsed)
+
+      if (remainingDelay > 0) {
+        await sleep(remainingDelay)
+      }
+    }
+
+    if (runId === playRunId) {
+      playing.value = false
+    }
+  }
+
+  function stopPlay() {
+    playing.value = false
+    playRunId += 1
+
+    if (timeUpdateTimer) {
+      clearTimeout(timeUpdateTimer)
+      timeUpdateTimer = null
+    }
+  }
 
   // ==============================
   // ⏯ Play
   // ==============================
 
   function togglePlay() {
-    playing.value = !playing.value
-
     if (playing.value) {
-      timer = window.setInterval(() => {
-        if (timeIndex.value >= timeline.value.length - 1) {
-          timeIndex.value = 0
-        } else {
-          timeIndex.value++
-        }
-      }, 2000)
-    } else {
-      if (timer) {
-        clearInterval(timer)
-        timer = null
-      }
+      stopPlay()
+      return
     }
+
+    playing.value = true
+    const runId = ++playRunId
+    void runPlayLoop(runId)
   }
 
   onUnmounted(() => {
-    if (timer) clearInterval(timer)
+    stopPlay()
   })
 
   function stepForward() {

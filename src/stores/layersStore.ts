@@ -1,4 +1,4 @@
-import type { LayerState, LayerNode, TimeParams } from '@/types/Layers'
+import type { LayerState, LayerNode, TimeParams, TemporalLoadState } from '@/types/Layers'
 import { defineStore } from 'pinia'
 import { zonasLayers, stationLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
 
@@ -76,6 +76,22 @@ export const useLayersStore = defineStore('layers', {
       layer.params = {
         ...layer.params,
         ...params,
+      }
+    },
+
+    setTemporalLoadState(id: string, state?: Partial<TemporalLoadState>) {
+      const layer = this.layers[id]
+      if (!layer) return
+
+      if (!state) {
+        layer.temporalLoadState = undefined
+        return
+      }
+
+      layer.temporalLoadState = {
+        loading: false,
+        ...layer.temporalLoadState,
+        ...state,
       }
     },
   },
