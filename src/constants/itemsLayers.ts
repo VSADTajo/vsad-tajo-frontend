@@ -13,6 +13,10 @@ export const zonasLayers: LayerNode[] = [
     id: 'zonasexpl',
     title: 'Zonas Expl',
   },
+  {
+    id: 'comarcasagrarias',
+    title: 'Comarcas Agrarias',
+  },
 ]
 
 export const stationLayers: LayerNode[] = [
@@ -69,6 +73,14 @@ export const meteoMaps: LayerNode[] = [
       {
         id: 'eps_precipitacion_media',
         title: 'Precipitaciones Media',
+        parentLayer: 'eps',
+        opacityEnabled: true,
+        opacity: 1,
+      },
+
+      {
+        id: 'eps_precipitacion_media_acumulada',
+        title: 'Precipitaciones Media Acumulada',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,

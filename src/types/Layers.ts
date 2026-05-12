@@ -18,6 +18,13 @@ export interface LayerState {
     end: string
     stepHours: number
   }
+  temporalLoadState?: TemporalLoadState
+}
+
+export interface TemporalLoadState {
+  requestedTime?: string
+  loadedTime?: string
+  loading: boolean
 }
 
 export interface TimeParams {
@@ -38,6 +45,7 @@ interface BaseLayerConfig {
   groupBy?: GroupBy
   pane?: string
   temporal?: boolean
+  temporalControlMode?: 'instant' | 'range'
   start?: string
   legend?: string
   interactive?: boolean

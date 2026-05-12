@@ -9,7 +9,7 @@ type FlyToTarget = {
 }
 
 type PendingFeatureSelection = {
-  layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl'
+  layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias'
   featureId: string
   focus?: boolean
   token: number
@@ -37,7 +37,7 @@ export const useMapStore = defineStore('map', {
     },
 
     requestFeatureSelection(
-      layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl',
+      layerId: 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias',
       featureId: string,
       options?: { focus?: boolean }
     ) {

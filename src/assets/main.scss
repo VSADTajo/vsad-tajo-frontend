@@ -4,6 +4,12 @@ html {
   overflow-y: hidden !important;
 }
 
+.leaflet-interactive:focus,
+.leaflet-container a:focus,
+.leaflet-container path:focus {
+  outline: none;
+}
+
 .v-application {
   font-family: 'Montserrat', sans-serif !important;
 }
@@ -194,6 +200,11 @@ html {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--saih-color) 34%, transparent);
 }
 
+.leaflet-popup.feature-hover-popup,
+.leaflet-tooltip.feature-hover-tooltip {
+  pointer-events: none;
+}
+
 .leaflet-popup.feature-hover-popup .leaflet-popup-content-wrapper {
   background: transparent;
   box-shadow: none;
@@ -208,6 +219,17 @@ html {
 .leaflet-popup.feature-hover-popup .leaflet-popup-tip {
   background: #ffffff;
   box-shadow: none;
+}
+
+.leaflet-tooltip.feature-hover-tooltip {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.leaflet-tooltip.feature-hover-tooltip::before {
+  display: none;
 }
 
 /* ApexCharts: mantener la leyenda en una sola fila en todas las gráficas */

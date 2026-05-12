@@ -58,15 +58,16 @@ export class StyleManager {
 
       // Mouseover: mostrar highlight (solo para Path, markers ya tienen hover en geoserver.ts)
       if (isPath) {
-        // Bind popup una sola vez durante setup (no en cada mouseover)
+        // Bind tooltip una sola vez durante setup para evitar flicker del popup sobre el poligono.
         if (this.buildPopupContent) {
           const popupContent = this.buildPopupContent(feature)
-          layer.bindPopup(popupContent, {
-            closeButton: false,
-            autoClose: false,
-            closeOnClick: false,
-            className: 'feature-hover-popup',
-            offset: L.point(0, 10),
+          layer.bindTooltip(popupContent, {
+            permanent: false,
+            sticky: true,
+            direction: 'top',
+            className: 'feature-hover-tooltip',
+            offset: L.point(0, -8),
+            opacity: 1,
           })
         }
 
@@ -103,19 +104,19 @@ export class StyleManager {
 
           this.highlightLayer.addTo(map)
 
-          // Abrir popup si está vinculado
-          if (layer instanceof L.Path && layer.getPopup()) {
-            layer.openPopup()
+          // Abrir tooltip si está vinculado
+          if (layer instanceof L.Path && layer.getTooltip()) {
+            layer.openTooltip()
           }
         })
 
-        // Mouseout: limpiar highlight y cerrar popup
+        // Mouseout: limpiar highlight y cerrar tooltip
         layer.on('mouseout', () => {
           this.clearHighlight()
 
-          // Cerrar popup si está abierto
-          if (layer instanceof L.Path && layer.getPopup()) {
-            layer.closePopup()
+          // Cerrar tooltip si está abierto
+          if (layer instanceof L.Path && layer.getTooltip()) {
+            layer.closeTooltip()
           }
         })
       }
@@ -172,7 +173,7 @@ export class StyleManager {
     // Crear nueva selección
     this.selectedLayer = L.geoJSON(feature as GeoJSON.GeoJsonObject, {
       style: this.style?.selected || this.style?.highlight,
-      pane: MAP_PANES.HIGHLIGHT,
+      pane: MAP_PANES.SELECTION,
       interactive: false,
     })
 
@@ -209,20 +210,46 @@ export class StyleManager {
     this.selectedFeatureId = null
   }
 
+  clearAll(): void {
+    this.clearHighlight()
+    this.clearSelection()
+  }
+
   /**
    * Obtiene ID único de una feature
    */
   private getFeatureId(feature: GeoJSON.Feature): string {
     const props = feature.properties ?? {}
-    const id =
-      props['code'] ||
-      props['codigo'] ||
-      props['sistema'] ||
-      props['ogc_fid'] ||
-      props['id'] ||
-      feature.id
+    let id: unknown
 
-    return String(id || 'unknown')
+    if (this.layerId === 'subcuencas') {
+      id = props['code'] ?? props['codigo'] ?? props['id'] ?? feature.id
+    } else if (this.layerId === 'sistemas10') {
+      id = props['sistema'] ?? props['fid'] ?? props['id'] ?? feature.id
+    } else if (this.layerId === 'zonasexpl') {
+      id = props['ogc_fid'] ?? props['id'] ?? feature.id
+    } else if (this.layerId === 'comarcasagrarias') {
+      id = props['ogc_fid'] ?? props['co_comarca'] ?? props['fid'] ?? props['id'] ?? feature.id
+    } else {
+      id =
+        props['code'] ??
+        props['codigo'] ??
+        props['ogc_fid'] ??
+        props['fid'] ??
+        props['id'] ??
+        feature.id ??
+        props['sistema'] ??
+        props['ds_comarca'] ??
+        props['comarca'] ??
+        props['nombre'] ??
+        props['name']
+    }
+
+    if (id != null && String(id).trim() !== '') {
+      return String(id)
+    }
+
+    return JSON.stringify(feature.geometry ?? 'unknown')
   }
 
   /**

@@ -2,7 +2,8 @@
   <div class="map-wrapper">
     <div ref="mapContainer" class="map-container"></div>
 
-    <MapTimeControls v-if="hasTemporalLayers && mdAndUp" />
+    <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
+    <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
   </div>
 </template>
 
@@ -18,6 +19,8 @@
   import { center, defaultZoom, defaultZoomForMobile, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
+  import MapTimeRangeControls from '@/components/map/MapTimeRangeControls.vue'
+  import { dynamicLayersConfig } from '@/config/layers.config'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
   import { useDisplay } from 'vuetify'
@@ -26,6 +29,12 @@
   const mapStore = useMapStore()
   const { mdAndUp } = useDisplay()
 
+  const temporalRangeLayerIds = new Set(
+    dynamicLayersConfig
+      .filter((config) => config.temporalControlMode === 'range')
+      .map((config) => config.id)
+  )
+
   // Referencias
   const mapContainer = ref<HTMLElement | null>(null)
   let map: L.Map
@@ -33,7 +42,15 @@
   const { selectedBasemap } = useBasemap()
 
   const hasTemporalLayers = computed(() =>
-    Object.values(layersStore.layers).some((layer) => layer.visible && layer.temporal)
+    Object.values(layersStore.layers).some(
+      (layer) => layer.visible && layer.temporal && !temporalRangeLayerIds.has(layer.id)
+    )
+  )
+
+  const hasTemporalRangeLayers = computed(() =>
+    Object.values(layersStore.layers).some(
+      (layer) => layer.visible && layer.temporal && temporalRangeLayerIds.has(layer.id)
+    )
   )
 
   let currentTileLayer: L.TileLayer
