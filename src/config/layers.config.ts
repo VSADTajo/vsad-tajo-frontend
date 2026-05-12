@@ -4,6 +4,7 @@ import {
   subcuencasStyle,
   sistemas10Style,
   zonasexplStyle,
+  comarcasagrariasStyle,
   contornoStyle,
 } from './styles/layerStyles'
 import { MAP_PANES } from '@/config/panes/mapPanes'
@@ -66,6 +67,17 @@ export const dynamicLayersConfig: LayerConfig[] = [
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
     typeName: 'Tajo:cht_zonas_expl_simple',
     style: zonasexplStyle,
+    highlight: true,
+    pane: MAP_PANES.POLYGONS,
+    interactive: true,
+  },
+  {
+    id: 'comarcasagrarias',
+    name: 'Comarcas Agrarias',
+    type: 'WFS',
+    url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
+    typeName: 'Tajo:cht_comarcasagrarias',
+    style: comarcasagrariasStyle,
     highlight: true,
     pane: MAP_PANES.POLYGONS,
     interactive: true,

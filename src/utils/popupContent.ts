@@ -48,6 +48,20 @@ export function buildZonaPopupContent(feature: GeoJSON.Feature): string {
   `
 }
 
+export function buildComarcaPopupContent(feature: GeoJSON.Feature): string {
+  const props = (feature.properties ?? {}) as Record<string, unknown>
+
+  const nombre = escapeHtml(String(props.ds_comarca ?? 'Sin nombre'))
+
+  return `
+    <div style="min-width:200px;border-radius:8px;overflow:hidden;font-family:Montserrat,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,0.12)">
+      <div style="padding:10px 12px;background:#aa3c3c;color:#fff">
+        <div style="font-size:14px;font-weight:700;line-height:1.2">${nombre}</div>
+      </div>
+    </div>
+  `
+}
+
 function escapeHtml(text: string): string {
   const div = document.createElement('div')
   div.textContent = text

@@ -185,11 +185,6 @@
         return
       }
 
-      debugLog('setTimeParams', {
-        layerId: layer.id,
-        previous: layer.params?.time,
-        next: nextIso,
-      })
       layersStore.setTimeParams(layer.id, {
         time: nextIso,
       })

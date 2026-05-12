@@ -32,6 +32,7 @@ export class MapLayerManager {
   private groupedLayers: Record<string, L.Layer> = {}
   private temporalLayers: Record<string, L.TileLayer.WMS[]> = {}
   private layerGeneration: Record<string, number> = {}
+  private cachedGroupCQLFilters: Record<string, string> = {}
   private layersStore = useLayersStore()
 
   constructor(map: L.Map) {
@@ -79,11 +80,17 @@ export class MapLayerManager {
           this.interactionManager.clearStyleManager(config.id)
           this.map.removeLayer(existing)
           delete this.groupedLayers[config.id]
+          delete this.cachedGroupCQLFilters[config.id]
         }
         continue
       }
 
       const cql = `${field} IN (${activeChildren.map((v) => `'${v}'`).join(',')})`
+
+      // Skip if CQL hasn't changed (e.g., slider movement shouldn't trigger reload)
+      if (this.cachedGroupCQLFilters[config.id] === cql && this.groupedLayers[config.id]) {
+        continue
+      }
 
       if (config.id === 'saih') {
         await ensureSaihAlertsLoaded()
@@ -106,6 +113,7 @@ export class MapLayerManager {
         newLayer.addTo(this.map)
         this.interactionManager.attachVectorClick(config.id, newLayer)
         this.groupedLayers[config.id] = newLayer
+        this.cachedGroupCQLFilters[config.id] = cql
       } else {
         // Si es GeoJSON podemos actualizar datos
         if (existing instanceof L.GeoJSON && newLayer instanceof L.GeoJSON) {
@@ -120,12 +128,14 @@ export class MapLayerManager {
           if (!styleCopied) {
             this.interactionManager.attachVectorClick(config.id, existing)
           }
+          this.cachedGroupCQLFilters[config.id] = cql
         } else {
           // Para otros tipos, recreamos
           this.map.removeLayer(existing)
           newLayer.addTo(this.map)
           this.interactionManager.attachVectorClick(config.id, newLayer)
           this.groupedLayers[config.id] = newLayer
+          this.cachedGroupCQLFilters[config.id] = cql
         }
       }
     }
@@ -390,6 +400,19 @@ export class MapLayerManager {
           query: {
             ...router.currentRoute.value.query,
             zona,
+          },
+        })
+        break
+      }
+
+      case 'comarcasagrarias': {
+        console.log('comarca', feature.properties)
+        const comarca = feature.properties?.ogc_fid
+
+        router.replace({
+          query: {
+            ...router.currentRoute.value.query,
+            comarca,
           },
         })
         break

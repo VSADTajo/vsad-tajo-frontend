@@ -13,6 +13,10 @@ export const zonasLayers: LayerNode[] = [
     id: 'zonasexpl',
     title: 'Zonas Expl',
   },
+  {
+    id: 'comarcasagrarias',
+    title: 'Comarcas Agrarias',
+  },
 ]
 
 export const stationLayers: LayerNode[] = [

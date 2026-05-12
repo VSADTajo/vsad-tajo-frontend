@@ -7,6 +7,7 @@ export const MAP_PANES = {
   CONTORNO: 'contornoPane',
   LINES: 'linesPane',
   POINTS: 'pointsPane',
+  SELECTION: 'selectionPane',
   SAIH: 'saihPane',
   REPORTING: 'reportingPane',
   HIGHLIGHT: 'highlightPane',
@@ -20,6 +21,7 @@ export function createMapPanes(map: L.Map) {
     { name: MAP_PANES.CONTORNO, zIndex: 300 },
     { name: MAP_PANES.LINES, zIndex: 400 },
     { name: MAP_PANES.POINTS, zIndex: 500 },
+    { name: MAP_PANES.SELECTION, zIndex: 610 },
     { name: MAP_PANES.HIGHLIGHT, zIndex: 620 },
     { name: MAP_PANES.SAIH, zIndex: 650 },
     { name: MAP_PANES.REPORTING, zIndex: 650 },
@@ -38,6 +40,11 @@ export function createMapPanes(map: L.Map) {
   const highlightPane = map.getPane(MAP_PANES.HIGHLIGHT)
   if (highlightPane) {
     highlightPane.style.pointerEvents = 'none'
+  }
+
+  const selectionPane = map.getPane(MAP_PANES.SELECTION)
+  if (selectionPane) {
+    selectionPane.style.pointerEvents = 'none'
   }
 
   // Asegurar que el popup pane de Leaflet esté encima de todo

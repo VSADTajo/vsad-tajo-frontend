@@ -6,11 +6,13 @@ const ALERT_YELLOW = '#fde68a'
 const ALERT_ORANGE = '#fdba74'
 const ALERT_RED = '#fca5a5'
 const ALERT_CACHE_TTL_MS = 5 * 60 * 1000
+const ALERT_FAILURE_COOLDOWN_MS = 60 * 1000
 
 const bestQByStation = new Map<string, StationMaxLatestValue>()
 const bestIByStation = new Map<string, StationMaxLatestValue>()
 const bestPByStation = new Map<string, StationMaxLatestValue>()
 let alertsLastLoadedAt = 0
+let alertsLastFailedAt = 0
 let alertsInFlight: Promise<void> | null = null
 
 function normalizeStationKey(value: unknown): string {
@@ -77,7 +79,13 @@ function setBestByStation(
 
 export async function ensureSaihAlertsLoaded(force = false): Promise<void> {
   const cacheIsFresh = Date.now() - alertsLastLoadedAt < ALERT_CACHE_TTL_MS
+  const inFailureCooldown = Date.now() - alertsLastFailedAt < ALERT_FAILURE_COOLDOWN_MS
+
   if (!force && cacheIsFresh && (bestQByStation.size > 0 || bestIByStation.size > 0)) {
+    return
+  }
+
+  if (!force && inFailureCooldown) {
     return
   }
 
@@ -98,8 +106,10 @@ export async function ensureSaihAlertsLoaded(force = false): Promise<void> {
       setBestByStation(bestIByStation, iValues)
       setBestByStation(bestPByStation, pValues)
       alertsLastLoadedAt = Date.now()
+      alertsLastFailedAt = 0
     } catch (error) {
-      console.error('Error loading SAIH max values for alert data', error)
+      alertsLastFailedAt = Date.now()
+      console.warn('SAIH alert values unavailable. Retrying in 60s.', error)
     } finally {
       alertsInFlight = null
     }

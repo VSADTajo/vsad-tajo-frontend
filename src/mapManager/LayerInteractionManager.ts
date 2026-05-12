@@ -253,7 +253,7 @@ export class LayerInteractionManager {
       }
     }
 
-    const orphanHighlightLayers: L.Layer[] = []
+    const orphanOverlayLayers: L.Layer[] = []
 
     this.map.eachLayer((layer) => {
       if (!(layer instanceof L.GeoJSON)) {
@@ -261,18 +261,23 @@ export class LayerInteractionManager {
       }
 
       const pane = (layer.options as L.PathOptions & { pane?: string })?.pane
-      if (pane === MAP_PANES.HIGHLIGHT) {
-        orphanHighlightLayers.push(layer)
+      if (pane === MAP_PANES.HIGHLIGHT || pane === MAP_PANES.SELECTION) {
+        orphanOverlayLayers.push(layer)
       }
     })
 
-    for (const layer of orphanHighlightLayers) {
+    for (const layer of orphanOverlayLayers) {
       this.map.removeLayer(layer)
     }
   }
 
   clearOtherStyleManagers(layerId: string): void {
-    for (const selectableLayerId of ['subcuencas', 'sistemas10', 'zonasexpl']) {
+    for (const selectableLayerId of [
+      'subcuencas',
+      'sistemas10',
+      'zonasexpl',
+      'comarcasagrarias',
+    ] as SelectableLayerId[]) {
       if (selectableLayerId === layerId) {
         continue
       }

@@ -11,14 +11,19 @@
   import { basemapsLayers } from '@/constants/basemaps'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import { createLayer, getWFSFeatureById } from '@/services/geoserver'
-  import { subcuencasStyle, sistemas10Style, zonasexplStyle } from '@/config/styles/layerStyles'
+  import {
+    subcuencasStyle,
+    sistemas10Style,
+    zonasexplStyle,
+    comarcasagrariasStyle,
+  } from '@/config/styles/layerStyles'
   import { useRoute } from 'vue-router'
   import simplify from '@turf/simplify'
   import { geojsonToWKT } from '@terraformer/wkt'
   import type { WFSLayerConfig } from '@/types/Layers'
 
   const props = defineProps<{
-    type: 'subcuencas' | 'sistemas10' | 'zonasexpl'
+    type: 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias'
   }>()
 
   const route = useRoute()
@@ -56,7 +61,13 @@
     if (!configSPolygon) return
 
     const routeQueryKey =
-      props.type === 'subcuencas' ? 'subcuenca' : props.type === 'sistemas10' ? 'sistema' : 'zona'
+      props.type === 'subcuencas'
+        ? 'subcuenca'
+        : props.type === 'sistemas10'
+          ? 'sistema'
+          : props.type === 'zonasexpl'
+            ? 'zona'
+            : 'comarca'
 
     const fieldName =
       props.type === 'subcuencas'
@@ -65,7 +76,9 @@
           ? 'sistema'
           : props.type === 'zonasexpl'
             ? 'ogc_fid'
-            : 'code'
+            : props.type === 'comarcasagrarias'
+              ? 'ogc_fid'
+              : 'code'
 
     const featurePolygon = await getWFSFeatureById(
       configSPolygon,
@@ -78,6 +91,7 @@
       if (props.type === 'subcuencas') styleOptions = subcuencasStyle.normal
       else if (props.type === 'sistemas10') styleOptions = sistemas10Style.normal
       else if (props.type === 'zonasexpl') styleOptions = zonasexplStyle.normal
+      else if (props.type === 'comarcasagrarias') styleOptions = comarcasagrariasStyle.normal
 
       const layer = L.geoJSON(featurePolygon, {
         style: styleOptions,
