@@ -5,6 +5,7 @@ import { boundaryStore } from '@/stores/boundaryStore'
 import { applyPolygonMaskToWMS } from '@/utils/mask'
 import { buildSaihPopupContent } from '@/utils/saihStations'
 import {
+  buildComarcaPopupContent,
   buildSubcuencaPopupContent,
   buildSistemaPopupContent,
   buildZonaPopupContent,
@@ -83,7 +84,7 @@ export async function createWFSLayer(
       ...extraParams,
     }
 
-    const geojson = await ky.get(baseUrl, { searchParams: params }).json()
+    const geojson = await ky.get(baseUrl, { searchParams: params, timeout: false }).json()
 
     const geojsonLayer = L.geoJSON(geojson as GeoJSON.GeoJsonObject, {
       style: config.style?.normal,
@@ -117,7 +118,9 @@ export async function createWFSLayer(
     })
 
     // Guardar StyleManager en el layer para acceso desde MapLayerManager
-    const isSelectable = ['subcuencas', 'sistemas10', 'zonasexpl'].includes(config.id)
+    const isSelectable = ['subcuencas', 'sistemas10', 'zonasexpl', 'comarcasagrarias'].includes(
+      config.id
+    )
 
     // Seleccionar builder de popup según el layer
     let popupBuilder: ((feature: GeoJSON.Feature) => string) | undefined
@@ -128,6 +131,8 @@ export async function createWFSLayer(
       popupBuilder = buildSistemaPopupContent
     } else if (config.id === 'zonasexpl') {
       popupBuilder = buildZonaPopupContent
+    } else if (config.id === 'comarcasagrarias') {
+      popupBuilder = buildComarcaPopupContent
     }
 
     const styleManager = new StyleManager(

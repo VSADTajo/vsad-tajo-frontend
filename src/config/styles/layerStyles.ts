@@ -123,3 +123,24 @@ export const zonasexplStyle: LayerStyle = {
     fillOpacity: 0.5,
   },
 }
+
+export const comarcasagrariasStyle: LayerStyle = {
+  normal: {
+    color: '#aa3c3c',
+    weight: 2,
+    fillColor: '#976363',
+    fillOpacity: 0.2,
+  },
+  highlight: {
+    color: '#6f2629',
+    weight: 3,
+    fillColor: '#b97878',
+    fillOpacity: 0.48,
+  },
+  selected: {
+    color: '#1f7a1f',
+    weight: 3,
+    fillColor: '#49b24a',
+    fillOpacity: 0.5,
+  },
+}

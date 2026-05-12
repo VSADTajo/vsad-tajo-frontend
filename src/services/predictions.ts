@@ -108,6 +108,9 @@ export async function getMaxAndLatestValuesService(
   const response = await api
     .get('predictions/max-and-latest-values', {
       searchParams: { typeName },
+      retry: {
+        limit: 0,
+      },
       headers: {
         Accept: 'application/json',
       },
