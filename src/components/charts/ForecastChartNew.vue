@@ -48,7 +48,7 @@
     {
       loading: false,
       toolbar: true,
-      height: 510,
+      height: 550,
       thresholds: undefined,
     }
   )

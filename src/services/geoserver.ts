@@ -1,6 +1,13 @@
 import L from 'leaflet'
-import type { LayerConfig, WFSLayerConfig, WMSLayerConfig, TMSLayerConfig } from '@/types/Layers'
+import type {
+  LayerConfig,
+  WFSLayerConfig,
+  WMSLayerConfig,
+  TMSLayerConfig,
+  APIStationsLayerConfig,
+} from '@/types/Layers'
 import ky from 'ky'
+import { api } from './api'
 import { boundaryStore } from '@/stores/boundaryStore'
 import { applyPolygonMaskToWMS } from '@/utils/mask'
 import { buildSaihPopupContent } from '@/utils/saihStations'
@@ -11,6 +18,8 @@ import {
   buildZonaPopupContent,
 } from '@/utils/popupContent'
 import { StyleManager } from '@/mapManager/StyleManager'
+import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
+import type { StationsApiResponse } from '@/utils/stationsToGeoJSON'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
@@ -60,7 +69,68 @@ export function createTMSLayer(config: TMSLayerConfig): L.TileLayer {
 }
 
 // ==============================
-// 🟦 WFS (fetch + create)
+// � API_STATIONS (fetch + convert)
+// ==============================
+
+export async function createAPIStationsLayer(
+  config: APIStationsLayerConfig,
+  extraParams?: Record<string, string>,
+  onDblClick?: (feature: GeoJSON.Feature) => void
+): Promise<L.GeoJSON | null> {
+  try {
+    const response = await api.get(config.url, { timeout: false }).json<StationsApiResponse>()
+
+    const geojson = stationsToGeoJSON(response.items)
+
+    const geojsonLayer = L.geoJSON(geojson, {
+      pointToLayer: config.pointToLayer,
+      pane: config.pane,
+      interactive: config.interactive ?? true,
+
+      onEachFeature: (feature, layer) => {
+        // Add popup for SAIH stations
+        if ('bindPopup' in layer) {
+          layer.bindPopup(buildSaihPopupContent(feature), {
+            closeButton: false,
+            autoClose: false,
+            closeOnClick: false,
+            className: 'feature-hover-popup',
+            offset: L.point(0, -14),
+          })
+
+          if (layer instanceof L.Marker) {
+            layer.on({
+              click: () => {
+                layer.openPopup()
+              },
+              mouseover: () => {
+                layer.openPopup()
+              },
+              mouseout: () => {
+                layer.closePopup()
+              },
+            })
+          }
+        }
+
+        // Handle double click
+        if (onDblClick) {
+          layer.on('dblclick', () => {
+            onDblClick(feature)
+          })
+        }
+      },
+    })
+
+    return geojsonLayer
+  } catch (error) {
+    console.error('[createAPIStationsLayer] Error fetching stations from', config.url, error)
+    return null
+  }
+}
+
+// ==============================
+// �🟦 WFS (fetch + create)
 // ==============================
 
 export async function createWFSLayer(
@@ -173,6 +243,9 @@ const layerFactories: {
   TMS: (config) => createTMSLayer(config as TMSLayerConfig),
 
   WFS: (config, extra, callback) => createWFSLayer(config as WFSLayerConfig, extra, callback),
+
+  API_STATIONS: (config, extra, callback) =>
+    createAPIStationsLayer(config as APIStationsLayerConfig, extra, callback),
 }
 
 export async function createLayer(
@@ -216,7 +289,8 @@ export async function getFeatureContainingPoint(
   url: string,
   typeName: string,
   lat: number,
-  lng: number
+  lng: number,
+  geomField = 'geom'
 ): Promise<GeoJSON.Feature | null> {
   try {
     const params = {
@@ -226,7 +300,7 @@ export async function getFeatureContainingPoint(
       typeName,
       outputFormat: 'application/json',
       srsName: 'EPSG:4326',
-      CQL_FILTER: `CONTAINS(geom, POINT(${lng} ${lat}))`,
+      CQL_FILTER: `CONTAINS(${geomField}, POINT(${lng} ${lat}))`,
     }
 
     const response = await ky.get(url, { searchParams: params })

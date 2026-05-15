@@ -73,11 +73,8 @@
   function debugLog(message: string, payload?: unknown) {
     if (!DEBUG_TIME) return
     if (payload === undefined) {
-      console.log(`[TimeDebug] ${message}`)
       return
     }
-
-    console.log(`[TimeDebug] ${message}`, payload)
   }
 
   const rangeLayerIds = new Set(

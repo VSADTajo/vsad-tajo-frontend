@@ -129,18 +129,6 @@
     () => props.thresholds,
     (thresholds) => {
       if (!props.isEmbalse || !thresholds) return
-
-      const thresholdEntries = Object.entries(thresholds).filter(([key]) => {
-        const normalizedKey = key.toLowerCase()
-        return (
-          normalizedKey.includes('umbral') ||
-          normalizedKey.includes('threshold') ||
-          normalizedKey.includes('vol') ||
-          normalizedKey.includes('caud')
-        )
-      })
-
-      console.log('[ContentUmbralesData][embalse] threshold-like properties:', thresholdEntries)
     },
     { immediate: true }
   )

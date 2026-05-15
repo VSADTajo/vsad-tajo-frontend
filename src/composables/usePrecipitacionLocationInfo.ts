@@ -7,6 +7,7 @@ export interface LocationInfo {
   subcuenca?: string
   sistema?: string
   zona?: string
+  comarca?: string
 }
 
 export function usePrecipitacionLocationInfo(initialLat: number | null, initialLng: number | null) {
@@ -24,7 +25,7 @@ export function usePrecipitacionLocationInfo(initialLat: number | null, initialL
     loading.value = true
 
     try {
-      const [subcuencaFeature, sistemaFeature, zonaFeature] = await Promise.all([
+      const [subcuencaFeature, sistemaFeature, zonaFeature, comarcaFeature] = await Promise.all([
         getFeatureContainingPoint(geoserverTajoUrl, 'Tajo:cht_subcuencas', lat.value, lng.value),
         getFeatureContainingPoint(
           geoserverTajoUrl,
@@ -38,12 +39,20 @@ export function usePrecipitacionLocationInfo(initialLat: number | null, initialL
           lat.value,
           lng.value
         ),
+        getFeatureContainingPoint(
+          geoserverTajoUrl,
+          'Tajo:cht_comarcasagrarias',
+          lat.value,
+          lng.value,
+          'wkb_geometry'
+        ),
       ])
 
       locationInfo.value = {
         subcuenca: (subcuencaFeature?.properties?.name as string) || undefined,
         sistema: (sistemaFeature?.properties?.sistema as string) || undefined,
         zona: (zonaFeature?.properties?.nombre as string) || undefined,
+        comarca: (comarcaFeature?.properties?.ds_comarca as string) || undefined,
       }
     } catch (err) {
       console.error('[usePrecipitacionLocationInfo] Error fetching location info', err)

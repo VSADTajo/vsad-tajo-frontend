@@ -1,14 +1,16 @@
 <template>
   <v-card class="pa-4 bg-background" elevation="2">
-    <v-card-title class="d-flex justify-space-between align-start">
+    <v-card-title class="d-flex justify-space-between align-start" :style="headerStyle">
       <div>
-        <div class="text-h6 font-weight-bold">Precipitación horaria</div>
-        <div v-if="layerName" class="text-caption text-medium-emphasis">{{ layerName }}</div>
-        <div v-if="coords" class="text-caption text-medium-emphasis">
+        <div class="text-h6 font-weight-bold text-white">Precipitación horaria</div>
+        <div v-if="layerName" class="text-caption" style="color: rgba(255, 255, 255, 0.8)">
+          {{ layerName }}
+        </div>
+        <div v-if="coords" class="text-caption" style="color: rgba(255, 255, 255, 0.7)">
           {{ coords.lat }}, {{ coords.lng }}
         </div>
       </div>
-      <v-btn icon="mdi-close" variant="text" size="small" @click="closeDrawer" />
+      <v-btn icon="mdi-close" variant="text" size="small" color="white" @click="closeDrawer" />
     </v-card-title>
 
     <v-divider class="my-3" />
@@ -18,8 +20,6 @@
     <v-card-text>
       <!-- Información de ubicación -->
       <v-sheet class="pa-3 mb-4 rounded" elevation="1">
-        <div class="text-caption font-weight-bold text-medium-emphasis mb-3">UBICACIÓN</div>
-
         <v-row v-if="loading" dense>
           <v-col cols="12" md="4">
             <v-skeleton-loader type="text" class="mb-2" />
@@ -33,24 +33,63 @@
         </v-row>
 
         <v-row v-else dense>
-          <v-col cols="12" md="4">
-            <div class="text-caption text-medium-emphasis">Subcuenca</div>
-            <div class="text-body-2 font-weight-medium">
+          <v-col cols="12" sm="3" class="mb-2">
+            <v-chip
+              prepend-icon="mdi-shape"
+              variant="tonal"
+              size="small"
+              class="font-weight-bold"
+              style="background-color: #ec9c41; color: #3b2200"
+            >
+              Subcuenca
+            </v-chip>
+            <div class="text-body-2 font-weight-medium mt-1">
               {{ locationInfo.subcuenca || '-' }}
             </div>
           </v-col>
 
-          <v-col cols="12" md="4">
-            <div class="text-caption text-medium-emphasis">Sistema</div>
-            <div class="text-body-2 font-weight-medium">
+          <v-col cols="12" sm="3" class="mb-2">
+            <v-chip
+              prepend-icon="mdi-shape"
+              variant="tonal"
+              size="small"
+              class="font-weight-bold"
+              style="background-color: #b2df8a; color: #1a4a12"
+            >
+              Sistema
+            </v-chip>
+            <div class="text-body-2 font-weight-medium mt-1">
               {{ locationInfo.sistema || '-' }}
             </div>
           </v-col>
 
-          <v-col cols="12" md="4">
-            <div class="text-caption text-medium-emphasis">Zona</div>
-            <div class="text-body-2 font-weight-medium">
+          <v-col cols="12" sm="3" class="mb-2">
+            <v-chip
+              prepend-icon="mdi-shape"
+              variant="tonal"
+              size="small"
+              class="font-weight-bold"
+              style="background-color: #a0c8e2; color: #0d3a55"
+            >
+              Zona
+            </v-chip>
+            <div class="text-body-2 font-weight-medium mt-1">
               {{ locationInfo.zona || '-' }}
+            </div>
+          </v-col>
+
+          <v-col cols="12" sm="3" class="mb-2">
+            <v-chip
+              prepend-icon="mdi-shape"
+              variant="tonal"
+              size="small"
+              class="font-weight-bold"
+              style="background-color: #976363; color: #fff"
+            >
+              Comarca
+            </v-chip>
+            <div class="text-body-2 font-weight-medium mt-1">
+              {{ locationInfo.comarca || '-' }}
             </div>
           </v-col>
         </v-row>
@@ -59,12 +98,12 @@
       <v-sheet class="pa-4" rounded elevation="1">
         <div class="text-subtitle-2 font-weight-medium mb-3">Precipitación por hora</div>
 
-        <v-skeleton-loader v-if="chartLoading" type="image" height="320" />
+        <v-skeleton-loader v-if="chartLoading" type="image" height="520" />
 
         <apexchart
           v-else-if="hasChartData"
           type="bar"
-          height="320"
+          height="520"
           :options="chartOptions"
           :series="chartSeries"
         />
@@ -90,7 +129,10 @@
   import { useLayersStore } from '@/stores/layersStore'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import { dateFormattedWithHours } from '@/utils/dates'
-  import { fetchGeoServerLayerPointTimeSeries } from '@/services/geoserverWmsService'
+  import {
+    fetchGeoServerLayerPointTimeSeries,
+    getGeoServerLayerTimeDimension,
+  } from '@/services/geoserverWmsService'
   import type { WMSLayerConfig } from '@/types/Layers'
 
   const route = useRoute()
@@ -137,10 +179,21 @@
 
   const chartLoading = ref(false)
   const chartSeries = ref<Array<{ name: string; data: Array<{ x: string; y: number | null }> }>>([])
+  const chartTemporalStepHours = ref(1)
+  const temporalFallbackByLayer = ref<
+    Record<string, { start: string; end: string; stepHours: number }>
+  >({})
 
   const hasChartData = computed(() =>
     chartSeries.value.some((serie) => serie.data.some((point) => Number.isFinite(point.y)))
   )
+
+  const xAxisCategories = computed(() => chartSeries.value[0]?.data.map((point) => point.x) ?? [])
+
+  const xAxisLabelStep = computed(() => {
+    const stepHours = chartTemporalStepHours.value
+    return Math.max(1, Math.ceil(12 / stepHours))
+  })
 
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
@@ -148,19 +201,40 @@
       toolbar: { show: true },
       zoom: { enabled: true },
     },
-    colors: ['#1E88E5'],
+    colors: [
+      ({ value }: { value: number }) => {
+        if (value <= 0) return '#e3f2fd'
+        if (value <= 0.1) return '#bbdefb'
+        if (value <= 1) return '#81d4fa'
+        if (value <= 5) return '#86efac'
+        if (value <= 10) return '#22c55e'
+        if (value <= 20) return '#bef264'
+        if (value <= 40) return '#fde047'
+        if (value <= 70) return '#fb923c'
+        if (value <= 100) return '#ef4444'
+        if (value <= 150) return '#991b1b'
+        return '#450a0a'
+      },
+    ],
     dataLabels: { enabled: false },
     plotOptions: {
       bar: {
         borderRadius: 4,
         columnWidth: '68%',
+        distributed: false,
       },
     },
     xaxis: {
       type: 'category',
+      categories: xAxisCategories.value,
       labels: {
         rotate: -30,
         hideOverlappingLabels: true,
+        formatter: (value: string) => {
+          const index = xAxisCategories.value.indexOf(value)
+          if (index < 0) return value
+          return index % xAxisLabelStep.value === 0 ? value : ''
+        },
       },
     },
     yaxis: {
@@ -181,25 +255,68 @@
     },
   }))
 
+  function shadeHex(hex: string, factor: number): string {
+    const n = parseInt(hex.replace('#', ''), 16)
+    const r = Math.round(((n >> 16) & 0xff) * factor)
+    const g = Math.round(((n >> 8) & 0xff) * factor)
+    const b = Math.round((n & 0xff) * factor)
+    return `#${[r, g, b].map((c) => Math.min(255, c).toString(16).padStart(2, '0')).join('')}`
+  }
+
+  const headerStyle = computed(() => {
+    const base = '#1E88E5'
+    const darker = shadeHex(base, 0.65)
+    return {
+      background: `linear-gradient(135deg, ${base} 0%, ${darker} 100%)`,
+      margin: '-16px -16px 0 -16px',
+      padding: '16px',
+      borderRadius: '4px 4px 0 0',
+    }
+  })
+
+  async function resolveTemporalRange(layerConfig: WMSLayerConfig): Promise<{
+    start: string
+    end: string
+    stepHours: number
+  } | null> {
+    const stateTemporal = selectedLayerState.value?.temporal
+    if (stateTemporal) {
+      return stateTemporal
+    }
+
+    const cachedTemporal = temporalFallbackByLayer.value[layerConfig.id]
+    if (cachedTemporal) {
+      return cachedTemporal
+    }
+
+    const capabilitiesTemporal = await getGeoServerLayerTimeDimension({
+      url: layerConfig.url,
+      layerName: layerConfig.layers,
+    })
+
+    if (!capabilitiesTemporal) {
+      return null
+    }
+
+    const parsedEnd = new Date(capabilitiesTemporal.end)
+    const safeEnd = new Date(parsedEnd.getTime() - capabilitiesTemporal.stepHours * 60 * 60 * 1000)
+
+    const fallbackTemporal = {
+      start: capabilitiesTemporal.start,
+      end: Number.isNaN(safeEnd.getTime()) ? capabilitiesTemporal.end : safeEnd.toISOString(),
+      stepHours: capabilitiesTemporal.stepHours,
+    }
+
+    temporalFallbackByLayer.value[layerConfig.id] = fallbackTemporal
+    return fallbackTemporal
+  }
+
   async function loadChartData() {
     const currentCoords = coords.value
     const layerConfig = selectedLayerConfig.value
-    const layerState = selectedLayerState.value
-    const temporal = layerState?.temporal
-
-    console.log('[RightContentPrecipitacion] loadChartData called', {
-      coords: currentCoords,
-      selectedLayerId: selectedLayerId.value,
-      hasLayerConfig: Boolean(layerConfig),
-      layerConfig,
-      layerState,
-      temporal,
-    })
+    const temporal = layerConfig ? await resolveTemporalRange(layerConfig) : null
 
     if (!currentCoords || !layerConfig || !temporal) {
-      console.log(
-        '[RightContentPrecipitacion] loadChartData skipped: missing coords/layerConfig/temporal'
-      )
       chartSeries.value = []
       return
     }
@@ -207,15 +324,7 @@
     chartLoading.value = true
 
     try {
-      console.log('[RightContentPrecipitacion] Fetching chart time series', {
-        url: layerConfig.url,
-        layerName: layerConfig.layers,
-        lat: currentCoords.lat,
-        lng: currentCoords.lng,
-        startIso: temporal.start,
-        endIso: temporal.end,
-        stepHours: temporal.stepHours,
-      })
+      chartTemporalStepHours.value = temporal.stepHours
 
       const timeSeries = await fetchGeoServerLayerPointTimeSeries({
         url: layerConfig.url,
@@ -227,17 +336,12 @@
         stepHours: temporal.stepHours,
       })
 
-      console.log('[RightContentPrecipitacion] Time series received', {
-        points: timeSeries.length,
-        sample: timeSeries.slice(0, 3),
-      })
-
       chartSeries.value = [
         {
           name: layerName.value ?? 'Precipitación',
           data: timeSeries.map((entry) => ({
             x: dateFormattedWithHours(new Date(entry.time).getTime()),
-            y: entry.value,
+            y: entry.value ?? 0,
           })),
         },
       ]
@@ -257,10 +361,8 @@
   watch(
     () => route.query.precipitacion,
     (newPrecipitacion) => {
-      console.log('[RightContentPrecipitacion] watch precip query', newPrecipitacion)
       if (newPrecipitacion) {
         const [lat, lng] = (newPrecipitacion as string).split(',').map(Number)
-        console.log('[RightContentPrecipitacion] parsed coords from query', { lat, lng })
         if (!isNaN(lat) && !isNaN(lng)) {
           fetchLocationInfo(lat, lng)
           void loadChartData()
@@ -273,7 +375,6 @@
   watch(
     () => [route.query.precipitacionLayer, selectedLayerState.value?.params?.time],
     (newValues) => {
-      console.log('[RightContentPrecipitacion] watch layer/time changed', newValues)
       void loadChartData()
     }
   )

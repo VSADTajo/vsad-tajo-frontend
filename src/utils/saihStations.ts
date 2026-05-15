@@ -132,16 +132,18 @@ function formatPopupDate(value: string | null): string {
 export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
 
-  const tipo = String(props.tipo_cod ?? props.tipo ?? '')
+  const tipo = String(props.tipoCod ?? props.tipo_cod ?? props.tipo ?? '')
   const headerColor = getSaihTypeColor(tipo)
   const headerColorDark = darkenHex(headerColor, 0.72)
   const alertInfo = getSaihAlertInfo(feature)
   const precipInfo = getSaihPrecipMaxInfo(feature)
 
-  const codigo = escapeHtml(props.codigo)
-  const nombre = escapeHtml(props.nombre)
-  const municipio = escapeHtml(props.municipio)
+  const codigo = escapeHtml(props.stationCode ?? props.codigo ?? '')
+  const nombre = escapeHtml(props.name ?? props.nombre ?? '')
+  const municipio = escapeHtml(props.municipio ?? '-')
+
   const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
+
   const maxTime = escapeHtml(formatPopupDate(alertInfo.simulationDate))
 
   const caudalSection =

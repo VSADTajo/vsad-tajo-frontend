@@ -1,5 +1,5 @@
 <template>
-  <v-card class="bg-surface" elevation="2">
+  <v-card class="bg-surface h-100" elevation="2">
     <v-card-title class="text-subtitle-1 font-weight-bold">Resumen datos observados</v-card-title>
     <v-divider />
     <v-card-text v-if="loading" class="pa-4">
@@ -12,16 +12,30 @@
 
     <v-card-text v-else>
       <template v-if="activeTab === 'caudal'">
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
-          {{ isEmbalse ? 'Caudal de entrada' : 'Caudal observado' }}
+        <v-btn-toggle
+          v-if="isEmbalse"
+          v-model="embalseObservedMode"
+          mandatory
+          divided
+          color="primary"
+          variant="outlined"
+          class="mb-3 observed-mode-toggle"
+        >
+          <v-btn value="entrada" size="small" class="observed-mode-btn">Entrada</v-btn>
+          <v-btn value="salida" size="small" class="observed-mode-btn">Salida</v-btn>
+          <v-btn value="volumen" size="small" class="observed-mode-btn">Volumen</v-btn>
+        </v-btn-toggle>
+
+        <div class="text-caption text-medium-emphasis font-weight-bold mb-1 mt-4">
+          {{ observedSectionTitle }}
         </div>
         <v-row>
           <v-col cols="7" class="text-caption text-medium-emphasis align-center">
             Último observado
           </v-col>
           <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-            <v-chip :color="lastValueColor" size="small" variant="flat">
-              {{ lastObservedValueLabel }}
+            <v-chip :color="currentLastValueColor" size="small" variant="flat">
+              {{ currentSummary.lastValueLabel }}
             </v-chip>
           </v-col>
         </v-row>
@@ -30,7 +44,7 @@
             Fecha último
           </v-col>
           <v-col cols="7" class="text-right font-weight-medium align-center">
-            {{ lastObservedDateLabel }}
+            {{ currentSummary.lastDateLabel }}
           </v-col>
         </v-row>
         <v-row>
@@ -38,8 +52,8 @@
             Máximo observado
           </v-col>
           <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-            <v-chip :color="maxValueColor" size="small" variant="flat">
-              {{ maxObservedValueLabel }}
+            <v-chip :color="currentMaxValueColor" size="small" variant="flat">
+              {{ currentSummary.maxValueLabel }}
             </v-chip>
           </v-col>
         </v-row>
@@ -48,91 +62,9 @@
             Fecha máximo
           </v-col>
           <v-col cols="7" class="text-right font-weight-medium align-center">
-            {{ maxObservedDateLabel }}
+            {{ currentSummary.maxDateLabel }}
           </v-col>
         </v-row>
-
-        <template v-if="isEmbalse">
-          <v-divider class="my-2" />
-          <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
-            Caudal de salida
-          </div>
-          <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis align-center">
-              Último observado
-            </v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-              <v-chip size="small" variant="flat">
-                {{ outflowLastLabel }}
-              </v-chip>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="5" class="text-caption text-medium-emphasis align-center">
-              Fecha último
-            </v-col>
-            <v-col cols="7" class="text-right font-weight-medium align-center">
-              {{ outflowLastDateLabel }}
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis align-center">
-              Máximo observado
-            </v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-              <v-chip size="small" variant="flat">
-                {{ outflowMaxLabel }}
-              </v-chip>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="5" class="text-caption text-medium-emphasis align-center">
-              Fecha máximo
-            </v-col>
-            <v-col cols="7" class="text-right font-weight-medium align-center">
-              {{ outflowMaxDateLabel }}
-            </v-col>
-          </v-row>
-
-          <v-divider class="my-2" />
-          <div class="text-caption text-medium-emphasis font-weight-bold mb-1">Volumen</div>
-          <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis align-center">
-              Último observado
-            </v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-              <v-chip :color="volumeLastValueColor" size="small" variant="flat">
-                {{ volumeLastLabel }}
-              </v-chip>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="5" class="text-caption text-medium-emphasis align-center">
-              Fecha último
-            </v-col>
-            <v-col cols="7" class="text-right font-weight-medium align-center">
-              {{ volumeLastDateLabel }}
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis align-center">
-              Máximo observado
-            </v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-              <v-chip :color="volumeMaxValueColor" size="small" variant="flat">
-                {{ volumeMaxLabel }}
-              </v-chip>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="5" class="text-caption text-medium-emphasis align-center">
-              Fecha máximo
-            </v-col>
-            <v-col cols="7" class="text-right font-weight-medium align-center">
-              {{ volumeMaxDateLabel }}
-            </v-col>
-          </v-row>
-        </template>
       </template>
 
       <template v-else>
@@ -178,9 +110,11 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { formatDate, toTimestamp } from '@/utils/dates'
   import type { StationPrediction } from '@/types/Predictions'
+
+  type EmbalseObservedMode = 'entrada' | 'salida' | 'volumen'
 
   const props = defineProps<{
     activeTab: 'caudal' | 'precipitaciones'
@@ -258,20 +192,30 @@
   const outflowSummary = computed(() => summarizePrediction(props.caudalOutflowHistorical, 'm3/s'))
   const volumeSummary = computed(() => summarizePrediction(props.embalseVolumeHistorical, 'hm3'))
 
+  const embalseObservedMode = ref<EmbalseObservedMode>('entrada')
+
+  const observedSectionTitle = computed(() => {
+    if (props.activeTab !== 'caudal') return 'Precipitacion observada'
+    if (!props.isEmbalse) return 'Caudal observado'
+
+    if (embalseObservedMode.value === 'salida') return 'Caudal de salida'
+    if (embalseObservedMode.value === 'volumen') return 'Volumen'
+    return 'Caudal de entrada'
+  })
+
+  const currentSummary = computed(() => {
+    if (props.activeTab !== 'caudal') return baseSummary.value
+    if (!props.isEmbalse) return baseSummary.value
+
+    if (embalseObservedMode.value === 'salida') return outflowSummary.value
+    if (embalseObservedMode.value === 'volumen') return volumeSummary.value
+    return baseSummary.value
+  })
+
   const lastObservedValueLabel = computed(() => baseSummary.value.lastValueLabel)
   const maxObservedValueLabel = computed(() => baseSummary.value.maxValueLabel)
   const lastObservedDateLabel = computed(() => baseSummary.value.lastDateLabel)
   const maxObservedDateLabel = computed(() => baseSummary.value.maxDateLabel)
-
-  const outflowLastLabel = computed(() => outflowSummary.value.lastValueLabel)
-  const outflowMaxLabel = computed(() => outflowSummary.value.maxValueLabel)
-  const outflowLastDateLabel = computed(() => outflowSummary.value.lastDateLabel)
-  const outflowMaxDateLabel = computed(() => outflowSummary.value.maxDateLabel)
-
-  const volumeLastLabel = computed(() => volumeSummary.value.lastValueLabel)
-  const volumeMaxLabel = computed(() => volumeSummary.value.maxValueLabel)
-  const volumeLastDateLabel = computed(() => volumeSummary.value.lastDateLabel)
-  const volumeMaxDateLabel = computed(() => volumeSummary.value.maxDateLabel)
 
   const yellowThreshold = computed(() => readNumber(['umbral_caudal_1'], props.thresholds))
 
@@ -311,6 +255,33 @@
     getVolumeThresholdColor(volumeSummary.value.lastValue)
   )
   const volumeMaxValueColor = computed(() => getVolumeThresholdColor(volumeSummary.value.maxValue))
+
+  const currentLastValueColor = computed(() => {
+    if (props.activeTab !== 'caudal') return ''
+    if (!props.isEmbalse) return lastValueColor.value
+
+    if (embalseObservedMode.value === 'volumen') return volumeLastValueColor.value
+    return getThresholdColor(currentSummary.value.lastValue)
+  })
+
+  const currentMaxValueColor = computed(() => {
+    if (props.activeTab !== 'caudal') return ''
+    if (!props.isEmbalse) return maxValueColor.value
+
+    if (embalseObservedMode.value === 'volumen') return volumeMaxValueColor.value
+    return getThresholdColor(currentSummary.value.maxValue)
+  })
 </script>
 
-<style scoped></style>
+<style scoped>
+  .observed-mode-toggle {
+    width: 100%;
+    display: flex;
+    height: 60px !important;
+  }
+
+  .observed-mode-btn {
+    flex: 1;
+    min-height: 56px !important;
+  }
+</style>

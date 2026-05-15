@@ -85,14 +85,13 @@ export const dynamicLayersConfig: LayerConfig[] = [
   {
     id: 'saih',
     name: 'SAIH',
-    type: 'WFS',
-    url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
-    typeName: 'Tajo:cht_puntos_saih_umbrales',
+    type: 'API_STATIONS',
+    url: 'stations?limit=200&page=1',
     pane: MAP_PANES.SAIH,
     pointToLayer: saihPointStyle,
     interactive: true,
     groupBy: {
-      field: 'tipo_cod',
+      field: 'tipoCod',
       parentLayer: 'saih',
     },
   },

@@ -115,7 +115,7 @@
     uid: string
     display: string
     subtitle: string
-    originType: 'punto_saih' | 'subcuenca' | 'sistema' | 'zona' | 'other'
+    originType: 'punto_saih' | 'subcuenca' | 'sistema' | 'zona' | 'comarca_agraria' | 'other'
     originLabel: string
   }
 
@@ -126,7 +126,7 @@
     if (source.includes('subcuenca')) return 'subcuenca'
     if (source.includes('sistema')) return 'sistema'
     if (source.includes('zona')) return 'zona'
-
+    if (source.includes('comarca_agraria')) return 'comarca_agraria'
     return 'other'
   }
 
@@ -140,6 +140,8 @@
         return 'Sistema'
       case 'zona':
         return 'Zona'
+      case 'comarca_agraria':
+        return 'Comarca'
       default:
         return 'Resultado'
     }
@@ -160,6 +162,11 @@
       case 'zona':
         return {
           background: '#2563eb',
+          color: '#ffffff',
+        }
+      case 'comarca_agraria':
+        return {
+          background: '#aa3c3c',
           color: '#ffffff',
         }
       case 'punto_saih':
@@ -300,7 +307,7 @@
 
   function getLayerIdForOriginType(
     originType: SearchAutocompleteItem['originType']
-  ): 'subcuencas' | 'sistemas10' | 'zonasexpl' | null {
+  ): 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias' | null {
     switch (originType) {
       case 'subcuenca':
         return 'subcuencas'
@@ -308,6 +315,8 @@
         return 'sistemas10'
       case 'zona':
         return 'zonasexpl'
+      case 'comarca_agraria':
+        return 'comarcasagrarias'
       default:
         return null
     }
@@ -317,10 +326,11 @@
     const originType = getOriginType(result.origen)
     const layerId = getLayerIdForOriginType(originType)
 
-    const groupedLayerIds: Array<'subcuencas' | 'sistemas10' | 'zonasexpl'> = [
+    const groupedLayerIds: Array<'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias'> = [
       'subcuencas',
       'sistemas10',
       'zonasexpl',
+      'comarcasagrarias',
     ]
 
     if (originType === 'punto_saih') {
@@ -358,6 +368,7 @@
     if (originType === 'subcuenca') return 'subcuenca'
     if (originType === 'sistema') return 'sistema'
     if (originType === 'zona') return 'zona'
+    if (originType === 'comarca_agraria') return 'comarca'
 
     const source = `${result.origen} ${result.tipoCod ?? ''}`.toLowerCase()
     if (source.includes('reporting')) return 'reportingPoint'
