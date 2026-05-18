@@ -78,7 +78,12 @@ export interface TMSLayerConfig extends BaseLayerConfig {
   type: 'TMS'
 }
 
-export type LayerConfig = WMSLayerConfig | WFSLayerConfig | TMSLayerConfig
+export interface APIStationsLayerConfig extends BaseLayerConfig {
+  type: 'API_STATIONS'
+  pointToLayer?: (feature: GeoJSON.Feature, latlng: L.LatLng) => L.Layer
+}
+
+export type LayerConfig = WMSLayerConfig | WFSLayerConfig | TMSLayerConfig | APIStationsLayerConfig
 
 export interface LayerStyle {
   normal: L.PathOptions

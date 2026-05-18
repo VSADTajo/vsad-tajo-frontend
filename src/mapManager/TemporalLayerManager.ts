@@ -27,11 +27,8 @@ export class TemporalLayerManager {
   private debugLog(message: string, payload?: unknown): void {
     if (!DEBUG_TEMPORAL_WMS) return
     if (payload === undefined) {
-      console.log(`[TemporalWMS] ${message}`)
       return
     }
-
-    console.log(`[TemporalWMS] ${message}`, payload)
   }
 
   constructor(

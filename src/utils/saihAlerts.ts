@@ -47,11 +47,14 @@ function getThresholds(props: Record<string, unknown>) {
 
 function getStationCode(feature: Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
-  return normalizeStationKey(props.codigo ?? props.stationId ?? props.code ?? feature.id)
+  return normalizeStationKey(
+    props.stationCode ?? props.codigo ?? props.stationId ?? props.code ?? feature.id
+  )
 }
 
 function getCaudalType(feature: Feature): 'Q.NAM.harmonie' | 'I.NAM.harmonie' {
-  const tipo = normalizeStationKey(feature.properties?.tipo_cod)
+  const props = (feature.properties ?? {}) as Record<string, unknown>
+  const tipo = normalizeStationKey(props.tipoCod ?? props.tipo_cod)
   return tipo === 'E' ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
 }
 

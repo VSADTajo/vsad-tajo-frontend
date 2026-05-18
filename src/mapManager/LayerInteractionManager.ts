@@ -156,25 +156,19 @@ export class LayerInteractionManager {
 
   attachPrecipitacionClick(layerId: string, layer: L.Layer) {
     if (this.precipitacionClickHandlers[layerId]) {
-      console.log('[LayerInteractionManager] attachPrecipitacionClick ya registrado para', layerId)
       return
     }
-
-    console.log('[LayerInteractionManager] Registrando attachPrecipitacionClick para', layerId)
 
     const handler = (e: L.LeafletMouseEvent) => {
       if (!this.map.hasLayer(layer)) {
         return
       }
 
-      console.log('[LayerInteractionManager] Click en precipitacion layer', layerId, 'en', e.latlng)
-
       const { lat, lng } = e.latlng
 
       // Verificar si el punto está dentro del contorno
       const boundary = boundaryStore['contorno']
       if (!boundary) {
-        console.log('[LayerInteractionManager] No boundary encontrado')
         return
       }
 
@@ -191,13 +185,9 @@ export class LayerInteractionManager {
         return booleanPointInPolygon(point, polygonFeature)
       })
 
-      console.log('[LayerInteractionManager] Punto dentro del contorno?', isInside)
-
       if (!isInside) {
         return
       }
-
-      console.log('[LayerInteractionManager] Abriendo panel para', layerId, 'en', lat, lng)
 
       router.replace({
         query: {
@@ -210,7 +200,6 @@ export class LayerInteractionManager {
 
     this.precipitacionClickHandlers[layerId] = handler
     this.map.on('click', handler)
-    console.log('[LayerInteractionManager] Handler registrado para', layerId)
   }
 
   detachPrecipitacionClick(layerId: string) {

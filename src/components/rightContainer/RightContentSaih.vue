@@ -1,5 +1,26 @@
 <template>
-  <v-card class="pa-2 bg-background" elevation="2">
+  <div
+    v-if="loadingFeature || feature"
+    class="d-flex justify-space-between align-start pa-4 saih-sticky-header"
+    :style="topHeaderStyle"
+  >
+    <div v-if="feature">
+      <div class="text-h6 font-weight-bold" style="color: white">
+        {{ feature.properties?.codigo }}
+      </div>
+      <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">
+        {{ feature.properties?.nombre }}
+      </div>
+    </div>
+    <div v-else>
+      <div class="text-h6 font-weight-bold" style="color: white">Cargando estacion</div>
+      <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">Recuperando datos...</div>
+    </div>
+
+    <v-btn icon="mdi-close" variant="text" size="small" style="color: white" @click="closeDrawer" />
+  </div>
+
+  <v-card class="bg-background" elevation="2">
     <v-progress-linear v-if="loadingFeature" indeterminate />
 
     <!-- Skeleton while loading feature -->
@@ -12,26 +33,7 @@
     </template>
 
     <template v-else-if="feature">
-      <v-card-title class="d-flex justify-space-between align-start pa-6" :style="headerStyle">
-        <div>
-          <div class="text-h6 font-weight-bold" style="color: white">
-            {{ feature.properties?.codigo }}
-          </div>
-          <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">
-            {{ feature.properties?.nombre }}
-          </div>
-        </div>
-
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          style="color: white"
-          @click="closeDrawer"
-        />
-      </v-card-title>
-
-      <v-card-text>
+      <v-card-text class="pt-1">
         <!-- Tipo -->
         <div class="mb-2 mt-2">
           <v-chip
@@ -41,7 +43,7 @@
             size="small"
             class="font-weight-bold"
           >
-            {{ feature?.properties?.tipo }}
+            {{ feature?.properties?.stationType }}
           </v-chip>
         </div>
 
@@ -55,9 +57,9 @@
     </v-alert>
   </v-card>
 
-  <v-row class="mt-2">
-    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1">
-      <v-card class="ma-2 pa-2 bg-background" elevation="2">
+  <v-row class="mt-2 align-stretch">
+    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex">
+      <v-card class="ma-2 pa-2 bg-background w-100 h-100 d-flex flex-column" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
             <ContentObservedData
@@ -74,96 +76,110 @@
         </v-row>
       </v-card>
     </v-col>
-    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2">
-      <v-card class="bg-background">
-        <v-card-text>
-          <v-sheet elevation="2">
-            <v-tabs v-model="tab" color="primary">
-              <v-tab v-if="hasCaudal" value="caudal">Caudal</v-tab>
-              <v-tab value="precipitaciones">Precipitaciones</v-tab>
-            </v-tabs>
+    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex">
+      <div class="w-100 d-flex flex-column">
+        <v-card class="bg-background w-100 h-100 d-flex flex-column">
+          <v-card-text>
+            <v-sheet elevation="2">
+              <v-tabs v-model="tab" color="primary">
+                <v-tab v-if="hasCaudal" value="caudal">Hidrograma</v-tab>
+                <v-tab value="precipitaciones">Precipitaciones</v-tab>
+              </v-tabs>
 
-            <v-divider></v-divider>
+              <v-divider></v-divider>
 
-            <v-tabs-window v-model="tab">
-              <v-tabs-window-item v-if="hasCaudal" value="caudal" eager>
-                <v-sheet
-                  v-if="
-                    loadingCaudales ||
-                    caudalHistorical ||
-                    caudalForecastHarmonie ||
-                    caudalForecastEpstat
-                  "
-                  class="pa-5"
-                >
-                  <ForecastChartNew
-                    :data="caudalChartData"
-                    :loading="loadingCaudales"
-                    :thresholds="feature?.properties as Record<string, unknown>"
-                  />
-                  <!-- <ForecastChartNewEcharts :data="caudalChartData" /> -->
-                </v-sheet>
-                <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
-                <div
-                  v-else-if="loadingCaudales || loadingPrecipitaciones"
-                  class="chart-placeholder chart-placeholder--caudal"
-                >
-                  <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-                </div>
+              <v-tabs-window v-model="tab">
+                <v-tabs-window-item v-if="hasCaudal" value="caudal" eager>
+                  <v-sheet
+                    v-if="
+                      loadingCaudales ||
+                      caudalHistorical ||
+                      caudalForecastHarmonie ||
+                      caudalForecastEpstat
+                    "
+                    class="pa-5"
+                  >
+                    <ForecastChartNew
+                      :data="caudalChartData"
+                      :loading="loadingCaudales || chartThresholdActionLoading"
+                      :thresholds="feature?.properties as Record<string, unknown>"
+                      :focus-threshold-request="focusThresholdRequest"
+                      @focus-threshold-complete="chartThresholdActionLoading = false"
+                    />
+                    <!-- <ForecastChartNewEcharts :data="caudalChartData" /> -->
+                  </v-sheet>
+                  <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
+                  <div
+                    v-else-if="loadingCaudales || loadingPrecipitaciones"
+                    class="chart-placeholder chart-placeholder--caudal"
+                  >
+                    <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+                  </div>
 
-                <div
-                  v-else-if="
-                    !loadingCaudales &&
-                    (hasSelectedDateForTab || !availableDates.simulationDates.length)
-                  "
-                  class="chart-placeholder chart-placeholder--caudal"
-                >
-                  No hay Datos de Caudales Disponibles
-                </div>
-              </v-tabs-window-item>
+                  <div
+                    v-else-if="
+                      !loadingCaudales &&
+                      (hasSelectedDateForTab || !availableDates.simulationDates.length)
+                    "
+                    class="chart-placeholder chart-placeholder--caudal"
+                  >
+                    No hay Datos de Caudales Disponibles
+                  </div>
+                </v-tabs-window-item>
 
-              <v-tabs-window-item value="precipitaciones" eager>
-                <v-sheet
-                  v-if="
-                    loadingPrecipitaciones ||
-                    precipitationsHistorical ||
-                    precipitationsForecastHarmonie ||
-                    precipitationsForecastEpstat
-                  "
-                  class="pa-5"
-                >
-                  <PrecipitationsChart
-                    :data="precipitationsChartData"
-                    :loading="loadingPrecipitaciones"
-                  />
-                  <!-- <PrecipitationsChartEcharts :data="precipitationsChartData" /> -->
-                </v-sheet>
+                <v-tabs-window-item value="precipitaciones" eager>
+                  <v-sheet
+                    v-if="
+                      loadingPrecipitaciones ||
+                      precipitationsHistorical ||
+                      precipitationsForecastHarmonie ||
+                      precipitationsForecastEpstat
+                    "
+                    class="pa-5"
+                  >
+                    <PrecipitationsChart
+                      :data="precipitationsChartData"
+                      :loading="loadingPrecipitaciones"
+                    />
+                    <!-- <PrecipitationsChartEcharts :data="precipitationsChartData" /> -->
+                  </v-sheet>
 
-                <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
-                <div
-                  v-else-if="loadingPrecipitaciones || loadingCaudales"
-                  class="chart-placeholder chart-placeholder--precip"
-                >
-                  <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-                </div>
+                  <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
+                  <div
+                    v-else-if="loadingPrecipitaciones || loadingCaudales"
+                    class="chart-placeholder chart-placeholder--precip"
+                  >
+                    <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+                  </div>
 
-                <div
-                  v-else-if="
-                    !loadingPrecipitaciones &&
-                    (hasSelectedDateForTab || !availableDates.simulationDates.length)
-                  "
-                  class="chart-placeholder chart-placeholder--precip"
-                >
-                  No hay Datos de Precipitaciones Disponibles
-                </div>
-              </v-tabs-window-item>
-            </v-tabs-window>
-          </v-sheet>
-        </v-card-text>
-      </v-card>
+                  <div
+                    v-else-if="
+                      !loadingPrecipitaciones &&
+                      (hasSelectedDateForTab || !availableDates.simulationDates.length)
+                    "
+                    class="chart-placeholder chart-placeholder--precip"
+                  >
+                    No hay Datos de Precipitaciones Disponibles
+                  </div>
+                </v-tabs-window-item>
+              </v-tabs-window>
+            </v-sheet>
+          </v-card-text>
+        </v-card>
+
+        <v-card class="mt-2 pa-2 bg-background" elevation="2">
+          <ContentUmbralesData
+            :active-tab="tab"
+            :is-embalse="isEmbalse"
+            :thresholds="feature?.properties as Record<string, unknown>"
+            :selected-threshold="selectedThreshold"
+            @focus-threshold="handleThresholdFocus"
+          />
+        </v-card>
+      </div>
     </v-col>
-    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3">
-      <v-card class="ma-2 pa-2 bg-background" elevation="2">
+    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex">
+      <v-card class="ma-2 pa-2 bg-background w-100 h-100 d-flex flex-column" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
             <ContentSaihPredictionsLatest
@@ -199,7 +215,7 @@
   </v-row>
 
   <v-row class="px-2">
-    <v-col v-if="tab === 'caudal'" cols="12" md="7" class="mb-2 mb-md-0">
+    <v-col v-if="tab === 'caudal'" cols="12" class="mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
           :forecast-harmonie="caudalForecastHarmonie"
@@ -210,7 +226,7 @@
       </v-card>
     </v-col>
 
-    <v-col v-else cols="12" md="7" class="px-2 mb-2 mb-md-0">
+    <v-col v-else cols="12" class="px-2 mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
           :forecast-harmonie="precipitationsForecastHarmonie"
@@ -221,25 +237,13 @@
         />
       </v-card>
     </v-col>
-
-    <v-col cols="12" md="5">
-      <v-card class="pa-2 bg-background" elevation="2">
-        <ContentUmbralesData
-          :active-tab="tab"
-          :is-embalse="isEmbalse"
-          :thresholds="feature?.properties as Record<string, unknown>"
-        />
-      </v-card>
-    </v-col>
   </v-row>
 </template>
 
 <script lang="ts" setup>
   import { ref, computed, watch, type Ref } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
-  import { getWFSFeatureById } from '@/services/geoserver'
-  import { dynamicLayersConfig } from '@/config/layers.config'
-  import type { WFSLayerConfig } from '@/types/Layers'
+  import { api } from '@/services/api'
   import type {
     AvailableDateItem,
     DataStationPrediction,
@@ -301,12 +305,7 @@
   // station desde la URL
   const stationCode = computed(() => route.query.station as string | undefined)
 
-  // config de la capa SAIH
-  const saihConfig = computed<WFSLayerConfig | undefined>(
-    () => dynamicLayersConfig.find((l) => l.id === 'saih') as WFSLayerConfig | undefined
-  )
-
-  const codeType = computed(() => feature.value?.properties?.tipo_cod)
+  const codeType = computed(() => feature.value?.properties?.tipoCod)
 
   function hexToRgb(hex: string): [number, number, number] {
     const value = hex.replace('#', '')
@@ -341,7 +340,14 @@
 
     return {
       background: `linear-gradient(135deg, ${base} 0%, ${darker} 100%)`,
-      margin: '-16px -16px 0 -16px',
+    }
+  })
+
+  const topHeaderStyle = computed(() => {
+    if (feature.value) return headerStyle.value
+
+    return {
+      background: 'linear-gradient(135deg, #607d8b 0%, #455a64 100%)',
     }
   })
 
@@ -351,7 +357,8 @@
   ])
 
   const normalizedStationCode = computed(() => {
-    const featureCode = feature.value?.properties?.codigo
+    const featureProperties = (feature.value?.properties ?? {}) as Record<string, unknown>
+    const featureCode = featureProperties.stationCode ?? featureProperties.codigo
     const sourceCode = typeof featureCode === 'string' ? featureCode : stationCode.value
 
     return sourceCode?.trim().toUpperCase() ?? ''
@@ -370,6 +377,30 @@
   const loadingMatrixOnPredictionSelect = ref(false)
   const loadingHarmoniePredict = ref(false)
   const loadingEpsPredict = ref(false)
+  const chartThresholdActionLoading = ref(false)
+  const focusThresholdRequest = ref<ThresholdFocusRequest>(null)
+  const selectedThreshold = ref<ThresholdSelection>(null)
+
+  function handleThresholdFocus(payload: ThresholdSelection): void {
+    chartThresholdActionLoading.value = true
+
+    if (!payload) {
+      selectedThreshold.value = null
+      focusThresholdRequest.value = {
+        action: 'reset',
+        nonce: Date.now(),
+      }
+      return
+    }
+
+    selectedThreshold.value = payload
+    focusThresholdRequest.value = {
+      action: 'focus',
+      kind: payload.kind,
+      level: payload.level,
+      nonce: Date.now(),
+    }
+  }
 
   type ForecastKey = keyof DataStationPrediction
   type ForecastRefsMap = Record<ForecastKey, Ref<StationPrediction | undefined>>
@@ -378,6 +409,36 @@
     predictionType: PredictionTypeName
     simulationDate?: string
     percentile?: string
+  }
+
+  type ThresholdKind = 'caudal' | 'volumen'
+  type ThresholdLevel = 1 | 2 | 3
+  type ThresholdSelection = { kind: ThresholdKind; level: ThresholdLevel } | null
+  type ThresholdFocusRequest = {
+    action: 'focus' | 'reset'
+    kind?: ThresholdKind
+    level?: ThresholdLevel
+    nonce: number
+  } | null
+
+  type StationByCodeResponse = {
+    id: string
+    name: string
+    stationCode: string
+    stationType: string
+    tipoCod?: string | null
+    latitude: number | null
+    longitude: number | null
+    threshold?: {
+      umbralNivel1?: number | null
+      umbralNivel2?: number | null
+      umbralNivel3?: number | null
+      umbralCaudal1?: number | null
+      umbralCaudal2?: number | null
+      umbralCaudal3?: number | null
+      [key: string]: unknown
+    } | null
+    [key: string]: unknown
   }
 
   const observedCaudalDates = ref<string[]>([])
@@ -580,6 +641,64 @@
     Object.values(target).forEach((predictionRef) => {
       predictionRef.value = undefined
     })
+  }
+
+  function getThresholdValue(
+    threshold: StationByCodeResponse['threshold'],
+    keys: Array<
+      | 'umbralNivel1'
+      | 'umbralNivel2'
+      | 'umbralNivel3'
+      | 'umbralCaudal1'
+      | 'umbralCaudal2'
+      | 'umbralCaudal3'
+    >
+  ): number | null {
+    if (!threshold) return null
+
+    for (const key of keys) {
+      const raw = threshold[key]
+      if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+    }
+
+    return null
+  }
+
+  function stationToFeature(station: StationByCodeResponse): GeoJSON.Feature {
+    const hasValidCoordinates =
+      station.latitude != null &&
+      station.longitude != null &&
+      Number.isFinite(station.latitude) &&
+      Number.isFinite(station.longitude)
+
+    const longitude = hasValidCoordinates ? (station.longitude as number) : 0
+    const latitude = hasValidCoordinates ? (station.latitude as number) : 0
+
+    return {
+      type: 'Feature',
+      id: station.id,
+      geometry: {
+        type: 'Point',
+        coordinates: [longitude, latitude],
+      },
+      properties: {
+        ...station,
+        codigo: station.stationCode,
+        nombre: station.name,
+        tipo: 'SAIH',
+        tipo_cod: station.tipoCod ?? null,
+        threshold: station.threshold ?? null,
+        umbral_caudal_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
+        umbral_caudal_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
+        umbral_caudal_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
+        umbral_cauda_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
+        umbral_cauda_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
+        umbral_cauda_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
+        umbral_amarillo: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
+        umbral_naranja: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
+        umbral_rojo: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
+      },
+    }
   }
 
   function applyForecastData(target: ForecastRefsMap, payload: Partial<DataStationPrediction>) {
@@ -789,11 +908,6 @@
 
   // cargar feature
   async function loadFeature(code: string): Promise<boolean> {
-    if (!saihConfig.value) {
-      console.warn('SAIH layer config not found')
-      return false
-    }
-
     if (!code) {
       error.value = 'Station code is required'
       return false
@@ -804,7 +918,10 @@
     error.value = null
 
     try {
-      const result = await getWFSFeatureById(saihConfig.value, 'codigo', code)
+      const station = await api
+        .get(`stations/by-code/${encodeURIComponent(code)}`)
+        .json<StationByCodeResponse>()
+      const result = stationToFeature(station)
 
       if (requestId !== featureRequestId) {
         return false
@@ -817,7 +934,7 @@
       }
 
       feature.value = result
-      console.log('Loaded feature', feature.value)
+
       const datesAvailable = await getAvailableDates(code)
       if (requestId !== featureRequestId) {
         return false
@@ -904,6 +1021,8 @@
     stationCode,
     async (code) => {
       if (!code) {
+        selectedThreshold.value = null
+        chartThresholdActionLoading.value = false
         feature.value = null
         error.value = null
         loadingInitialData.value = false
@@ -932,6 +1051,8 @@
         return
       }
 
+      selectedThreshold.value = null
+      chartThresholdActionLoading.value = false
       clearForecasts(precipitationRefs)
       clearForecasts(caudalRefs)
       loadingInitialData.value = true
@@ -950,6 +1071,12 @@
     { immediate: true }
   )
 
+  watch(tab, (currentTab) => {
+    if (currentTab !== 'caudal') {
+      selectedThreshold.value = null
+    }
+  })
+
   function closeDrawer() {
     if (!route.query.station) return
 
@@ -961,6 +1088,13 @@
 </script>
 
 <style scoped>
+  .saih-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    border-radius: 4px 4px 0 0;
+  }
+
   .chart-placeholder {
     display: flex;
     align-items: center;

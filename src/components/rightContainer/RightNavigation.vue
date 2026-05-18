@@ -11,9 +11,10 @@
   >
     <RightContentSaih v-if="station" />
     <RightContentReporting v-if="reporting" />
-    <right-content-subcuenca v-if="subcuenca" />
-    <RightContentSistemas v-if="sistema" />
-    <RightContentZonas v-if="zona" />
+    <RightContentByAreaService v-if="subcuenca" kind="subcuenca" />
+    <RightContentByAreaService v-if="sistema" kind="sistema" />
+    <RightContentByAreaService v-if="zona" kind="zona" />
+    <RightContentByAreaService v-if="comarca" kind="comarca" />
     <RightContentPrecipitacion v-if="precipitacion" />
   </v-navigation-drawer>
 </template>
@@ -24,9 +25,7 @@
   import { useDisplay } from 'vuetify'
   import RightContentSaih from './RightContentSaih.vue'
   import RightContentReporting from './RightContentReporting.vue'
-  import RightContentSubcuenca from './RightContentSubcuenca.vue'
-  import RightContentSistemas from './RightContentSistemas.vue'
-  import RightContentZonas from './RightContentZonas.vue'
+  import RightContentByAreaService from './RightContentByAreaService.vue'
   import RightContentPrecipitacion from './RightContentPrecipitacion.vue'
 
   const route = useRoute()
@@ -43,6 +42,8 @@
 
   const zona = computed(() => route.query.zona as string | undefined)
 
+  const comarca = computed(() => route.query.comarca as string | undefined)
+
   const precipitacion = computed(() => route.query.precipitacion as string | undefined)
 
   // drawer abierto si hay station
@@ -53,6 +54,7 @@
       !!subcuenca.value ||
       !!sistema.value ||
       !!zona.value ||
+      !!comarca.value ||
       !!precipitacion.value
   )
 

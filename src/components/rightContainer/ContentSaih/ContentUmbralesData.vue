@@ -1,57 +1,129 @@
 <template>
-  <v-card class="bg-surface" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">Umbrales</v-card-title>
-    <v-divider />
-    <v-card-text>
+  <v-card class="bg-surface mb-2" elevation="2">
+    <v-card-text class="pt-0">
       <template v-if="activeTab === 'caudal'">
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-2">
-          Umbrales de caudal
-        </div>
+        <v-row class="mt-1">
+          <v-col cols="12" md="6">
+            <div class="text-caption text-medium-emphasis font-weight-bold mb-2">
+              Umbrales de caudal
+            </div>
+            <template v-if="hasAnyThreshold">
+              <v-row>
+                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span
+                    :class="[
+                      'threshold-badge',
+                      'threshold-badge--yellow',
+                      { 'threshold-badge--active': isSelected('caudal', 1) },
+                    ]"
+                    role="button"
+                    tabindex="0"
+                    :aria-pressed="isSelected('caudal', 1)"
+                    @click="focusThreshold('caudal', 1)"
+                  >
+                    Nivel 1:
+                  </span>
+                  <span class="font-weight-medium">{{ threshold1Label }}</span>
+                </v-col>
+                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span
+                    :class="[
+                      'threshold-badge',
+                      'threshold-badge--orange',
+                      { 'threshold-badge--active': isSelected('caudal', 2) },
+                    ]"
+                    role="button"
+                    tabindex="0"
+                    :aria-pressed="isSelected('caudal', 2)"
+                    @click="focusThreshold('caudal', 2)"
+                  >
+                    Nivel 2
+                  </span>
+                  <span class="font-weight-medium">{{ threshold2Label }}</span>
+                </v-col>
+                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span
+                    :class="[
+                      'threshold-badge',
+                      'threshold-badge--red',
+                      { 'threshold-badge--active': isSelected('caudal', 3) },
+                    ]"
+                    role="button"
+                    tabindex="0"
+                    :aria-pressed="isSelected('caudal', 3)"
+                    @click="focusThreshold('caudal', 3)"
+                  >
+                    Nivel 3:
+                  </span>
+                  <span class="font-weight-medium">{{ threshold3Label }}</span>
+                </v-col>
+              </v-row>
+            </template>
+            <div v-else class="text-caption text-medium-emphasis">No hay umbrales de caudal.</div>
+          </v-col>
 
-        <template v-if="hasAnyThreshold">
-          <v-row>
-            <v-col cols="12" md="4" class="d-flex align-center ga-2">
-              <span class="threshold-badge threshold-badge--yellow">Nivel 1:</span>
-              <span class="font-weight-medium">{{ threshold1Label }}</span>
-            </v-col>
-            <v-col cols="12" md="4" class="d-flex align-center ga-2">
-              <span class="threshold-badge threshold-badge--orange">Nivel 2</span>
-              <span class="font-weight-medium">{{ threshold2Label }}</span>
-            </v-col>
-            <v-col cols="12" md="4" class="d-flex align-center ga-2">
-              <span class="threshold-badge threshold-badge--red">Nivel 3:</span>
-              <span class="font-weight-medium">{{ threshold3Label }}</span>
-            </v-col>
-          </v-row>
-        </template>
-        <div v-else class="text-caption text-medium-emphasis">No hay umbrales de caudal.</div>
-
-        <template v-if="isEmbalse">
-          <v-divider class="my-3" />
-          <div class="text-caption text-medium-emphasis font-weight-bold mb-2">
-            Umbrales de volumen
-          </div>
-          <template v-if="hasAnyVolumeThreshold">
-            <v-row>
-              <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                <span class="threshold-badge threshold-badge--yellow">Nivel 1:</span>
-                <span class="font-weight-medium">{{ volumeThreshold1Label }}</span>
-              </v-col>
-              <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                <span class="threshold-badge threshold-badge--orange">Nivel 2</span>
-                <span class="font-weight-medium">{{ volumeThreshold2Label }}</span>
-              </v-col>
-              <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                <span class="threshold-badge threshold-badge--red">Nivel 3:</span>
-                <span class="font-weight-medium">{{ volumeThreshold3Label }}</span>
-              </v-col>
-            </v-row>
-          </template>
-          <div v-else class="text-caption text-medium-emphasis">No hay umbrales de volumen.</div>
-        </template>
+          <v-col v-if="isEmbalse" cols="12" md="6">
+            <div class="text-caption text-medium-emphasis font-weight-bold mb-2">
+              Umbrales de volumen
+            </div>
+            <template v-if="hasAnyVolumeThreshold">
+              <v-row>
+                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span
+                    :class="[
+                      'threshold-badge',
+                      'threshold-badge--yellow',
+                      { 'threshold-badge--active': isSelected('volumen', 1) },
+                    ]"
+                    role="button"
+                    tabindex="0"
+                    :aria-pressed="isSelected('volumen', 1)"
+                    @click="focusThreshold('volumen', 1)"
+                  >
+                    Nivel 1:
+                  </span>
+                  <span class="font-weight-medium">{{ volumeThreshold1Label }}</span>
+                </v-col>
+                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span
+                    :class="[
+                      'threshold-badge',
+                      'threshold-badge--orange',
+                      { 'threshold-badge--active': isSelected('volumen', 2) },
+                    ]"
+                    role="button"
+                    tabindex="0"
+                    :aria-pressed="isSelected('volumen', 2)"
+                    @click="focusThreshold('volumen', 2)"
+                  >
+                    Nivel 2
+                  </span>
+                  <span class="font-weight-medium">{{ volumeThreshold2Label }}</span>
+                </v-col>
+                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span
+                    :class="[
+                      'threshold-badge',
+                      'threshold-badge--red',
+                      { 'threshold-badge--active': isSelected('volumen', 3) },
+                    ]"
+                    role="button"
+                    tabindex="0"
+                    :aria-pressed="isSelected('volumen', 3)"
+                    @click="focusThreshold('volumen', 3)"
+                  >
+                    Nivel 3:
+                  </span>
+                  <span class="font-weight-medium">{{ volumeThreshold3Label }}</span>
+                </v-col>
+              </v-row>
+            </template>
+            <div v-else class="text-caption text-medium-emphasis">No hay umbrales de volumen.</div>
+          </v-col>
+        </v-row>
       </template>
 
-      <div v-else class="text-caption text-medium-emphasis">
+      <div v-else class="text-caption text-medium-emphasis align-items-center pt-4">
         No hay umbrales para precipitaciones.
       </div>
     </v-card-text>
@@ -59,13 +131,34 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, watch } from 'vue'
+  import { computed } from 'vue'
+
+  type ThresholdType = 'caudal' | 'volumen'
+  type ThresholdLevel = 1 | 2 | 3
 
   const props = defineProps<{
     activeTab: 'caudal' | 'precipitaciones'
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
+    selectedThreshold?: { kind: ThresholdType; level: ThresholdLevel } | null
   }>()
+
+  const emit = defineEmits<{
+    (event: 'focus-threshold', payload: { kind: ThresholdType; level: ThresholdLevel } | null): void
+  }>()
+
+  function focusThreshold(kind: ThresholdType, level: ThresholdLevel): void {
+    if (isSelected(kind, level)) {
+      emit('focus-threshold', null)
+      return
+    }
+
+    emit('focus-threshold', { kind, level })
+  }
+
+  function isSelected(kind: ThresholdType, level: ThresholdLevel): boolean {
+    return props.selectedThreshold?.kind === kind && props.selectedThreshold?.level === level
+  }
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
     if (!source) return null
@@ -124,26 +217,6 @@
       volumeThreshold2.value != null ||
       volumeThreshold3.value != null
   )
-
-  watch(
-    () => props.thresholds,
-    (thresholds) => {
-      if (!props.isEmbalse || !thresholds) return
-
-      const thresholdEntries = Object.entries(thresholds).filter(([key]) => {
-        const normalizedKey = key.toLowerCase()
-        return (
-          normalizedKey.includes('umbral') ||
-          normalizedKey.includes('threshold') ||
-          normalizedKey.includes('vol') ||
-          normalizedKey.includes('caud')
-        )
-      })
-
-      console.log('[ContentUmbralesData][embalse] threshold-like properties:', thresholdEntries)
-    },
-    { immediate: true }
-  )
 </script>
 
 <style scoped>
@@ -152,6 +225,17 @@
     padding: 2px 8px;
     border-radius: 999px;
     font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  .threshold-badge:hover {
+    transform: translateY(-1px);
+  }
+
+  .threshold-badge--active {
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.45);
+    transform: translateY(-1px) scale(1.02);
   }
 
   .threshold-badge--yellow {
