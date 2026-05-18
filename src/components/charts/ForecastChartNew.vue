@@ -42,6 +42,8 @@
   type CaudalChartData = DataStationPrediction & {
     historicalOutflow?: StationPrediction
     historicalVolume?: StationPrediction
+    resguardoVolume?: StationPrediction
+    minimumVolume?: StationPrediction
   }
 
   type ApexSeriesItem = SeriesItem & {
@@ -58,6 +60,7 @@
   const props = withDefaults(
     defineProps<{
       data: CaudalChartData
+      isEmbalse?: boolean
       loading?: boolean
       toolbar?: boolean
       height?: number
@@ -65,6 +68,7 @@
       focusThresholdRequest?: ThresholdFocusRequest | null
     }>(),
     {
+      isEmbalse: false,
       loading: false,
       toolbar: true,
       height: 550,
@@ -217,6 +221,20 @@
     return normalizePredictionResults(props.data.historicalVolume)
   })
 
+  const observedSeriesName = computed(() => (props.isEmbalse ? 'Observado entrada' : 'Observado'))
+
+  const predictionHarmonieSeriesName = computed(() =>
+    props.isEmbalse ? 'Entrada Predicción Det. Harmonie' : 'Predicción Det. Harmonie'
+  )
+
+  const resguardoVolumeData = computed(() => {
+    return normalizePredictionResults(props.data.resguardoVolume)
+  })
+
+  const minimumVolumeData = computed(() => {
+    return normalizePredictionResults(props.data.minimumVolume)
+  })
+
   const HarmonieData = computed(() => {
     return normalizePredictionResults(props.data.forecastHarmonie)
   })
@@ -252,6 +270,8 @@
     historicalData.value?.forEach((d) => dateSet.add(d.date))
     historicalOutflowData.value?.forEach((d) => dateSet.add(d.date))
     historicalVolumeData.value?.forEach((d) => dateSet.add(d.date))
+    // Intentionally exclude resguardo dates from x-domain: this annual series must not
+    // alter chart x-axis margins or visible date extent.
     HarmonieData.value?.forEach((d) => dateSet.add(d.date))
     epsatData.value?.forEach((d) => dateSet.add(d.date))
     p10Data.value?.forEach((d) => dateSet.add(d.date))
@@ -330,7 +350,7 @@
       const values = allDates.value.map((date) => historicalMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
-          name: 'Observado',
+          name: observedSeriesName.value,
           type: 'line',
           yAxisIndex: 0,
           data: allDates.value.map((date, i) => ({
@@ -373,13 +393,87 @@
       }
     }
 
+    if (resguardoVolumeData.value && allDates.value.length) {
+      const ranges = resguardoVolumeData.value
+        .filter((point) => point.value != null)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+      if (ranges.length >= 2) {
+        const values = allDates.value.map((date) => {
+          const dateMs = new Date(date).getTime()
+
+          for (let i = 0; i < ranges.length - 1; i++) {
+            const start = ranges[i]
+            const end = ranges[i + 1]
+            const startMs = new Date(start.date).getTime()
+            const endMs = new Date(end.date).getTime()
+
+            if (dateMs >= startMs && dateMs <= endMs) {
+              return start.value
+            }
+          }
+
+          return null
+        })
+
+        if (hasFiniteValue(values)) {
+          result.push({
+            name: 'Resguardo volumen',
+            type: 'line',
+            yAxisIndex: 1,
+            data: allDates.value.map((date, i) => ({
+              x: labels[i],
+              y: values[i],
+            })),
+          })
+        }
+      }
+    }
+
+    if (minimumVolumeData.value && allDates.value.length) {
+      const ranges = minimumVolumeData.value
+        .filter((point) => point.value != null)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+      if (ranges.length >= 2) {
+        const values = allDates.value.map((date) => {
+          const dateMs = new Date(date).getTime()
+
+          for (let i = 0; i < ranges.length - 1; i++) {
+            const start = ranges[i]
+            const end = ranges[i + 1]
+            const startMs = new Date(start.date).getTime()
+            const endMs = new Date(end.date).getTime()
+
+            if (dateMs >= startMs && dateMs <= endMs) {
+              return start.value
+            }
+          }
+
+          return null
+        })
+
+        if (hasFiniteValue(values)) {
+          result.push({
+            name: 'Volumen minimo',
+            type: 'line',
+            yAxisIndex: 1,
+            data: allDates.value.map((date, i) => ({
+              x: labels[i],
+              y: values[i],
+            })),
+          })
+        }
+      }
+    }
+
     // Harmonie
     if (HarmonieData.value) {
       const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
       const values = allDates.value.map((date) => detMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
-          name: 'Predicción Det. Harmonie',
+          name: predictionHarmonieSeriesName.value,
           type: 'line',
           yAxisIndex: 0,
           data: allDates.value.map((date, i) => ({
@@ -467,9 +561,12 @@
     const names = new Set(series.value.map((serie) => serie.name))
     const colors: string[] = []
     if (names.has('Observado')) colors.push('#2E7D32') // Verde
+    if (names.has('Observado entrada')) colors.push('#2E7D32') // Verde
     if (names.has('Observado salida')) colors.push('#00897B') // Verde azulado
     if (names.has('Volumen observado')) colors.push('#8E24AA') // Morado
-    if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
+    if (names.has('Resguardo volumen')) colors.push('#5E35B1') // Indigo
+    if (names.has('Volumen minimo')) colors.push('#26A69A') // Verde agua
+    if (names.has(predictionHarmonieSeriesName.value)) colors.push('#1565C0') // Azul
     if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
     if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
     if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
@@ -481,9 +578,12 @@
     const names = new Set(series.value.map((serie) => serie.name))
     const opacity: number[] = []
     if (names.has('Observado')) opacity.push(1)
+    if (names.has('Observado entrada')) opacity.push(1)
     if (names.has('Observado salida')) opacity.push(1)
     if (names.has('Volumen observado')) opacity.push(1)
-    if (names.has('Predicción Det. Harmonie')) opacity.push(1)
+    if (names.has('Resguardo volumen')) opacity.push(0.2)
+    if (names.has('Volumen minimo')) opacity.push(0.2)
+    if (names.has(predictionHarmonieSeriesName.value)) opacity.push(1)
     if (names.has('Predicción Prob. EPS')) opacity.push(1)
     if (names.has('Percentiles P10-P90')) opacity.push(0.35)
     if (names.has('Percentiles P25-P75')) opacity.push(0.35)
@@ -496,8 +596,11 @@
     const names = new Set(series.value.map((serie) => serie.name))
     const widths: number[] = []
     if (names.has('Observado')) widths.push(2)
+    if (names.has('Observado entrada')) widths.push(2)
     if (names.has('Observado salida')) widths.push(2)
     if (names.has('Volumen observado')) widths.push(2)
+    if (names.has('Resguardo volumen')) widths.push(2)
+    if (names.has('Volumen minimo')) widths.push(2)
     if (names.has('Predicción Det. Harmonie')) widths.push(2)
     if (names.has('Predicción Prob. EPS')) widths.push(2)
     if (names.has('Percentiles P10-P90')) widths.push(1)
@@ -510,7 +613,12 @@
   )
 
   const hasVolumeSeries = computed(() =>
-    series.value.some((serie) => serie.name === 'Volumen observado')
+    series.value.some(
+      (serie) =>
+        serie.name === 'Volumen observado' ||
+        serie.name === 'Resguardo volumen' ||
+        serie.name === 'Volumen minimo'
+    )
   )
 
   const dynamicYAxis = computed<ApexOptions['yaxis']>(() => {
@@ -657,7 +765,12 @@
 
           const name = s.name ?? `Serie ${idx + 1}`
           const color = w.globals?.colors?.[idx] ?? '#ccc'
-          const unit = name === 'Volumen observado' ? 'hm3' : 'm3/s'
+          const unit =
+            name === 'Volumen observado' ||
+            name === 'Resguardo volumen' ||
+            name === 'Volumen minimo'
+              ? 'hm3'
+              : 'm3/s'
           const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
 
           if (Array.isArray(raw) && raw.length === 2) {

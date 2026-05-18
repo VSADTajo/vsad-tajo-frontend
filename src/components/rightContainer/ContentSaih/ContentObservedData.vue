@@ -1,5 +1,5 @@
 <template>
-  <v-card class="bg-surface h-100" elevation="2">
+  <v-card class="bg-surface" elevation="2">
     <v-card-title class="text-subtitle-1 font-weight-bold">Resumen datos observados</v-card-title>
     <v-divider />
     <v-card-text v-if="loading" class="pa-4">

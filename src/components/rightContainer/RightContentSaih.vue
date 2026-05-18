@@ -58,8 +58,8 @@
   </v-card>
 
   <v-row class="mt-2 align-stretch">
-    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex">
-      <v-card class="ma-2 pa-2 bg-background w-100 h-100 d-flex flex-column" elevation="2">
+    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
+      <v-card class="ma-2 pa-2 bg-background w-100" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
             <ContentObservedData
@@ -74,6 +74,19 @@
             />
           </v-col>
         </v-row>
+      </v-card>
+
+      <v-card
+        v-if="isEmbalse && tab === 'caudal'"
+        class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1 d-none d-md-block"
+        elevation="2"
+      >
+        <ContentSaihResguardosData
+          :resguardo-prediction="effectiveResguardoPrediction"
+          :volumen-minimo-prediction="effectiveMinimoPrediction"
+          @update:resguardo-prediction="editedResguardoPrediction = $event"
+          @update:volumen-minimo-prediction="editedMinimoPrediction = $event"
+        />
       </v-card>
     </v-col>
     <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex">
@@ -101,6 +114,7 @@
                   >
                     <ForecastChartNew
                       :data="caudalChartData"
+                      :is-embalse="isEmbalse"
                       :loading="loadingCaudales || chartThresholdActionLoading"
                       :thresholds="feature?.properties as Record<string, unknown>"
                       :focus-threshold-request="focusThresholdRequest"
@@ -215,7 +229,7 @@
   </v-row>
 
   <v-row class="px-2">
-    <v-col v-if="tab === 'caudal'" cols="12" class="mb-2 mb-md-0">
+    <v-col v-if="tab === 'caudal'" cols="5" class="mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
           :forecast-harmonie="caudalForecastHarmonie"
@@ -226,7 +240,7 @@
       </v-card>
     </v-col>
 
-    <v-col v-else cols="12" class="px-2 mb-2 mb-md-0">
+    <v-col v-else cols="5" class="px-2 mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
           :forecast-harmonie="precipitationsForecastHarmonie"
@@ -237,13 +251,22 @@
         />
       </v-card>
     </v-col>
+
+    <v-col v-if="isEmbalse && tab === 'caudal'" cols="7" class="col">
+      <v-card class="pa-2 bg-background" elevation="2">
+        <ContentSaihResguardosChart
+          :resguardo-prediction="effectiveResguardoPrediction"
+          :volumen-minimo-prediction="effectiveMinimoPrediction"
+        />
+      </v-card>
+    </v-col>
   </v-row>
 </template>
 
 <script lang="ts" setup>
   import { ref, computed, watch, type Ref } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
-  import { api } from '@/services/api'
+  import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
   import type {
     AvailableDateItem,
     DataStationPrediction,
@@ -264,6 +287,8 @@
     embalsesWithCaudalPredictions,
   } from '@/constants/predictionsAvailableData'
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
+  import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
+  import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -370,6 +395,116 @@
 
   const tab = ref<'caudal' | 'precipitaciones'>(hasCaudal.value ? 'caudal' : 'precipitaciones')
 
+  function currentHydrologicalYearBounds(now: Date): { start: Date; end: Date } {
+    const month = now.getMonth()
+    const year = now.getFullYear()
+
+    if (month >= 8) {
+      return {
+        start: new Date(year, 8, 1, 0, 0, 0),
+        end: new Date(year + 1, 8, 1, 0, 0, 0),
+      }
+    }
+
+    return {
+      start: new Date(year - 1, 8, 1, 0, 0, 0),
+      end: new Date(year, 8, 1, 0, 0, 0),
+    }
+  }
+
+  function hashCode(text: string): number {
+    let hash = 0
+    for (let i = 0; i < text.length; i++) {
+      hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+    }
+    return hash
+  }
+
+  const resguardoVolumeMock = computed<StationPrediction | undefined>(() => {
+    if (!isEmbalse.value || !normalizedStationCode.value) return undefined
+
+    const stationId = normalizedStationCode.value
+    const stationName = String(feature.value?.properties?.nombre ?? stationId)
+    const bounds = currentHydrologicalYearBounds(new Date())
+    const seed = hashCode(stationId)
+    const hm3Value = 35 + (seed % 1200) / 10
+
+    return {
+      id: `resguardo-${stationId}-${bounds.start.getFullYear()}`,
+      stationId,
+      stationName,
+      predictionTypeName: 'resguardo.hydrologicalYear.mock',
+      simulationDate: bounds.start.toISOString(),
+      predictionDate: new Date().toISOString(),
+      predictionProvider: 'mock',
+      predictedBy: 'ui-mock',
+      results: [
+        {
+          id: 1,
+          date: bounds.start.toISOString(),
+          value: hm3Value,
+          flag: 0,
+        },
+        {
+          id: 2,
+          date: bounds.end.toISOString(),
+          value: hm3Value,
+          flag: 0,
+        },
+      ],
+    }
+  })
+
+  const volumenMinimoMock = computed<StationPrediction | undefined>(() => {
+    if (!isEmbalse.value || !normalizedStationCode.value) return undefined
+
+    const stationId = normalizedStationCode.value
+    const stationName = String(feature.value?.properties?.nombre ?? stationId)
+    const bounds = currentHydrologicalYearBounds(new Date())
+    const seed = hashCode(`${stationId}-min`)
+    const hm3Value = 10 + (seed % 500) / 10
+
+    return {
+      id: `minimo-${stationId}-${bounds.start.getFullYear()}`,
+      stationId,
+      stationName,
+      predictionTypeName: 'volumen.minimo.hydrologicalYear.mock',
+      simulationDate: bounds.start.toISOString(),
+      predictionDate: new Date().toISOString(),
+      predictionProvider: 'mock',
+      predictedBy: 'ui-mock',
+      results: [
+        {
+          id: 1,
+          date: bounds.start.toISOString(),
+          value: hm3Value,
+          flag: 0,
+        },
+        {
+          id: 2,
+          date: bounds.end.toISOString(),
+          value: hm3Value,
+          flag: 0,
+        },
+      ],
+    }
+  })
+
+  const editedResguardoPrediction = ref<StationPrediction>()
+  const editedMinimoPrediction = ref<StationPrediction>()
+
+  const effectiveResguardoPrediction = computed(
+    () => editedResguardoPrediction.value ?? resguardoVolumeMock.value
+  )
+  const effectiveMinimoPrediction = computed(
+    () => editedMinimoPrediction.value ?? volumenMinimoMock.value
+  )
+
+  watch([normalizedStationCode, isEmbalse], () => {
+    editedResguardoPrediction.value = undefined
+    editedMinimoPrediction.value = undefined
+  })
+
   let featureRequestId = 0
   let predictionsRequestId = 0
   let skipNextSimulationWatch = false
@@ -420,26 +555,6 @@
     level?: ThresholdLevel
     nonce: number
   } | null
-
-  type StationByCodeResponse = {
-    id: string
-    name: string
-    stationCode: string
-    stationType: string
-    tipoCod?: string | null
-    latitude: number | null
-    longitude: number | null
-    threshold?: {
-      umbralNivel1?: number | null
-      umbralNivel2?: number | null
-      umbralNivel3?: number | null
-      umbralCaudal1?: number | null
-      umbralCaudal2?: number | null
-      umbralCaudal3?: number | null
-      [key: string]: unknown
-    } | null
-    [key: string]: unknown
-  }
 
   const observedCaudalDates = ref<string[]>([])
   const observedPrecipDates = ref<string[]>([])
@@ -619,6 +734,8 @@
     historical: caudalHistorical.value,
     historicalOutflow: caudalOutflowHistorical.value,
     historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
     forecastEnsP10: caudalForecastEnsP10.value,
@@ -918,9 +1035,7 @@
     error.value = null
 
     try {
-      const station = await api
-        .get(`stations/by-code/${encodeURIComponent(code)}`)
-        .json<StationByCodeResponse>()
+      const station = await getStationByCodeService(code)
       const result = stationToFeature(station)
 
       if (requestId !== featureRequestId) {
