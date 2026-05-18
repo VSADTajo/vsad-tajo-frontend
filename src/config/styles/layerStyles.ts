@@ -25,7 +25,8 @@ function getAlertBackground(feature: Feature): string | null {
 }
 
 export const saihPointStyle = (feature: Feature, latlng: L.LatLng) => {
-  const tipo = String(feature.properties?.tipo_cod ?? '').toUpperCase()
+  const props = (feature.properties ?? {}) as Record<string, unknown>
+  const tipo = String(props.tipoCod ?? props.tipo_cod ?? '').toUpperCase()
   const color = getSaihTypeColor(tipo)
   const alertBackground = getAlertBackground(feature)
 

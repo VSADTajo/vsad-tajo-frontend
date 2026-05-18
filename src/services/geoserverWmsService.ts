@@ -277,21 +277,8 @@ async function fetchGeoServerPointValueAtTime(options: {
   }
 
   try {
-    console.log('[geoserverWmsService] GetFeatureInfo request', {
-      url: options.url,
-      layerName: options.layerName,
-      time: options.time,
-      bbox: params.bbox,
-    })
-
     const response = await ky.get(options.url, { searchParams: params })
     const contentType = response.headers.get('content-type') ?? ''
-
-    console.log('[geoserverWmsService] GetFeatureInfo response content-type', {
-      layerName: options.layerName,
-      time: options.time,
-      contentType,
-    })
 
     if (!contentType.includes('application/json')) {
       console.warn('[geoserverWmsService] Non-JSON response, skipping point', {
@@ -303,12 +290,6 @@ async function fetchGeoServerPointValueAtTime(options: {
 
     const data = await response.json<unknown>()
     const extracted = extractNumericValueFromFeatureInfo(data)
-
-    console.log('[geoserverWmsService] Extracted point value', {
-      layerName: options.layerName,
-      time: options.time,
-      value: extracted,
-    })
 
     return extracted
   } catch (err) {
@@ -330,8 +311,6 @@ export async function fetchGeoServerLayerPointTimeSeries(options: {
   endIso: string
   stepHours: number
 }): Promise<WmsPointTimeValue[]> {
-  console.log('[geoserverWmsService] fetchGeoServerLayerPointTimeSeries start', options)
-
   const timeline = buildTimeline(options.startIso, options.endIso, options.stepHours)
 
   if (!timeline.length) {
@@ -339,28 +318,13 @@ export async function fetchGeoServerLayerPointTimeSeries(options: {
     return []
   }
 
-  const maxPoints = 120
-  const sampledTimeline = timeline.slice(-maxPoints)
-
-  console.log('[geoserverWmsService] Timeline built', {
-    originalPoints: timeline.length,
-    sampledPoints: sampledTimeline.length,
-    first: sampledTimeline[0],
-    last: sampledTimeline[sampledTimeline.length - 1],
-  })
+  const sampledTimeline = timeline
 
   const chunkSize = 8
   const result: WmsPointTimeValue[] = []
 
   for (let index = 0; index < sampledTimeline.length; index += chunkSize) {
     const chunk = sampledTimeline.slice(index, index + chunkSize)
-
-    console.log('[geoserverWmsService] Fetching chunk', {
-      index,
-      chunkSize: chunk.length,
-      from: chunk[0],
-      to: chunk[chunk.length - 1],
-    })
 
     const values = await Promise.all(
       chunk.map(async (time) => {
@@ -381,11 +345,6 @@ export async function fetchGeoServerLayerPointTimeSeries(options: {
 
     result.push(...values)
   }
-
-  console.log('[geoserverWmsService] Time series complete', {
-    points: result.length,
-    withValue: result.filter((point) => Number.isFinite(point.value)).length,
-  })
 
   return result
 }

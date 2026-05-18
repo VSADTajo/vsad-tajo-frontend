@@ -27,7 +27,7 @@
     loading?: boolean
   }>()
 
-  const chartHeight = computed(() => props.height ?? 510)
+  const chartHeight = computed(() => props.height ?? 550)
 
   function normalizePredictionResults(prediction?: DataStationPrediction['forecastHarmonie']) {
     if (!prediction?.results?.length) return null
@@ -349,6 +349,32 @@
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
 
+  const isAccumulatedSeries = (name: string): boolean => name.startsWith('Acumulado')
+
+  const dynamicYAxes = computed<ApexOptions['yaxis']>(() => {
+    const firstAccumulatedIndex = series.value.findIndex((serie) => isAccumulatedSeries(serie.name))
+    const firstInstantIndex = series.value.findIndex((serie) => !isAccumulatedSeries(serie.name))
+
+    return series.value.map((serie, index) => {
+      const isAccumulated = isAccumulatedSeries(serie.name)
+      const shouldShowAxis = isAccumulated
+        ? index === firstAccumulatedIndex
+        : index === firstInstantIndex
+
+      return {
+        min: 0,
+        opposite: isAccumulated,
+        seriesName: serie.name,
+        show: shouldShowAxis,
+        title: shouldShowAxis ? { text: isAccumulated ? 'mm acumulado' : 'mm' } : { text: '' },
+        labels: {
+          show: shouldShowAxis,
+          formatter: (value: number) => Number(value).toFixed(1),
+        },
+      }
+    })
+  })
+
   // Colores dinámicos basados en qué series existen (mismo orden que series)
   const dynamicColors = computed(() => {
     const names = new Set(series.value.map((serie) => serie.name))
@@ -457,15 +483,7 @@
         hideOverlappingLabels: true,
       },
     },
-    yaxis: {
-      min: 0,
-      title: { text: 'mm' },
-      labels: {
-        formatter: function (value) {
-          return Number(value).toFixed(1)
-        },
-      },
-    },
+    yaxis: dynamicYAxes.value,
     annotations: {
       xaxis: observedEndXAnnotation.value,
     },
@@ -574,27 +592,41 @@
   }
 
   .precipitations-chart .apexcharts-legend {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: start !important;
-    gap: 6px 12px;
-    overflow-x: hidden !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px 12px;
+    align-items: start;
+    justify-items: start;
+    overflow: hidden !important;
   }
 
-  /* Fuerza hasta 6 elementos por fila para quedar en 2 filas con esta serie de leyendas. */
   .precipitations-chart .apexcharts-legend-series {
+    display: flex !important;
+    align-items: flex-start;
     margin: 0 !important;
-    flex: 0 0 calc(16.666% - 12px) !important;
+    width: 100% !important;
+    min-height: 28px;
     min-width: 0;
   }
 
   .precipitations-chart .apexcharts-legend-text {
     white-space: normal !important;
+    line-height: 1.2;
   }
 
   @media (max-width: 960px) {
+    .precipitations-chart .apexcharts-legend {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .precipitations-chart .apexcharts-legend-series {
-      flex: 0 0 calc(33.333% - 12px) !important;
+      min-height: 24px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .precipitations-chart .apexcharts-legend {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>

@@ -358,14 +358,14 @@ export class MapLayerManager {
   private handleFeatureClick(layerId: string, feature: GeoJSON.Feature) {
     switch (layerId) {
       case 'saih': {
-        const stationCode = feature.properties?.codigo ? feature.properties.codigo : feature.id
+        const props = (feature.properties ?? {}) as Record<string, unknown>
+        const stationCode = String(props.stationCode ?? props.codigo ?? feature.id ?? '')
+        const query = {
+          ...router.currentRoute.value.query,
+          station: stationCode,
+        } as Record<string, string>
 
-        router.replace({
-          query: {
-            ...router.currentRoute.value.query,
-            station: stationCode,
-          },
-        })
+        router.replace({ query })
         break
       }
 
@@ -396,6 +396,8 @@ export class MapLayerManager {
       case 'zonasexpl': {
         const zona = feature.properties?.ogc_fid
 
+        console.log('zona', feature.properties)
+
         router.replace({
           query: {
             ...router.currentRoute.value.query,
@@ -406,8 +408,7 @@ export class MapLayerManager {
       }
 
       case 'comarcasagrarias': {
-        console.log('comarca', feature.properties)
-        const comarca = feature.properties?.ogc_fid
+        const comarca = feature.properties?.ds_comarca
 
         router.replace({
           query: {
