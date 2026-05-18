@@ -40,6 +40,7 @@
     <v-data-table
       :headers="headers"
       :items="rows"
+      :items-per-page="-1"
       :loading="loading || loadingPredictions"
       loading-text="Cargando estaciones..."
       item-value="codigo"
@@ -90,8 +91,9 @@
       </template>
 
       <template #bottom>
-        <div class="px-4 py-2 text-caption text-medium-emphasis">
-          {{ selectedRowCode ? 1 : 0 }} estaciones seleccionadas
+        <div class="d-flex justify-space-between px-4 py-2 text-caption text-medium-emphasis">
+          <span>{{ selectedRowCode ? 1 : 0 }} estaciones seleccionadas</span>
+          <span>{{ rows.length }} estaciones en total</span>
         </div>
       </template>
     </v-data-table>
@@ -154,7 +156,7 @@
   )
 
   const selectedSeries = ref<DataSeries>('caudal')
-  const selectedProvider = ref<DataProvider>('harmonie')
+  const selectedProvider = ref<DataProvider>('eps')
   const selectedRowCode = ref<string | null>(null)
   const loadingPredictions = ref(false)
   const predictionsByStation = ref<Record<string, HorizonValues>>({})
@@ -337,7 +339,8 @@
       selectedRowCode.value = null
       emitSelection(null)
       void refreshPredictions()
-    }
+    },
+    { immediate: true, deep: true }
   )
 
   watch([selectedSeries, selectedProvider], () => {

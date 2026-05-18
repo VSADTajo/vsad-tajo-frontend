@@ -79,7 +79,7 @@
           </v-col>
           <v-col cols="12" sm="8">
             <v-card>
-              <SubcuencaStationsTable
+              <ByAreaStationsTable
                 :stations="stations"
                 :loading="loadingStations"
                 :selected-station-code="selectedStationCode"
@@ -106,7 +106,7 @@
                     v-if="selectedSeries === 'caudal'"
                     :data="selectedChartData ?? {}"
                     :loading="loadingChart"
-                    :height="360"
+                    :height="500"
                     :toolbar="false"
                     :thresholds="currentStationThresholds"
                   />
@@ -114,7 +114,7 @@
                     v-else
                     :data="selectedChartData ?? {}"
                     :loading="loadingChart"
-                    :height="360"
+                    :height="500"
                   />
                 </v-card-text>
               </template>
@@ -138,7 +138,6 @@
   import { computed, onBeforeUnmount, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import type { DataStationPrediction, PredictionTypeName } from '@/types/Predictions'
-  import { api } from '@/services/api'
   import {
     useSubcuencaSelectionBus,
     type SubcuencaSeriesMode,
@@ -146,12 +145,13 @@
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import MapDetail from './MapDetail.vue'
-  import SubcuencaStationsTable from './SubcuencaStationsTable.vue'
+  import ByAreaStationsTable from './ByAreaStationsTable.vue'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
-  import type { StationData, StationsApiResponse } from '@/utils/stationsToGeoJSON'
+  import type { StationData } from '@/utils/stationsToGeoJSON'
   import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import { getStationsByAreaService } from '@/services/general'
   import {
     subcuencasStyle,
     sistemas10Style,
@@ -279,7 +279,7 @@
       value =
         featureProps.sistema ?? featureProps.systemName ?? featureProps.name ?? featureProps.nombre
     } else if (props.kind === 'zona') {
-      value = featureProps.zona ?? featureProps.name ?? featureProps.nombre
+      value = featureProps.ogc_fid != null ? String(featureProps.ogc_fid) : ''
     } else if (props.kind === 'comarca') {
       value =
         featureProps.ds_comarca ??
@@ -312,32 +312,24 @@
     loadingStations.value = true
 
     try {
-      let searchParams:
-        | { sistemaName: string }
-        | { subBasinName: string }
-        | { comarcaName: string }
-        | { zona: string }
+      let searchParams: Parameters<typeof getStationsByAreaService>[0]
       if (props.kind === 'sistema') {
         searchParams = { sistemaName: lookupValue }
       } else if (props.kind === 'zona') {
-        searchParams = { zona: lookupValue }
+        searchParams = { zonaExplOgcFid: lookupValue }
       } else if (props.kind === 'comarca') {
         searchParams = { comarcaName: lookupValue }
       } else {
         searchParams = { subBasinName: lookupValue }
       }
 
-      const response = await api
-        .get('stations', {
-          searchParams,
-        })
-        .json<StationsApiResponse>()
+      const items = await getStationsByAreaService(searchParams)
 
       if (requestId !== stationsRequestId) {
         return
       }
 
-      stations.value = Array.isArray(response.items) ? response.items : []
+      stations.value = items
     } catch {
       if (requestId !== stationsRequestId) {
         return

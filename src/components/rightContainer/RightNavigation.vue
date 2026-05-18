@@ -11,10 +11,10 @@
   >
     <RightContentSaih v-if="station" />
     <RightContentReporting v-if="reporting" />
-    <RightContentSubcuenca v-if="subcuenca" kind="subcuenca" />
-    <RightContentSubcuenca v-if="sistema" kind="sistema" />
-    <RightContentSubcuenca v-if="zona" kind="zona" />
-    <RightContentSubcuenca v-if="comarca" kind="comarca" />
+    <RightContentByAreaService v-if="subcuenca" kind="subcuenca" />
+    <RightContentByAreaService v-if="sistema" kind="sistema" />
+    <RightContentByAreaService v-if="zona" kind="zona" />
+    <RightContentByAreaService v-if="comarca" kind="comarca" />
     <RightContentPrecipitacion v-if="precipitacion" />
   </v-navigation-drawer>
 </template>
@@ -25,7 +25,7 @@
   import { useDisplay } from 'vuetify'
   import RightContentSaih from './RightContentSaih.vue'
   import RightContentReporting from './RightContentReporting.vue'
-  import RightContentSubcuenca from './RightContentSubcuenca.vue'
+  import RightContentByAreaService from './RightContentByAreaService.vue'
   import RightContentPrecipitacion from './RightContentPrecipitacion.vue'
 
   const route = useRoute()

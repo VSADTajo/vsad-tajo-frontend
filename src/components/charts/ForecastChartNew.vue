@@ -1,23 +1,34 @@
 <template>
-  <div>
-    <div v-if="loading" class="chart-loading-state" :style="{ height: `${chartHeight}px` }">
+  <div class="chart-wrapper" :style="{ height: `${chartHeight}px` }">
+    <div
+      v-if="(loading || thresholdTransitionLoading) && hasRenderableSeries"
+      class="chart-loading-overlay"
+    >
+      <v-skeleton-loader type="image" class="h-100 w-100" />
+    </div>
+    <div
+      v-else-if="loading || thresholdTransitionLoading"
+      class="chart-loading-state"
+      :style="{ height: `${chartHeight}px` }"
+    >
       <v-skeleton-loader type="image" class="h-100 w-100" />
     </div>
     <apexchart
-      v-else-if="hasRenderableSeries"
+      v-if="hasRenderableSeries"
       :key="chartInstanceKey"
       :height="chartHeight"
       :options="chartOptions"
       :series="series"
     />
-    <div v-else class="chart-empty-state" :style="{ height: `${chartHeight}px` }">
+    <div v-else-if="!loading && !thresholdTransitionLoading" class="chart-empty-state">
       Sin datos para mostrar
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import ApexCharts from 'apexcharts'
+  import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue'
   import type { ApexOptions } from 'apexcharts'
   import type {
     DataStationPrediction,
@@ -37,6 +48,13 @@
     yAxisIndex?: number
   }
 
+  type ThresholdFocusRequest = {
+    action: 'focus' | 'reset'
+    kind?: 'caudal' | 'volumen'
+    level?: 1 | 2 | 3
+    nonce: number
+  }
+
   const props = withDefaults(
     defineProps<{
       data: CaudalChartData
@@ -44,16 +62,24 @@
       toolbar?: boolean
       height?: number
       thresholds?: Record<string, unknown>
+      focusThresholdRequest?: ThresholdFocusRequest | null
     }>(),
     {
       loading: false,
       toolbar: true,
       height: 550,
       thresholds: undefined,
+      focusThresholdRequest: null,
     }
   )
 
   const chartHeight = computed(() => props.height)
+  const chartId = `forecast-chart-${getCurrentInstance()?.uid ?? 'default'}`
+  const thresholdTransitionLoading = ref(false)
+
+  const emit = defineEmits<{
+    (event: 'focus-threshold-complete'): void
+  }>()
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
     if (!source) return null
@@ -515,6 +541,7 @@
 
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
+      id: chartId,
       type: 'line',
       stacked: false,
       height: chartHeight.value,
@@ -667,9 +694,96 @@
       },
     },
   }))
+
+  function getThresholdValue(kind: 'caudal' | 'volumen', level: 1 | 2 | 3): number | null {
+    if (kind === 'caudal') {
+      if (level === 1) return readNumber(['umbral_caudal_1', 'umbral_cauda_1'], props.thresholds)
+      if (level === 2) return readNumber(['umbral_caudal_2', 'umbral_cauda_2'], props.thresholds)
+      return readNumber(['umbral_caudal_3', 'umbral_cauda_3'], props.thresholds)
+    }
+
+    if (level === 1) return readNumber(['umbral_1_volumen'], props.thresholds)
+    if (level === 2) return readNumber(['umbral_2_volumen'], props.thresholds)
+    return readNumber(['umbral_3_volumen'], props.thresholds)
+  }
+
+  function getFocusedRange(value: number): { min: number; max: number } {
+    const padding = Math.max(Math.abs(value) * 0.2, 1)
+    return {
+      min: Math.max(0, value - padding),
+      max: value + padding,
+    }
+  }
+
+  async function waitBriefTransition(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 220))
+  }
+
+  async function focusChartAtThreshold(request: ThresholdFocusRequest | null): Promise<void> {
+    if (!request) return
+
+    thresholdTransitionLoading.value = true
+
+    try {
+      await nextTick()
+
+      if (request.action === 'reset') {
+        await ApexCharts.exec(chartId, 'resetSeries')
+        await ApexCharts.exec(chartId, 'updateOptions', { yaxis: dynamicYAxis.value }, false, true)
+        await waitBriefTransition()
+        return
+      }
+
+      if (!request.kind || !request.level) return
+
+      const target = getThresholdValue(request.kind, request.level)
+      if (target == null || !Number.isFinite(target)) return
+
+      const focusedRange = getFocusedRange(target)
+      const currentYaxis = dynamicYAxis.value
+
+      let nextYaxis: ApexOptions['yaxis'] = currentYaxis
+
+      if (request.kind === 'caudal') {
+        if (Array.isArray(currentYaxis)) {
+          nextYaxis = [{ ...currentYaxis[0], ...focusedRange }, currentYaxis[1]]
+        } else {
+          nextYaxis = { ...currentYaxis, ...focusedRange }
+        }
+      } else {
+        if (!Array.isArray(currentYaxis)) return
+        nextYaxis = [currentYaxis[0], { ...currentYaxis[1], ...focusedRange }]
+      }
+
+      await ApexCharts.exec(chartId, 'updateOptions', { yaxis: nextYaxis }, false, true)
+      await waitBriefTransition()
+    } finally {
+      thresholdTransitionLoading.value = false
+      emit('focus-threshold-complete')
+    }
+  }
+
+  watch(
+    () => props.focusThresholdRequest?.nonce,
+    () => {
+      void focusChartAtThreshold(props.focusThresholdRequest ?? null)
+    }
+  )
 </script>
 
 <style>
+  .chart-wrapper {
+    position: relative;
+  }
+
+  .chart-loading-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: all;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
   .chart-loading-state {
     display: flex;
     align-items: stretch;
@@ -680,6 +794,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    height: 100%;
     color: rgba(0, 0, 0, 0.6);
     font-size: 0.875rem;
   }
