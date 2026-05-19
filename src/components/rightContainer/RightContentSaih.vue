@@ -58,7 +58,7 @@
   </v-card>
 
   <v-row class="mt-2 align-stretch">
-    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
+    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column pt-0">
       <v-card class="ma-2 pa-2 bg-background w-100" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
@@ -89,7 +89,7 @@
         />
       </v-card>
     </v-col>
-    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex">
+    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex pt-0">
       <div class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 h-100 d-flex flex-column">
           <v-card-text>
@@ -181,7 +181,7 @@
           </v-card-text>
         </v-card>
 
-        <v-card class="mt-2 pa-2 bg-background" elevation="2">
+        <v-card v-if="tab === 'caudal'" class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
             :active-tab="tab"
             :is-embalse="isEmbalse"
@@ -192,7 +192,7 @@
         </v-card>
       </div>
     </v-col>
-    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex">
+    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex pt-0">
       <v-card class="ma-2 pa-2 bg-background w-100 h-100 d-flex flex-column" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
@@ -232,24 +232,30 @@
     <v-col v-if="tab === 'caudal'" cols="5" class="mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
-          :forecast-harmonie="caudalForecastHarmonie"
-          :forecast-epsat="caudalForecastEpstat"
-          :thresholds="feature?.properties as Record<string, unknown>"
+          :forecast-harmonie="
+            tab === 'caudal' ? caudalForecastHarmonie : precipitationsForecastHarmonie
+          "
+          :forecast-epsat="tab === 'caudal' ? caudalForecastEpstat : precipitationsForecastEpstat"
+          :thresholds="
+            tab === 'caudal' ? (feature?.properties as Record<string, unknown>) : undefined
+          "
           :loading="matrixLoading"
+          :title="
+            tab === 'caudal'
+              ? 'Matriz de caudales (7 dias / 6h)'
+              : 'Matriz de precipitaciones (7 dias / 6h)'
+          "
+          :no-thresholds="tab !== 'caudal'"
         />
       </v-card>
     </v-col>
 
-    <v-col v-else cols="5" class="px-2 mb-2 mb-md-0">
-      <v-card class="pa-2 bg-background" elevation="2">
-        <ContentSaihCaudalMatrix
-          :forecast-harmonie="precipitationsForecastHarmonie"
-          :forecast-epsat="precipitationsForecastEpstat"
-          :loading="matrixLoading"
-          title="Matriz de precipitaciones (7 dias / 6h)"
-          no-thresholds
-        />
-      </v-card>
+    <v-col v-if="tab === 'precipitaciones'" cols="4" class="px-2 mb-2 mb-md-0">
+      <ContentSaihPrecipStationTable
+        :forecast-harmonie="precipitationsForecastHarmonie"
+        :forecast-epsat="precipitationsForecastEpstat"
+        :loading="loadingPrecipitaciones || loadingMatrixOnPredictionSelect"
+      />
     </v-col>
 
     <v-col v-if="isEmbalse && tab === 'caudal'" cols="7" class="col">
@@ -289,6 +295,7 @@
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
   import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
   import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
+  import ContentSaihPrecipStationTable from './ContentSaih/ContentSaihPrecipStationTable.vue'
 
   const route = useRoute()
   const router = useRouter()
