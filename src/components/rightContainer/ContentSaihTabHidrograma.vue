@@ -1,5 +1,5 @@
 <template>
-  <v-row>
+  <v-row justify="center" class="px-3">
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
       <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatus
@@ -27,6 +27,7 @@
       <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
+          mode="observed"
           :caudal-historical="caudalHistorical"
           :thresholds="thresholds"
           title="Resumen Operativo Observado"
@@ -39,12 +40,43 @@
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
             <v-sheet class="pa-5">
-              <ForecastChartNew
-                :data="caudalChartData"
-                :is-embalse="isEmbalse"
-                :loading="loadingCaudales"
-                :thresholds="thresholds"
-              />
+              <template v-if="isEmbalse">
+                <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
+                  <v-tab value="caudal">Caudal</v-tab>
+                  <v-tab value="volumen">Volumen</v-tab>
+                </v-tabs>
+
+                <v-window v-model="selectedEmbalseChartTab">
+                  <v-window-item value="caudal">
+                    <ForecastChartNew
+                      :data="caudalOnlyChartData"
+                      :is-embalse="true"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :height="550"
+                    />
+                  </v-window-item>
+
+                  <v-window-item value="volumen">
+                    <ForecastChartNew
+                      :data="volumenOnlyChartData"
+                      :is-embalse="true"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :height="550"
+                    />
+                  </v-window-item>
+                </v-window>
+              </template>
+
+              <template v-else>
+                <ForecastChartNew
+                  :data="caudalChartData"
+                  :is-embalse="isEmbalse"
+                  :loading="loadingCaudales"
+                  :thresholds="thresholds"
+                />
+              </template>
             </v-sheet>
           </v-card-text>
         </v-card>
@@ -70,8 +102,8 @@
       </div>
     </v-col>
 
-    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column pe-3">
-      <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column">
+      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatus
           :loading="loadingCaudales"
           :caudal-forecast-harmonie="caudalForecastHarmonie"
@@ -80,7 +112,7 @@
           :thresholds="thresholds"
         />
       </v-card>
-      <v-card class="ml-1 mr-1 my-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihPredictionsLatest
           class="ma-2"
           active-tab="caudal"
@@ -101,10 +133,16 @@
         />
       </v-card>
 
-      <v-card class="ml-1 mr-1 mt-2 pa-2 bg-background w-100 flex-grow-1" elevation="2">
+      <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
-          :caudal-historical="caudalHistorical"
+          mode="predictions"
+          :caudal-forecast-harmonie="caudalForecastHarmonie"
+          :caudal-forecast-epstat="caudalForecastEpstat"
+          :caudal-forecast-ens-p10="caudalForecastEnsP10"
+          :caudal-forecast-ens-p25="caudalForecastEnsP25"
+          :caudal-forecast-ens-p75="caudalForecastEnsP75"
+          :caudal-forecast-ens-p90="caudalForecastEnsP90"
           :thresholds="thresholds"
           title="Resumen Operativo Predicciones"
         />
@@ -190,6 +228,7 @@
   }>()
 
   const selectedThreshold = ref<ThresholdSelection>(null)
+  const selectedEmbalseChartTab = ref<'caudal' | 'volumen'>('caudal')
 
   function handleThresholdFocus(payload: ThresholdSelection): void {
     selectedThreshold.value = payload
@@ -311,7 +350,6 @@
     forecastEnsP90: caudalForecastEnsP90,
   }
 
-  // caudalChartData se usará al descomentar <ForecastChartNew />
   const caudalChartData = computed(() => ({
     historical: caudalHistorical.value,
     historicalOutflow: caudalOutflowHistorical.value,
@@ -324,6 +362,34 @@
     forecastEnsP25: caudalForecastEnsP25.value,
     forecastEnsP90: caudalForecastEnsP90.value,
     forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  const caudalOnlyChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    historicalVolume: undefined,
+    resguardoVolume: undefined,
+    minimumVolume: undefined,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  const volumenOnlyChartData = computed(() => ({
+    historical: undefined,
+    historicalOutflow: undefined,
+    historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
+    forecastHarmonie: undefined,
+    forecastEpsat: undefined,
+    forecastEnsP10: undefined,
+    forecastEnsP25: undefined,
+    forecastEnsP90: undefined,
+    forecastEnsP75: undefined,
   }))
 
   void caudalChartData.value

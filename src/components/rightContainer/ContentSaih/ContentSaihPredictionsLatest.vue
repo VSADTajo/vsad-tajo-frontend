@@ -11,10 +11,10 @@
     </v-card-text>
 
     <v-card-text v-else class="pa-2">
-      <div class="mb-3">
-        <v-btn-toggle v-model="selectedModel" mandatory class="w-100">
-          <v-btn value="harmonie" size="small" class="flex-grow-1">Harmonie</v-btn>
-          <v-btn value="eps" size="small" class="flex-grow-1">EPS Medio</v-btn>
+      <div class="mb-3 d-flex justify-center">
+        <v-btn-toggle v-model="selectedModel" mandatory density="compact">
+          <v-btn value="harmonie" size="x-small">Harmonie</v-btn>
+          <v-btn value="eps" size="x-small">EPS Medio</v-btn>
         </v-btn-toggle>
       </div>
 
@@ -48,12 +48,13 @@
         </template>
         <template v-else>
           <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-4">
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(harmonieData.lastValue)"
                 size="small"
                 variant="flat"
+                style="max-width: 100%"
               >
                 {{ harmonieData.lastValueLabel }}
               </v-chip>
@@ -66,9 +67,14 @@
             </v-col>
           </v-row>
           <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-4">
-              <v-chip :color="getThresholdClass(harmonieData.maxValue)" size="small" variant="flat">
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip
+                :color="getThresholdClass(harmonieData.maxValue)"
+                size="small"
+                variant="flat"
+                style="max-width: 100%"
+              >
                 {{ harmonieData.maxValueLabel }}
               </v-chip>
             </v-col>
@@ -114,7 +120,12 @@
           <v-row>
             <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
             <v-col cols="5" class="text-right font-weight-medium pr-4">
-              <v-chip :color="getThresholdClass(epstatData.lastValue)" size="small" variant="flat">
+              <v-chip
+                :color="getThresholdClass(epstatData.lastValue)"
+                size="x-small"
+                variant="flat"
+                style="max-width: 100%"
+              >
                 {{ epstatData.lastValueLabel }}
               </v-chip>
             </v-col>
@@ -128,7 +139,12 @@
           <v-row>
             <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
             <v-col cols="5" class="text-right font-weight-medium pr-4">
-              <v-chip :color="getThresholdClass(epstatData.maxValue)" size="small" variant="flat">
+              <v-chip
+                :color="getThresholdClass(epstatData.maxValue)"
+                size="x-small"
+                variant="flat"
+                style="max-width: 100%"
+              >
                 {{ epstatData.maxValueLabel }}
               </v-chip>
             </v-col>

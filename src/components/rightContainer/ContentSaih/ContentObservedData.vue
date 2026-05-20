@@ -26,14 +26,14 @@
           <v-btn value="volumen" size="small" class="observed-mode-btn">Volumen</v-btn>
         </v-btn-toggle>
 
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-1 mt-4">
+        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
           {{ observedSectionTitle }}
         </div>
-        <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+        <v-row class="mt-2">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Último observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip :color="currentLastValueColor" size="small" variant="flat">
               {{ currentSummary.lastValueLabel }}
             </v-chip>
@@ -48,10 +48,10 @@
           </v-col>
         </v-row>
         <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Máximo observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip :color="currentMaxValueColor" size="small" variant="flat">
               {{ currentSummary.maxValueLabel }}
             </v-chip>
@@ -69,10 +69,10 @@
 
       <template v-else-if="hasObservedData">
         <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Último observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip size="small" variant="flat">
               {{ lastObservedValueLabel }}
             </v-chip>
@@ -87,10 +87,10 @@
           </v-col>
         </v-row>
         <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Máximo observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip size="small" variant="flat">
               {{ maxObservedValueLabel }}
             </v-chip>

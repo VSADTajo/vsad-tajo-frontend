@@ -8,8 +8,8 @@
               Umbrales de caudal
             </div>
             <template v-if="hasAnyThreshold">
-              <v-row>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+              <div class="thresholds-row">
+                <div class="threshold-item">
                   <span
                     :class="[
                       'threshold-badge',
@@ -21,11 +21,11 @@
                     :aria-pressed="isSelected('caudal', 1)"
                     @click="focusThreshold('caudal', 1)"
                   >
-                    Nivel 1:
+                    Nivel 1
                   </span>
-                  <span class="font-weight-medium">{{ threshold1Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span class="threshold-value">{{ threshold1Label }}</span>
+                </div>
+                <div class="threshold-item">
                   <span
                     :class="[
                       'threshold-badge',
@@ -39,9 +39,9 @@
                   >
                     Nivel 2
                   </span>
-                  <span class="font-weight-medium">{{ threshold2Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span class="threshold-value">{{ threshold2Label }}</span>
+                </div>
+                <div class="threshold-item">
                   <span
                     :class="[
                       'threshold-badge',
@@ -53,11 +53,11 @@
                     :aria-pressed="isSelected('caudal', 3)"
                     @click="focusThreshold('caudal', 3)"
                   >
-                    Nivel 3:
+                    Nivel 3
                   </span>
-                  <span class="font-weight-medium">{{ threshold3Label }}</span>
-                </v-col>
-              </v-row>
+                  <span class="threshold-value">{{ threshold3Label }}</span>
+                </div>
+              </div>
             </template>
             <div v-else class="text-caption text-medium-emphasis">No hay umbrales de caudal.</div>
           </v-col>
@@ -67,8 +67,8 @@
               Umbrales de volumen
             </div>
             <template v-if="hasAnyVolumeThreshold">
-              <v-row>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+              <div class="thresholds-row">
+                <div class="threshold-item">
                   <span
                     :class="[
                       'threshold-badge',
@@ -80,11 +80,11 @@
                     :aria-pressed="isSelected('volumen', 1)"
                     @click="focusThreshold('volumen', 1)"
                   >
-                    Nivel 1:
+                    Nivel 1
                   </span>
-                  <span class="font-weight-medium">{{ volumeThreshold1Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span class="threshold-value">{{ volumeThreshold1Label }}</span>
+                </div>
+                <div class="threshold-item">
                   <span
                     :class="[
                       'threshold-badge',
@@ -98,9 +98,9 @@
                   >
                     Nivel 2
                   </span>
-                  <span class="font-weight-medium">{{ volumeThreshold2Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
+                  <span class="threshold-value">{{ volumeThreshold2Label }}</span>
+                </div>
+                <div class="threshold-item">
                   <span
                     :class="[
                       'threshold-badge',
@@ -112,11 +112,11 @@
                     :aria-pressed="isSelected('volumen', 3)"
                     @click="focusThreshold('volumen', 3)"
                   >
-                    Nivel 3:
+                    Nivel 3
                   </span>
-                  <span class="font-weight-medium">{{ volumeThreshold3Label }}</span>
-                </v-col>
-              </v-row>
+                  <span class="threshold-value">{{ volumeThreshold3Label }}</span>
+                </div>
+              </div>
             </template>
             <div v-else class="text-caption text-medium-emphasis">No hay umbrales de volumen.</div>
           </v-col>
@@ -220,11 +220,35 @@
 </script>
 
 <style scoped>
+  .thresholds-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px 12px;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .threshold-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .threshold-value {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
   .threshold-badge {
-    display: inline-block;
-    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 10px;
     border-radius: 999px;
     font-weight: 600;
+    font-size: 0.75rem;
+    white-space: nowrap;
     cursor: pointer;
     transition: transform 0.15s ease;
   }

@@ -270,14 +270,21 @@
     historicalData.value?.forEach((d) => dateSet.add(d.date))
     historicalOutflowData.value?.forEach((d) => dateSet.add(d.date))
     historicalVolumeData.value?.forEach((d) => dateSet.add(d.date))
-    // Intentionally exclude resguardo dates from x-domain: this annual series must not
-    // alter chart x-axis margins or visible date extent.
+    // Intentionally exclude resguardo/minimum dates from x-domain by default: this
+    // annual series should not alter chart x-axis margins when other series exist.
     HarmonieData.value?.forEach((d) => dateSet.add(d.date))
     epsatData.value?.forEach((d) => dateSet.add(d.date))
     p10Data.value?.forEach((d) => dateSet.add(d.date))
     p75Data.value?.forEach((d) => dateSet.add(d.date))
     p25Data.value?.forEach((d) => dateSet.add(d.date))
     p90Data.value?.forEach((d) => dateSet.add(d.date))
+
+    // Fallback for volume-only view: if there are no dates from regular series,
+    // use volume boundary series so resguardo/minimo lines can render.
+    if (dateSet.size === 0) {
+      resguardoVolumeData.value?.forEach((d) => dateSet.add(d.date))
+      minimumVolumeData.value?.forEach((d) => dateSet.add(d.date))
+    }
 
     return Array.from(dateSet).sort()
   })

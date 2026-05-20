@@ -1,7 +1,10 @@
 <template>
   <v-card class="bg-surface operational-summary-card" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center ga-2">
-      {{ title }}
+    <v-card-title
+      class="text-subtitle-1 font-weight-bold d-flex align-center ga-2"
+      style="min-width: 0"
+    >
+      <span class="text-truncate" style="min-width: 0; flex: 1">{{ title }}</span>
     </v-card-title>
     <v-divider />
 
@@ -15,7 +18,7 @@
         </v-card-text>
 
         <v-card-text v-else class="pa-4 operational-summary-content d-flex flex-column">
-          <template v-if="hasObservedData">
+          <template v-if="hasAnyData">
             <div
               v-for="item in summaryItems"
               :key="item.id"
@@ -26,9 +29,7 @@
             </div>
           </template>
 
-          <div v-else class="observed-empty-state text-medium-emphasis">
-            No se han encontrado datos observados
-          </div>
+          <div v-else class="observed-empty-state text-medium-emphasis">{{ emptyStateText }}</div>
         </v-card-text>
       </v-card>
     </v-card-text>
@@ -57,9 +58,24 @@
     count: number
   }
 
+  type SummarySource = {
+    id: string
+    label: string
+    series: PredictionResult[]
+  }
+
+  type SummaryMode = 'observed' | 'predictions'
+
   const props = defineProps<{
     loading?: boolean
+    mode?: SummaryMode
     caudalHistorical?: StationPrediction
+    caudalForecastHarmonie?: StationPrediction
+    caudalForecastEpstat?: StationPrediction
+    caudalForecastEnsP10?: StationPrediction
+    caudalForecastEnsP25?: StationPrediction
+    caudalForecastEnsP75?: StationPrediction
+    caudalForecastEnsP90?: StationPrediction
     thresholds?: Record<string, unknown>
     title: string
   }>()
@@ -87,11 +103,11 @@
 
   const threshold3 = computed(() => readNumber(['umbral_caudal_3'], props.thresholds))
 
-  const orderedObserved = computed(() => {
-    return [...(props.caudalHistorical?.results ?? [])]
+  function normalizeSeries(prediction?: StationPrediction): PredictionResult[] {
+    return [...(prediction?.results ?? [])]
       .filter((item) => Number.isFinite(item.value) && Boolean(item.date))
       .sort((a, b) => toTimestamp(a.date) - toTimestamp(b.date))
-  })
+  }
 
   function getExceededLevel(value: number): ThresholdLevel {
     if (threshold3.value != null && value >= threshold3.value) return 3
@@ -131,40 +147,61 @@
     return segments
   }
 
-  const hasObservedData = computed(() => orderedObserved.value.length > 0)
-
-  const summaryItems = computed<SummaryItem[]>(() => {
-    const observed = orderedObserved.value
-
-    if (!observed.length) {
-      return []
+  const sources = computed<SummarySource[]>(() => {
+    if (props.mode === 'predictions') {
+      return [
+        {
+          id: 'harmonie',
+          label: 'Harmonie',
+          series: normalizeSeries(props.caudalForecastHarmonie),
+        },
+        {
+          id: 'eps-medio',
+          label: 'EPS Medio',
+          series: normalizeSeries(props.caudalForecastEpstat),
+        },
+        {
+          id: 'eps-p10',
+          label: 'EPS P10',
+          series: normalizeSeries(props.caudalForecastEnsP10),
+        },
+        {
+          id: 'eps-p25',
+          label: 'EPS P25',
+          series: normalizeSeries(props.caudalForecastEnsP25),
+        },
+        {
+          id: 'eps-p75',
+          label: 'EPS P75',
+          series: normalizeSeries(props.caudalForecastEnsP75),
+        },
+        {
+          id: 'eps-p90',
+          label: 'EPS P90',
+          series: normalizeSeries(props.caudalForecastEnsP90),
+        },
+      ]
     }
 
-    const latest = observed[observed.length - 1]
-    const maxObserved = observed.reduce(
-      (acc, item) => (item.value > acc.value ? item : acc),
-      observed[0]
-    )
-
-    const items: SummaryItem[] = [
+    return [
       {
-        id: 'latest',
-        level: 'info',
-        text: `Ultimo observado: ${latest.value.toFixed(2)} m3/s (${formatDate(latest.date)})`,
-      },
-      {
-        id: 'max',
-        level: 'info',
-        text: `Maximo observado: ${maxObserved.value.toFixed(2)} m3/s (${formatDate(maxObserved.date)})`,
+        id: 'observed',
+        label: 'Observado',
+        series: normalizeSeries(props.caudalHistorical),
       },
     ]
+  })
 
-    const segments = buildSegments(observed)
-    const byLevel = {
-      1: segments.filter((item) => item.level === 1),
-      2: segments.filter((item) => item.level === 2),
-      3: segments.filter((item) => item.level === 3),
-    }
+  const hasAnyData = computed(() => sources.value.some((source) => source.series.length > 0))
+
+  const emptyStateText = computed(() =>
+    props.mode === 'predictions'
+      ? 'No se han encontrado datos de prediccion'
+      : 'No se han encontrado datos observados'
+  )
+
+  const summaryItems = computed<SummaryItem[]>(() => {
+    const items: SummaryItem[] = []
 
     const labels: Record<1 | 2 | 3, string> = {
       1: 'Nivel 1',
@@ -178,28 +215,38 @@
       3: 'red',
     }
 
-    ;([3, 2, 1] as const).forEach((level) => {
-      const levelSegments = byLevel[level]
-      if (!levelSegments.length) return
+    for (const source of sources.value) {
+      if (!source.series.length) continue
 
-      const latestSegment = levelSegments[levelSegments.length - 1]
-      const intervalLabel =
-        latestSegment.startDate === latestSegment.endDate
-          ? formatDate(latestSegment.startDate)
-          : `${formatDate(latestSegment.startDate)} - ${formatDate(latestSegment.endDate)}`
+      const segments = buildSegments(source.series)
+      if (!segments.length) continue
 
-      items.push({
-        id: `level-${level}`,
-        level: levelColor[level],
-        text: `${labels[level]} superado en ${levelSegments.length} intervalo(s). Ultimo: ${intervalLabel}`,
-      })
-    })
+      for (const level of [3, 2, 1] as const) {
+        const levelSegments = segments.filter((item) => item.level === level)
+        if (!levelSegments.length) continue
 
-    if (!segments.length) {
+        const latestSegment = levelSegments[levelSegments.length - 1]
+        const intervalLabel =
+          latestSegment.startDate === latestSegment.endDate
+            ? formatDate(latestSegment.startDate)
+            : `${formatDate(latestSegment.startDate)} - ${formatDate(latestSegment.endDate)}`
+
+        items.push({
+          id: `${source.id}-level-${level}`,
+          level: levelColor[level],
+          text: `${source.label}: ${labels[level]} superado en ${levelSegments.length} intervalo(s). Ultimo: ${intervalLabel}`,
+        })
+      }
+    }
+
+    if (!items.length && hasAnyData.value) {
       items.push({
         id: 'no-thresholds',
         level: 'info',
-        text: 'Sin superaciones de umbral en el periodo observado',
+        text:
+          props.mode === 'predictions'
+            ? 'Sin superaciones de umbral en las predicciones disponibles'
+            : 'Sin superaciones de umbral en el periodo observado',
       })
     }
 
