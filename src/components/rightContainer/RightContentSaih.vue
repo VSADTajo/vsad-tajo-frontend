@@ -57,8 +57,73 @@
     </v-alert>
   </v-card>
 
-  <v-row class="mt-2 align-stretch">
-    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column pt-0">
+  <v-sheet elevation="2" class="mt-2">
+    <v-tabs v-model="tab" color="primary">
+      <v-tab v-if="hasCaudal" value="caudal">Hidrograma</v-tab>
+      <v-tab value="precipitaciones">Precipitaciones</v-tab>
+    </v-tabs>
+  </v-sheet>
+
+  <div v-if="tab === 'caudal'" class="bg-surface">
+    <ContentSaihTabHidrograma
+      :loading="sidePanelsLoading"
+      :loading-caudales="loadingCaudales"
+      :is-embalse="isEmbalse"
+      :caudal-historical="caudalHistorical"
+      :caudal-outflow-historical="caudalOutflowHistorical"
+      :embalse-volume-historical="embalseVolumeHistorical"
+      :caudal-forecast-harmonie="caudalForecastHarmonie"
+      :caudal-forecast-epstat="caudalForecastEpstat"
+      :caudal-chart-data="caudalChartData"
+      :focus-threshold-request="focusThresholdRequest"
+      :chart-threshold-action-loading="chartThresholdActionLoading"
+      :selected-threshold="selectedThreshold"
+      :handle-threshold-focus="handleThresholdFocus"
+      :matrix-loading="matrixLoading"
+      :resguardo-prediction="effectiveResguardoPrediction"
+      :volumen-minimo-prediction="effectiveMinimoPrediction"
+      :thresholds="feature?.properties as Record<string, unknown>"
+      :available-dates="availableDates"
+      :has-selected-date-for-tab="hasSelectedDateForTab"
+      :active-tab="tab"
+      :side-panels-loading="sidePanelsLoading"
+      :loading-harmonie-predict="loadingHarmoniePredict"
+      :loading-eps-predict="loadingEpsPredict"
+      :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
+      :precipitations-forecast-epstat="precipitationsForecastEpstat"
+      :selected-harmonie-caudal-date="selectedHarmonieCaudalDate"
+      :selected-harmonie-precip-date="selectedHarmoniePrecipDate"
+      :selected-eps-caudal-date="selectedEpsCaudalDate"
+      :selected-eps-precip-date="selectedEpsPrecipDate"
+      :harmonie-caudal-dates="harmonieCaudalDates"
+      :harmonie-precip-dates="harmoniePrecipDates"
+      :eps-caudal-dates="epsCaudalDates"
+      :eps-precip-dates="epsPrecipDates"
+      @update:resguardo-prediction="editedResguardoPrediction = $event"
+      @update:volumen-minimo-prediction="editedMinimoPrediction = $event"
+      @update:chart-threshold-action-loading="chartThresholdActionLoading = $event"
+      @update:selected-harmonie-caudal-date="selectedHarmonieCaudalDate = $event"
+      @update:selected-harmonie-precip-date="selectedHarmoniePrecipDate = $event"
+      @update:selected-eps-caudal-date="selectedEpsCaudalDate = $event"
+      @update:selected-eps-precip-date="selectedEpsPrecipDate = $event"
+    />
+  </div>
+
+  <div v-else class="align-stretch bg-surface">
+    <ContentSaihTabPrecipitaciones />
+  </div>
+
+  <!-- <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
+      <v-card class="ma-2 pa-2 bg-background w-100" elevation="2">
+        <ContentSaihAlertStatus
+          :active-tab="tab"
+          :loading="sidePanelsLoading"
+          :caudal-historical="caudalHistorical"
+          :precipitations-historical="precipitationsHistorical"
+          :thresholds="feature?.properties as Record<string, unknown>"
+        />
+      </v-card>
+
       <v-card class="ma-2 pa-2 bg-background w-100" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
@@ -76,6 +141,14 @@
         </v-row>
       </v-card>
 
+      <v-card v-if="tab === 'caudal'" class="ma-2 mt-0 pa-2 bg-background w-100" elevation="2">
+        <ContentSaihOperationalSummary
+          :loading="sidePanelsLoading || loadingCaudales"
+          :caudal-historical="caudalHistorical"
+          :thresholds="feature?.properties as Record<string, unknown>"
+        />
+      </v-card>
+
       <v-card
         v-if="isEmbalse && tab === 'caudal'"
         class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1 d-none d-md-block"
@@ -89,99 +162,85 @@
         />
       </v-card>
     </v-col>
-    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex pt-0">
+    <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex">
       <div class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 h-100 d-flex flex-column">
           <v-card-text>
-            <v-sheet elevation="2">
-              <v-tabs v-model="tab" color="primary">
-                <v-tab v-if="hasCaudal" value="caudal">Hidrograma</v-tab>
-                <v-tab value="precipitaciones">Precipitaciones</v-tab>
-              </v-tabs>
-
-              <v-divider></v-divider>
-
-              <v-tabs-window v-model="tab">
-                <v-tabs-window-item v-if="hasCaudal" value="caudal" eager>
-                  <v-sheet
-                    v-if="
-                      loadingCaudales ||
-                      caudalHistorical ||
-                      caudalForecastHarmonie ||
-                      caudalForecastEpstat
-                    "
-                    class="pa-5"
-                  >
-                    <ForecastChartNew
-                      :data="caudalChartData"
-                      :is-embalse="isEmbalse"
-                      :loading="loadingCaudales || chartThresholdActionLoading"
-                      :thresholds="feature?.properties as Record<string, unknown>"
-                      :focus-threshold-request="focusThresholdRequest"
-                      @focus-threshold-complete="chartThresholdActionLoading = false"
-                    />
-                    <!-- <ForecastChartNewEcharts :data="caudalChartData" /> -->
-                  </v-sheet>
-                  <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
-                  <div
-                    v-else-if="loadingCaudales || loadingPrecipitaciones"
-                    class="chart-placeholder chart-placeholder--caudal"
-                  >
-                    <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-                  </div>
-
-                  <div
-                    v-else-if="
-                      !loadingCaudales &&
-                      (hasSelectedDateForTab || !availableDates.simulationDates.length)
-                    "
-                    class="chart-placeholder chart-placeholder--caudal"
-                  >
-                    No hay Datos de Caudales Disponibles
-                  </div>
-                </v-tabs-window-item>
-
-                <v-tabs-window-item value="precipitaciones" eager>
-                  <v-sheet
-                    v-if="
-                      loadingPrecipitaciones ||
-                      precipitationsHistorical ||
-                      precipitationsForecastHarmonie ||
-                      precipitationsForecastEpstat
-                    "
-                    class="pa-5"
-                  >
-                    <PrecipitationsChart
-                      :data="precipitationsChartData"
-                      :loading="loadingPrecipitaciones"
-                    />
-                    <!-- <PrecipitationsChartEcharts :data="precipitationsChartData" /> -->
-                  </v-sheet>
-
-                  <!-- show skeleton while loading and keep reserved height to avoid layout jumps -->
-                  <div
-                    v-else-if="loadingPrecipitaciones || loadingCaudales"
-                    class="chart-placeholder chart-placeholder--precip"
-                  >
-                    <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
-                  </div>
-
-                  <div
-                    v-else-if="
-                      !loadingPrecipitaciones &&
-                      (hasSelectedDateForTab || !availableDates.simulationDates.length)
-                    "
-                    class="chart-placeholder chart-placeholder--precip"
-                  >
-                    No hay Datos de Precipitaciones Disponibles
-                  </div>
-                </v-tabs-window-item>
-              </v-tabs-window>
+            <v-sheet
+              v-if="
+                tab === 'caudal' &&
+                (loadingCaudales ||
+                  caudalHistorical ||
+                  caudalForecastHarmonie ||
+                  caudalForecastEpstat)
+              "
+              class="pa-5"
+            >
+              <ForecastChartNew
+                :data="caudalChartData"
+                :is-embalse="isEmbalse"
+                :loading="loadingCaudales || chartThresholdActionLoading"
+                :thresholds="feature?.properties as Record<string, unknown>"
+                :focus-threshold-request="focusThresholdRequest"
+                @focus-threshold-complete="chartThresholdActionLoading = false"
+              />
             </v-sheet>
+
+            <v-sheet
+              v-else-if="
+                tab === 'precipitaciones' &&
+                (loadingPrecipitaciones ||
+                  precipitationsHistorical ||
+                  precipitationsForecastHarmonie ||
+                  precipitationsForecastEpstat)
+              "
+              class="pa-5"
+            >
+              <PrecipitationsChart
+                :data="precipitationsChartData"
+                :loading="loadingPrecipitaciones"
+              />
+            </v-sheet>
+
+            <div
+              v-else-if="tab === 'caudal' && (loadingCaudales || loadingPrecipitaciones)"
+              class="chart-placeholder chart-placeholder--caudal"
+            >
+              <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+            </div>
+
+            <div
+              v-else-if="tab === 'precipitaciones' && (loadingPrecipitaciones || loadingCaudales)"
+              class="chart-placeholder chart-placeholder--precip"
+            >
+              <v-skeleton-loader style="width: 100%; height: 100%" type="image" />
+            </div>
+
+            <div
+              v-else-if="
+                tab === 'caudal' &&
+                !loadingCaudales &&
+                (hasSelectedDateForTab || !availableDates.simulationDates.length)
+              "
+              class="chart-placeholder chart-placeholder--caudal"
+            >
+              No hay Datos de Caudales Disponibles
+            </div>
+
+            <div
+              v-else-if="
+                tab === 'precipitaciones' &&
+                !loadingPrecipitaciones &&
+                (hasSelectedDateForTab || !availableDates.simulationDates.length)
+              "
+              class="chart-placeholder chart-placeholder--precip"
+            >
+              No hay Datos de Precipitaciones Disponibles
+            </div>
           </v-card-text>
         </v-card>
 
-        <v-card v-if="tab === 'caudal'" class="mt-2 pa-2 bg-background" elevation="2">
+        <v-card class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
             :active-tab="tab"
             :is-embalse="isEmbalse"
@@ -192,7 +251,7 @@
         </v-card>
       </div>
     </v-col>
-    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex pt-0">
+    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex">
       <v-card class="ma-2 pa-2 bg-background w-100 h-100 d-flex flex-column" elevation="2">
         <v-row>
           <v-col cols="6" md="12">
@@ -220,42 +279,34 @@
               @update:selected-eps-precip-date="selectedEpsPrecipDate = $event"
             />
           </v-col>
-          <!-- <v-col cols="6" md="12">
-            <ContentSaihPredictionsWeek />
-          </v-col> -->
+
         </v-row>
       </v-card>
-    </v-col>
-  </v-row>
+    </v-col> 
+  </v-row>-->
 
-  <v-row class="px-2">
+  <!-- <v-row class="px-2">
     <v-col v-if="tab === 'caudal'" cols="5" class="mb-2 mb-md-0">
       <v-card class="pa-2 bg-background" elevation="2">
         <ContentSaihCaudalMatrix
-          :forecast-harmonie="
-            tab === 'caudal' ? caudalForecastHarmonie : precipitationsForecastHarmonie
-          "
-          :forecast-epsat="tab === 'caudal' ? caudalForecastEpstat : precipitationsForecastEpstat"
-          :thresholds="
-            tab === 'caudal' ? (feature?.properties as Record<string, unknown>) : undefined
-          "
+          :forecast-harmonie="caudalForecastHarmonie"
+          :forecast-epsat="caudalForecastEpstat"
+          :thresholds="feature?.properties as Record<string, unknown>"
           :loading="matrixLoading"
-          :title="
-            tab === 'caudal'
-              ? 'Matriz de caudales (7 dias / 6h)'
-              : 'Matriz de precipitaciones (7 dias / 6h)'
-          "
-          :no-thresholds="tab !== 'caudal'"
         />
       </v-card>
     </v-col>
 
-    <v-col v-if="tab === 'precipitaciones'" cols="4" class="px-2 mb-2 mb-md-0">
-      <ContentSaihPrecipStationTable
-        :forecast-harmonie="precipitationsForecastHarmonie"
-        :forecast-epsat="precipitationsForecastEpstat"
-        :loading="loadingPrecipitaciones || loadingMatrixOnPredictionSelect"
-      />
+    <v-col v-else cols="5" class="px-2 mb-2 mb-md-0">
+      <v-card class="pa-2 bg-background" elevation="2">
+        <ContentSaihCaudalMatrix
+          :forecast-harmonie="precipitationsForecastHarmonie"
+          :forecast-epsat="precipitationsForecastEpstat"
+          :loading="matrixLoading"
+          title="Matriz de precipitaciones (7 dias / 6h)"
+          no-thresholds
+        />
+      </v-card>
     </v-col>
 
     <v-col v-if="isEmbalse && tab === 'caudal'" cols="7" class="col">
@@ -266,7 +317,7 @@
         />
       </v-card>
     </v-col>
-  </v-row>
+  </v-row> -->
 </template>
 
 <script lang="ts" setup>
@@ -295,7 +346,11 @@
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
   import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
   import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
-  import ContentSaihPrecipStationTable from './ContentSaih/ContentSaihPrecipStationTable.vue'
+  import ContentSaihAlertStatus from './ContentSaih/ContentSaihAlertStatus.vue'
+  import ContentSaihOperationalSummary from './ContentSaih/ContentSaihOperationalSummary.vue'
+
+  import ContentSaihTabHidrograma from './ContentSaihTabHidrograma.vue'
+  import ContentSaihTabPrecipitaciones from './ContentSaihTabPrecipitaciones.vue'
 
   const route = useRoute()
   const router = useRouter()

@@ -1,7 +1,7 @@
 <template>
   <v-card class="pa-2 bg-surface" elevation="2">
     <v-card-title class="d-flex align-center justify-space-between ga-2 py-3 px-4">
-      <div class="text-subtitle-2 font-weight-bold">Resguardo Anual</div>
+      <div class="text-subtitle-1 font-weight-bold">Resguardo Anual</div>
       <v-select
         v-model="selectedHydrologicalYear"
         :items="hydrologicalYearOptions"

@@ -1,34 +1,41 @@
 <template>
-  <v-card class="bg-surface h-100" elevation="2">
+  <v-card class="bg-surface" elevation="2">
     <v-card-title class="text-subtitle-1 font-weight-bold">Resguardos</v-card-title>
     <v-divider />
 
-    <v-card-text class="pt-0">
+    <v-card-text class="pa-2">
+      <div class="mb-3">
+        <v-btn-toggle v-model="selectedKind" mandatory class="w-100">
+          <v-btn value="resguardo" size="small" class="flex-grow-1">Resguardo</v-btn>
+          <v-btn value="minimo" size="small" class="flex-grow-1">Vol minimo</v-btn>
+        </v-btn-toggle>
+      </div>
+
       <div class="d-flex align-center justify-space-between mb-1 mt-2">
-        <div class="text-caption text-medium-emphasis font-weight-bold">Resguardo</div>
+        <div class="text-caption text-medium-emphasis font-weight-bold">{{ selectedTitle }}</div>
         <div class="d-flex ga-1">
           <v-btn
             icon="mdi-pencil"
             size="x-small"
             variant="text"
-            :disabled="!currentResguardoPeriod"
-            @click="openEditDialog('resguardo')"
+            :disabled="!selectedPeriod"
+            @click="openEditDialog(selectedKind)"
           />
           <v-btn
             icon="mdi-plus"
             size="x-small"
             variant="text"
-            @click="openAddDialog('resguardo')"
+            @click="openAddDialog(selectedKind)"
           />
         </div>
       </div>
 
       <v-row>
         <v-col cols="7" class="text-caption text-medium-emphasis align-center">
-          Resguardo actual
+          {{ selectedCurrentValueLabel }}
         </v-col>
         <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-          <v-chip size="small" variant="flat">{{ lastResguardoLabel }}</v-chip>
+          <v-chip size="small" variant="flat">{{ selectedValueLabel }}</v-chip>
         </v-col>
       </v-row>
       <v-row>
@@ -36,52 +43,13 @@
           Inicio vigencia
         </v-col>
         <v-col cols="7" class="text-right font-weight-medium align-center">
-          {{ validityStartResguardoLabel }}
+          {{ selectedStartLabel }}
         </v-col>
       </v-row>
       <v-row>
         <v-col cols="5" class="text-caption text-medium-emphasis align-center">Fin vigencia</v-col>
         <v-col cols="7" class="text-right font-weight-medium align-center">
-          {{ validityEndResguardoLabel }}
-        </v-col>
-      </v-row>
-
-      <v-divider class="my-3" />
-
-      <div class="d-flex align-center justify-space-between mb-1">
-        <div class="text-caption text-medium-emphasis font-weight-bold">Volumen minimo</div>
-        <div class="d-flex ga-1">
-          <v-btn
-            icon="mdi-pencil"
-            size="x-small"
-            variant="text"
-            :disabled="!currentMinimoPeriod"
-            @click="openEditDialog('minimo')"
-          />
-          <v-btn icon="mdi-plus" size="x-small" variant="text" @click="openAddDialog('minimo')" />
-        </div>
-      </div>
-
-      <v-row>
-        <v-col cols="7" class="text-caption text-medium-emphasis align-center">
-          Volumen minimo actual
-        </v-col>
-        <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
-          <v-chip size="small" variant="flat">{{ lastVolumenMinimoLabel }}</v-chip>
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col cols="5" class="text-caption text-medium-emphasis align-center">
-          Inicio vigencia
-        </v-col>
-        <v-col cols="7" class="text-right font-weight-medium align-center">
-          {{ validityStartMinimoLabel }}
-        </v-col>
-      </v-row>
-      <v-row>
-        <v-col cols="5" class="text-caption text-medium-emphasis align-center">Fin vigencia</v-col>
-        <v-col cols="7" class="text-right font-weight-medium align-center">
-          {{ validityEndMinimoLabel }}
+          {{ selectedEndLabel }}
         </v-col>
       </v-row>
     </v-card-text>
@@ -155,6 +123,7 @@
   const minimoPeriods = ref<PeriodItem[]>([])
 
   const dialogOpen = ref(false)
+  const selectedKind = ref<PeriodKind>('resguardo')
   const dialogKind = ref<PeriodKind>('resguardo')
   const dialogMode = ref<EditMode>('edit')
   const dialogTargetId = ref<string | null>(null)
@@ -255,6 +224,18 @@
     return items.length ? items[items.length - 1] : undefined
   })
 
+  const selectedPeriod = computed(() =>
+    selectedKind.value === 'resguardo' ? currentResguardoPeriod.value : currentMinimoPeriod.value
+  )
+
+  const selectedTitle = computed(() =>
+    selectedKind.value === 'resguardo' ? 'Resguardo' : 'Volumen minimo'
+  )
+
+  const selectedCurrentValueLabel = computed(() =>
+    selectedKind.value === 'resguardo' ? 'Resguardo actual' : 'Volumen minimo actual'
+  )
+
   const lastResguardoLabel = computed(() => {
     const value = currentResguardoPeriod.value?.value
     if (value == null || !Number.isFinite(value)) return '--'
@@ -283,6 +264,22 @@
 
   const validityEndMinimoLabel = computed(() =>
     currentMinimoPeriod.value?.endDate ? formatDate(currentMinimoPeriod.value.endDate) : '--'
+  )
+
+  const selectedValueLabel = computed(() =>
+    selectedKind.value === 'resguardo' ? lastResguardoLabel.value : lastVolumenMinimoLabel.value
+  )
+
+  const selectedStartLabel = computed(() =>
+    selectedKind.value === 'resguardo'
+      ? validityStartResguardoLabel.value
+      : validityStartMinimoLabel.value
+  )
+
+  const selectedEndLabel = computed(() =>
+    selectedKind.value === 'resguardo'
+      ? validityEndResguardoLabel.value
+      : validityEndMinimoLabel.value
   )
 
   const dialogTitle = computed(() => {

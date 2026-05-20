@@ -10,8 +10,8 @@
       <v-skeleton-loader type="list-item-two-line" />
     </v-card-text>
 
-    <v-card-text v-else>
-      <template v-if="activeTab === 'caudal'">
+    <v-card-text v-else class="observed-content">
+      <template v-if="hasObservedData && activeTab === 'caudal'">
         <v-btn-toggle
           v-if="isEmbalse"
           v-model="embalseObservedMode"
@@ -67,7 +67,7 @@
         </v-row>
       </template>
 
-      <template v-else>
+      <template v-else-if="hasObservedData">
         <v-row>
           <v-col cols="7" class="text-caption text-medium-emphasis align-center">
             Último observado
@@ -105,6 +105,10 @@
           </v-col>
         </v-row>
       </template>
+
+      <div v-else class="observed-empty-state text-medium-emphasis">
+        No se han encontrado datos observados
+      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -116,16 +120,21 @@
 
   type EmbalseObservedMode = 'entrada' | 'salida' | 'volumen'
 
-  const props = defineProps<{
-    activeTab: 'caudal' | 'precipitaciones'
-    loading?: boolean
-    isEmbalse?: boolean
-    caudalHistorical?: StationPrediction
-    caudalOutflowHistorical?: StationPrediction
-    embalseVolumeHistorical?: StationPrediction
-    precipitationsHistorical?: StationPrediction
-    thresholds?: Record<string, unknown>
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      activeTab?: 'caudal' | 'precipitaciones'
+      loading?: boolean
+      isEmbalse?: boolean
+      caudalHistorical?: StationPrediction
+      caudalOutflowHistorical?: StationPrediction
+      embalseVolumeHistorical?: StationPrediction
+      precipitationsHistorical?: StationPrediction
+      thresholds?: Record<string, unknown>
+    }>(),
+    {
+      activeTab: 'caudal',
+    }
+  )
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
     if (!source) return null
@@ -212,6 +221,30 @@
     return baseSummary.value
   })
 
+  function hasResults(prediction: StationPrediction | undefined): boolean {
+    return Boolean(prediction?.results?.length)
+  }
+
+  const hasObservedData = computed(() => {
+    if (props.activeTab !== 'caudal') {
+      return hasResults(props.precipitationsHistorical)
+    }
+
+    if (!props.isEmbalse) {
+      return hasResults(props.caudalHistorical)
+    }
+
+    if (embalseObservedMode.value === 'salida') {
+      return hasResults(props.caudalOutflowHistorical)
+    }
+
+    if (embalseObservedMode.value === 'volumen') {
+      return hasResults(props.embalseVolumeHistorical)
+    }
+
+    return hasResults(props.caudalHistorical)
+  })
+
   const lastObservedValueLabel = computed(() => baseSummary.value.lastValueLabel)
   const maxObservedValueLabel = computed(() => baseSummary.value.maxValueLabel)
   const lastObservedDateLabel = computed(() => baseSummary.value.lastDateLabel)
@@ -274,6 +307,20 @@
 </script>
 
 <style scoped>
+  .observed-content {
+    min-height: 220px;
+  }
+
+  .observed-empty-state {
+    min-height: inherit;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 500;
+  }
+
   .observed-mode-toggle {
     width: 100%;
     display: flex;
