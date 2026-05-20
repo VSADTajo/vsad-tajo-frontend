@@ -3,7 +3,11 @@
     <v-card-title class="text-subtitle-1 font-weight-bold">{{ cardTitle }}</v-card-title>
     <v-divider />
 
-    <v-card-text class="justify-center d-flex align-center">
+    <v-card-text v-if="loading" class="justify-center d-flex align-center">
+      <v-skeleton-loader type="chip" class="alert-chip-skeleton" />
+    </v-card-text>
+
+    <v-card-text v-else class="justify-center d-flex align-center">
       <v-chip :color="statusChipColor" variant="flat" size="large" label class="alert-chip">
         {{ statusLabel }}
       </v-chip>
@@ -117,13 +121,9 @@
     return 'NORMAL'
   })
 
-  const statusLabel = computed<string>(() => {
-    if (props.loading) return 'CARGANDO'
-    return alertLevel.value
-  })
+  const statusLabel = computed<string>(() => alertLevel.value)
 
   const statusChipColor = computed<string>(() => {
-    if (props.loading) return ''
     switch (alertLevel.value) {
       case 'GRAVE':
         return 'red-lighten-3'
@@ -151,5 +151,10 @@
     justify-content: center;
     font-weight: 700;
     letter-spacing: 0.02em;
+  }
+
+  .alert-chip-skeleton {
+    width: 128px;
+    max-width: 128px;
   }
 </style>

@@ -112,17 +112,6 @@
     return xLabels.value[index] ?? null
   })
 
-  const observedLastIndex = computed(() => {
-    if (!historicalData.value?.length) return -1
-
-    const lastObserved = [...historicalData.value]
-      .reverse()
-      .find((item) => Number.isFinite(item.value))
-
-    if (!lastObserved) return -1
-    return allDates.value.lastIndexOf(lastObserved.date)
-  })
-
   const observedEndXAnnotation = computed(() => {
     if (!observedEndLabel.value) return []
 
@@ -170,7 +159,7 @@
       const values = allDates.value.map((date) => historicalMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
-          name: 'Observado',
+          name: 'Precipitación Observada',
           type: 'bar',
           data: allDates.value.map((date, i) => ({
             x: labels[i],
@@ -192,27 +181,6 @@
       if (hasFiniteRange(ranges)) {
         result.push({
           name: 'Percentiles P10-P90',
-          type: 'rangeArea',
-          data: allDates.value.map((date, i) => ({
-            x: labels[i],
-            y: ranges[i],
-          })),
-        })
-      }
-    }
-
-    // P25-P75 RangeArea
-    if (p25Data.value && p75Data.value) {
-      const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
-      const p75Map = new Map(p75Data.value.map((d) => [d.date, d.value]))
-      const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
-        const low = p25Map.get(date) ?? null
-        const high = p75Map.get(date) ?? null
-        return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
-      })
-      if (hasFiniteRange(ranges)) {
-        result.push({
-          name: 'Percentiles P25-P75',
           type: 'rangeArea',
           data: allDates.value.map((date, i) => ({
             x: labels[i],
@@ -254,94 +222,25 @@
       }
     }
 
-    // Acumulados: observado, EPS medio y percentiles, todos partiendo del observado
-    {
-      const observedMap = historicalData.value
-        ? new Map(historicalData.value.map((d) => [d.date, d.value]))
-        : null
-      const lastObservedIndex = observedLastIndex.value
-
-      let observedCumulative = 0
-      let hasObservedCumulative = false
-      const observedCumulativeByIndex = allDates.value.map((date, i) => {
-        if (lastObservedIndex < 0 || i > lastObservedIndex) return null
-
-        const observedValue = observedMap?.get(date) ?? null
-        if (Number.isFinite(observedValue)) {
-          observedCumulative += Number(observedValue)
-          hasObservedCumulative = true
-          return observedCumulative
-        }
-
-        return hasObservedCumulative ? observedCumulative : null
+    // P25-P75 RangeArea
+    if (p25Data.value && p75Data.value) {
+      const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
+      const p75Map = new Map(p75Data.value.map((d) => [d.date, d.value]))
+      const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
+        const low = p25Map.get(date) ?? null
+        const high = p75Map.get(date) ?? null
+        return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
       })
-
-      const observedBaseline =
-        lastObservedIndex >= 0 ? (observedCumulativeByIndex[lastObservedIndex] ?? null) : null
-
-      const buildCumulativeSeries = (
-        seriesName: string,
-        futureMap: Map<string, number | null> | null,
-        forceObservedOnly = false
-      ) => {
-        if (!observedMap && !futureMap) return
-
-        let cumulative = Number(observedBaseline ?? 0)
-        let hasStarted = false
-
-        const cumulativeData = allDates.value.map((date, i) => {
-          if (forceObservedOnly) {
-            return {
-              x: labels[i],
-              y: observedCumulativeByIndex[i] ?? null,
-            }
-          }
-
-          if (lastObservedIndex >= 0) {
-            if (i < lastObservedIndex) {
-              return { x: labels[i], y: null }
-            }
-
-            if (i === lastObservedIndex) {
-              hasStarted = Number.isFinite(observedBaseline)
-              return {
-                x: labels[i],
-                y: observedBaseline,
-              }
-            }
-          }
-
-          const sourceValue = futureMap?.get(date) ?? null
-          if (Number.isFinite(sourceValue)) {
-            cumulative += Number(sourceValue)
-            hasStarted = true
-            return { x: labels[i], y: cumulative }
-          }
-
-          return { x: labels[i], y: hasStarted ? cumulative : null }
+      if (hasFiniteRange(ranges)) {
+        result.push({
+          name: 'Percentiles P25-P75',
+          type: 'rangeArea',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: ranges[i],
+          })),
         })
-
-        if (hasFiniteValue(cumulativeData.map((point) => point.y))) {
-          result.push({
-            name: seriesName,
-            type: 'line',
-            data: cumulativeData,
-          })
-        }
       }
-
-      const epsMap = epsatData.value ? new Map(epsatData.value.map((d) => [d.date, d.value])) : null
-      const p10Map = p10Data.value ? new Map(p10Data.value.map((d) => [d.date, d.value])) : null
-      const p25Map = p25Data.value ? new Map(p25Data.value.map((d) => [d.date, d.value])) : null
-      const p75Map = p75Data.value ? new Map(p75Data.value.map((d) => [d.date, d.value])) : null
-      const p90Map = p90Data.value ? new Map(p90Data.value.map((d) => [d.date, d.value])) : null
-
-      buildCumulativeSeries('Acumulado observado', null, true)
-      buildCumulativeSeries('Acumulado EPS medio', epsMap)
-      buildCumulativeSeries('Acumulado P10', p10Map)
-      buildCumulativeSeries('Acumulado P25', p25Map)
-      buildCumulativeSeries('Acumulado P75', p75Map)
-      buildCumulativeSeries('Acumulado P90', p90Map)
     }
 
     return result
@@ -349,47 +248,15 @@
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
 
-  const isAccumulatedSeries = (name: string): boolean => name.startsWith('Acumulado')
-
-  const dynamicYAxes = computed<ApexOptions['yaxis']>(() => {
-    const firstAccumulatedIndex = series.value.findIndex((serie) => isAccumulatedSeries(serie.name))
-    const firstInstantIndex = series.value.findIndex((serie) => !isAccumulatedSeries(serie.name))
-
-    return series.value.map((serie, index) => {
-      const isAccumulated = isAccumulatedSeries(serie.name)
-      const shouldShowAxis = isAccumulated
-        ? index === firstAccumulatedIndex
-        : index === firstInstantIndex
-
-      return {
-        min: 0,
-        opposite: isAccumulated,
-        seriesName: serie.name,
-        show: shouldShowAxis,
-        title: shouldShowAxis ? { text: isAccumulated ? 'mm acumulado' : 'mm' } : { text: '' },
-        labels: {
-          show: shouldShowAxis,
-          formatter: (value: number) => Number(value).toFixed(1),
-        },
-      }
-    })
-  })
-
   // Colores dinámicos basados en qué series existen (mismo orden que series)
   const dynamicColors = computed(() => {
     const names = new Set(series.value.map((serie) => serie.name))
     const colors: string[] = []
-    if (names.has('Observado')) colors.push('#2E7D32') // Verde
+    if (names.has('Precipitación Observada')) colors.push('#2E7D32') // Verde
     if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
     if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
     if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
     if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
-    if (names.has('Acumulado observado')) colors.push('#2E7D32')
-    if (names.has('Acumulado EPS medio')) colors.push('#FF9800')
-    if (names.has('Acumulado P10')) colors.push('#D3D3D3')
-    if (names.has('Acumulado P25')) colors.push('#696969')
-    if (names.has('Acumulado P75')) colors.push('#696969')
-    if (names.has('Acumulado P90')) colors.push('#D3D3D3')
     return colors
   })
 
@@ -397,17 +264,11 @@
   const dynamicFillOpacity = computed(() => {
     const names = new Set(series.value.map((serie) => serie.name))
     const opacity: number[] = []
-    if (names.has('Observado')) opacity.push(1)
+    if (names.has('Precipitación Observada')) opacity.push(1)
     if (names.has('Percentiles P10-P90')) opacity.push(0.35)
     if (names.has('Percentiles P25-P75')) opacity.push(0.35)
     if (names.has('Predicción Det. Harmonie')) opacity.push(1)
     if (names.has('Predicción Prob. EPS')) opacity.push(1)
-    if (names.has('Acumulado observado')) opacity.push(1)
-    if (names.has('Acumulado EPS medio')) opacity.push(1)
-    if (names.has('Acumulado P10')) opacity.push(1)
-    if (names.has('Acumulado P25')) opacity.push(1)
-    if (names.has('Acumulado P75')) opacity.push(1)
-    if (names.has('Acumulado P90')) opacity.push(1)
     return opacity
   })
 
@@ -415,17 +276,11 @@
   const dynamicStrokeWidth = computed(() => {
     const names = new Set(series.value.map((serie) => serie.name))
     const widths: number[] = []
-    if (names.has('Observado')) widths.push(2)
+    if (names.has('Precipitación Observada')) widths.push(2)
     if (names.has('Percentiles P10-P90')) widths.push(1)
     if (names.has('Percentiles P25-P75')) widths.push(1)
     if (names.has('Predicción Det. Harmonie')) widths.push(0)
     if (names.has('Predicción Prob. EPS')) widths.push(0)
-    if (names.has('Acumulado observado')) widths.push(3)
-    if (names.has('Acumulado EPS medio')) widths.push(2)
-    if (names.has('Acumulado P10')) widths.push(2)
-    if (names.has('Acumulado P25')) widths.push(2)
-    if (names.has('Acumulado P75')) widths.push(2)
-    if (names.has('Acumulado P90')) widths.push(2)
     return widths
   })
 
@@ -483,7 +338,15 @@
         hideOverlappingLabels: true,
       },
     },
-    yaxis: dynamicYAxes.value,
+    yaxis: {
+      min: 0,
+      title: {
+        text: 'mm',
+      },
+      labels: {
+        formatter: (value: number) => Number(value).toFixed(1),
+      },
+    },
     annotations: {
       xaxis: observedEndXAnnotation.value,
     },
@@ -592,41 +455,27 @@
   }
 
   .precipitations-chart .apexcharts-legend {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex !important;
+    flex-wrap: nowrap !important;
     gap: 8px 12px;
-    align-items: start;
-    justify-items: start;
-    overflow: hidden !important;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap;
   }
 
   .precipitations-chart .apexcharts-legend-series {
     display: flex !important;
-    align-items: flex-start;
+    align-items: center;
     margin: 0 !important;
-    width: 100% !important;
+    width: auto !important;
     min-height: 28px;
-    min-width: 0;
+    min-width: max-content;
   }
 
   .precipitations-chart .apexcharts-legend-text {
-    white-space: normal !important;
+    white-space: nowrap !important;
     line-height: 1.2;
-  }
-
-  @media (max-width: 960px) {
-    .precipitations-chart .apexcharts-legend {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .precipitations-chart .apexcharts-legend-series {
-      min-height: 24px;
-    }
-  }
-
-  @media (max-width: 600px) {
-    .precipitations-chart .apexcharts-legend {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   }
 </style>

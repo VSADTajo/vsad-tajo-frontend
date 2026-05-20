@@ -1,0 +1,246 @@
+<template>
+  <v-card class="pa-2 bg-surface" elevation="2">
+    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
+      <span class="text-subtitle-1 font-weight-bold pl-2">Acumulado Precipitación</span>
+      <v-btn-toggle
+        v-model="selectedProvider"
+        mandatory
+        density="compact"
+        color="primary"
+        variant="outlined"
+      >
+        <v-btn value="harmonie" size="small">Harmonie</v-btn>
+        <v-btn value="eps" size="small">EPS Medio</v-btn>
+        <v-btn value="p10" size="small">P10</v-btn>
+        <v-btn value="p25" size="small">P25</v-btn>
+        <v-btn value="p75" size="small">P75</v-btn>
+        <v-btn value="p90" size="small">P90</v-btn>
+      </v-btn-toggle>
+    </v-card-title>
+
+    <v-divider class="mb-2" />
+
+    <div v-if="loading" class="chart-loading" :style="{ height: `${chartHeight}px` }">
+      <v-skeleton-loader type="image" class="h-100 w-100" />
+    </div>
+
+    <apexchart
+      v-else-if="hasData"
+      type="bar"
+      :height="chartHeight"
+      :options="chartOptions"
+      :series="series"
+    />
+
+    <div v-else class="chart-empty" :style="{ height: `${chartHeight}px` }">
+      Sin datos para mostrar
+    </div>
+  </v-card>
+</template>
+
+<script setup lang="ts">
+  import { computed, ref } from 'vue'
+  import type { ApexOptions } from 'apexcharts'
+  import type { StationPrediction } from '@/types/Predictions'
+  import { extractAccumulatedHorizonValues, PRECIP_HORIZON_META } from '../utils/precipAccumulation'
+
+  type ThresholdValues = {
+    h0?: number
+    h15m?: number
+    h1?: number
+    h2?: number
+    h4?: number
+    h8?: number
+    h12?: number
+    h24?: number
+  }
+
+  const props = withDefaults(
+    defineProps<{
+      precipitationsForecastHarmonie?: StationPrediction
+      precipitationsForecastEpstat?: StationPrediction
+      precipitationsForecastEnsP10?: StationPrediction
+      precipitationsForecastEnsP25?: StationPrediction
+      precipitationsForecastEnsP75?: StationPrediction
+      precipitationsForecastEnsP90?: StationPrediction
+      forecastHarmonie?: StationPrediction
+      forecastEpsat?: StationPrediction
+      thresholdsLeve?: ThresholdValues
+      thresholdsGrave?: ThresholdValues
+      loading?: boolean
+      height?: number
+    }>(),
+    {
+      precipitationsForecastHarmonie: undefined,
+      precipitationsForecastEpstat: undefined,
+      precipitationsForecastEnsP10: undefined,
+      precipitationsForecastEnsP25: undefined,
+      precipitationsForecastEnsP75: undefined,
+      precipitationsForecastEnsP90: undefined,
+      forecastHarmonie: undefined,
+      forecastEpsat: undefined,
+      thresholdsLeve: () => ({
+        h0: 0,
+        h15m: 5,
+        h1: 10,
+        h2: 12,
+        h4: 13,
+        h8: 15,
+        h12: 20,
+        h24: 30,
+      }),
+      thresholdsGrave: () => ({
+        h0: 0,
+        h15m: 7.5,
+        h1: 15,
+        h2: 18,
+        h4: 19.5,
+        h8: 22.5,
+        h12: 30,
+        h24: 45,
+      }),
+      loading: false,
+      height: 320,
+    }
+  )
+
+  const selectedProvider = ref<'harmonie' | 'eps' | 'p10' | 'p25' | 'p75' | 'p90'>('eps')
+
+  const harmoniePrediction = computed<StationPrediction | undefined>(
+    () => props.precipitationsForecastHarmonie ?? props.forecastHarmonie
+  )
+
+  const epsPrediction = computed<StationPrediction | undefined>(
+    () => props.precipitationsForecastEpstat ?? props.forecastEpsat
+  )
+
+  const p10Prediction = computed<StationPrediction | undefined>(
+    () => props.precipitationsForecastEnsP10
+  )
+  const p25Prediction = computed<StationPrediction | undefined>(
+    () => props.precipitationsForecastEnsP25
+  )
+  const p75Prediction = computed<StationPrediction | undefined>(
+    () => props.precipitationsForecastEnsP75
+  )
+  const p90Prediction = computed<StationPrediction | undefined>(
+    () => props.precipitationsForecastEnsP90
+  )
+
+  const selectedPrediction = computed<StationPrediction | undefined>(() => {
+    if (selectedProvider.value === 'harmonie') return harmoniePrediction.value
+    if (selectedProvider.value === 'eps') return epsPrediction.value
+    if (selectedProvider.value === 'p10') return p10Prediction.value
+    if (selectedProvider.value === 'p25') return p25Prediction.value
+    if (selectedProvider.value === 'p75') return p75Prediction.value
+    return p90Prediction.value
+  })
+
+  const horizonValues = computed(() => extractAccumulatedHorizonValues(selectedPrediction.value))
+
+  const categories = computed(() => PRECIP_HORIZON_META.map((item) => item.label))
+  const values = computed(() =>
+    PRECIP_HORIZON_META.map((item) => horizonValues.value[item.key] ?? 0)
+  )
+  const leveValues = computed(() =>
+    PRECIP_HORIZON_META.map((item) => props.thresholdsLeve?.[item.key] ?? null)
+  )
+  const graveValues = computed(() =>
+    PRECIP_HORIZON_META.map((item) => props.thresholdsGrave?.[item.key] ?? null)
+  )
+
+  const hasData = computed(() => Boolean(selectedPrediction.value?.results?.length))
+
+  const series = computed(() => [
+    {
+      type: 'bar',
+      name:
+        selectedProvider.value === 'harmonie'
+          ? 'Harmonie'
+          : selectedProvider.value === 'eps'
+            ? 'EPS Medio'
+            : selectedProvider.value.toUpperCase(),
+      data: values.value,
+    },
+    {
+      type: 'line',
+      name: 'Leve',
+      data: leveValues.value,
+    },
+    {
+      type: 'line',
+      name: 'Grave',
+      data: graveValues.value,
+    },
+  ])
+
+  const chartHeight = computed(() => props.height)
+
+  const chartOptions = computed<ApexOptions>(() => ({
+    chart: {
+      toolbar: { show: true },
+      animations: { enabled: true },
+    },
+    stroke: {
+      width: [0, 2, 2],
+      curve: 'straight',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 4,
+        columnWidth: '50%',
+      },
+    },
+    markers: {
+      size: [0, 7, 7],
+      strokeWidth: 0,
+      hover: { sizeOffset: 1 },
+    },
+    dataLabels: {
+      enabled: true,
+      enabledOnSeries: [0],
+      formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(1) : '--'),
+      style: {
+        fontSize: '10px',
+      },
+    },
+    xaxis: {
+      categories: categories.value,
+      labels: {
+        rotate: 0,
+      },
+    },
+    yaxis: {
+      title: {
+        text: 'mm acumulados',
+      },
+      min: 0,
+      forceNiceScale: true,
+    },
+    colors: [selectedProvider.value === 'harmonie' ? '#1976d2' : '#00897b', '#fdd835', '#ef5350'],
+    tooltip: {
+      y: {
+        formatter: (value: number) => `${value.toFixed(2)} mm`,
+      },
+    },
+    grid: {
+      borderColor: '#e0e0e0',
+      strokeDashArray: 3,
+    },
+    legend: { show: true, position: 'bottom' },
+  }))
+</script>
+
+<style scoped>
+  .chart-loading,
+  .chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chart-empty {
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 0.9rem;
+  }
+</style>

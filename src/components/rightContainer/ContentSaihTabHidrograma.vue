@@ -148,11 +148,18 @@
 
   import type {
     DataStationPrediction,
-    DatesAvailableResponse,
     PredictionTypeName,
     StationPrediction,
   } from '@/types/Predictions'
   import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import {
+    applyForecastData,
+    clearForecasts,
+    fetchPredictionBatch,
+    pickDefaultDate,
+    toDateList,
+    type ForecastRequestDef,
+  } from './utils/predictionTabUtils'
 
   import ContentSaihAlertStatus from './ContentSaih/ContentSaihAlertStatus.vue'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
@@ -166,12 +173,6 @@
 
   type ForecastKey = keyof DataStationPrediction
   type ForecastRefsMap = Record<ForecastKey, Ref<StationPrediction | undefined>>
-  type ForecastRequestDef = {
-    key: ForecastKey
-    predictionType: PredictionTypeName
-    simulationDate?: string
-    percentile?: string
-  }
 
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
@@ -415,43 +416,6 @@
     ],
   }))
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function clearForecasts(target: ForecastRefsMap) {
-    Object.values(target).forEach((r) => {
-      r.value = undefined
-    })
-  }
-
-  function pickDefaultDate(current: string, options: string[]): string {
-    if (current && options.includes(current)) return current
-    return options[0] ?? ''
-  }
-
-  function applyForecastData(target: ForecastRefsMap, payload: Partial<DataStationPrediction>) {
-    for (const key in target) target[key as ForecastKey].value = payload[key as ForecastKey]
-  }
-
-  async function fetchPredictionBatch(
-    stationId: string,
-    requests: ForecastRequestDef[]
-  ): Promise<Partial<DataStationPrediction>> {
-    const entries = await Promise.all(
-      requests.map(async (req) => {
-        if (!req.simulationDate) return [req.key, undefined] as const
-        const prediction = await getPredictionsService(
-          stationId,
-          req.predictionType,
-          req.simulationDate,
-          req.percentile
-        )
-        return [req.key, prediction] as const
-      })
-    )
-    const result: Partial<DataStationPrediction> = {}
-    for (const [key, prediction] of entries) result[key] = prediction
-    return result
-  }
-
   // ── Fetch available dates ─────────────────────────────────────────────────
   async function getAvailableDates(code: string) {
     const selectedCodeType = codeType.value === 'E' ? 'E' : 'default'
@@ -474,16 +438,6 @@
         getAvailablePredictionsService(code, 'P.harmonie.forecast'),
         ...epsCaudalTypes.map((type) => getAvailablePredictionsService(code, type)),
       ])
-
-      const toDateList = (response: DatesAvailableResponse): string[] => {
-        const fromSimulationDates = (response.simulationDates ?? [])
-          .map((item) => item.simulationDate)
-          .filter((v): v is string => Boolean(v))
-        const fromDates = (response.dates ?? []).filter((v): v is string => Boolean(v))
-        return Array.from(new Set([...fromSimulationDates, ...fromDates])).sort((a, b) =>
-          b.localeCompare(a)
-        )
-      }
 
       observedCaudalDates.value = toDateList(observedCaudalResponse)
       harmonieCaudalDates.value = toDateList(harmonieCaudalResponse)
