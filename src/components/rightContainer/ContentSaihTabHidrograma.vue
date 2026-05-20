@@ -3,10 +3,9 @@
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
       <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatus
-          :loading="loading"
+          :loading="loadingCaudales"
           :caudal-historical="caudalHistorical"
           :thresholds="thresholds"
-          style="min-height: 125px"
         />
       </v-card>
 
@@ -14,7 +13,7 @@
         <v-row>
           <v-col cols="6" md="12">
             <ContentObservedData
-              :loading="loading"
+              :loading="loadingCaudales"
               :is-embalse="isEmbalse"
               :caudal-historical="caudalHistorical"
               :caudal-outflow-historical="caudalOutflowHistorical"
@@ -27,7 +26,7 @@
 
       <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
         <ContentSaihOperationalSummary
-          :loading="loading || loadingCaudales"
+          :loading="loadingCaudales"
           :caudal-historical="caudalHistorical"
           :thresholds="thresholds"
           title="Resumen Operativo Observado"
@@ -39,22 +38,12 @@
       <div class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
-            <v-sheet
-              v-if="
-                loadingCaudales ||
-                caudalHistorical ||
-                caudalForecastHarmonie ||
-                caudalForecastEpstat
-              "
-              class="pa-5"
-            >
+            <v-sheet class="pa-5">
               <ForecastChartNew
-                :data="caudalChartData as any"
+                :data="caudalChartData"
                 :is-embalse="isEmbalse"
-                :loading="loadingCaudales || chartThresholdActionLoading"
+                :loading="loadingCaudales"
                 :thresholds="thresholds"
-                :focus-threshold-request="focusThresholdRequest as any"
-                @focus-threshold-complete="emit('update:chart-threshold-action-loading', false)"
               />
             </v-sheet>
           </v-card-text>
@@ -75,7 +64,7 @@
             :forecast-harmonie="caudalForecastHarmonie"
             :forecast-epsat="caudalForecastEpstat"
             :thresholds="thresholds"
-            :loading="matrixLoading"
+            :loading="loadingCaudales"
           />
         </v-card>
       </div>
@@ -94,37 +83,27 @@
       <v-card class="ml-1 mr-1 my-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihPredictionsLatest
           class="ma-2"
-          :active-tab="activeTab ?? 'caudal'"
-          :loading="sidePanelsLoading"
+          active-tab="caudal"
+          :loading="loadingCaudales"
           :loading-harmonie="loadingHarmoniePredict"
           :loading-eps="loadingEpsPredict"
           :caudal-forecast-harmonie="caudalForecastHarmonie"
           :caudal-forecast-epstat="caudalForecastEpstat"
-          :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
-          :precipitations-forecast-epstat="precipitationsForecastEpstat"
           :selected-harmonie-caudal-date="selectedHarmonieCaudalDate"
-          :selected-harmonie-precip-date="selectedHarmoniePrecipDate"
           :selected-eps-caudal-date="selectedEpsCaudalDate"
-          :selected-eps-precip-date="selectedEpsPrecipDate"
           :harmonie-caudal-dates="harmonieCaudalDates"
-          :harmonie-precip-dates="harmoniePrecipDates"
           :eps-caudal-dates="epsCaudalDates"
-          :eps-precip-dates="epsPrecipDates"
           :thresholds="thresholds"
           @update:selected-harmonie-caudal-date="
             emit('update:selected-harmonie-caudal-date', $event)
           "
-          @update:selected-harmonie-precip-date="
-            emit('update:selected-harmonie-precip-date', $event)
-          "
           @update:selected-eps-caudal-date="emit('update:selected-eps-caudal-date', $event)"
-          @update:selected-eps-precip-date="emit('update:selected-eps-precip-date', $event)"
         />
       </v-card>
 
       <v-card class="ml-1 mr-1 mt-2 pa-2 bg-background w-100 flex-grow-1" elevation="2">
         <ContentSaihOperationalSummary
-          :loading="loading || loadingCaudales"
+          :loading="loadingCaudales"
           :caudal-historical="caudalHistorical"
           :thresholds="thresholds"
           title="Resumen Operativo Predicciones"
@@ -143,8 +122,8 @@
           class="flex-grow-1"
           :resguardo-prediction="resguardoPrediction"
           :volumen-minimo-prediction="volumenMinimoPrediction"
-          @update:resguardo-prediction="emit('update:resguardo-prediction', $event)"
-          @update:volumen-minimo-prediction="emit('update:volumen-minimo-prediction', $event)"
+          @update:resguardo-prediction="resguardoPrediction = $event"
+          @update:volumen-minimo-prediction="volumenMinimoPrediction = $event"
         />
       </v-card>
     </v-col>
@@ -165,69 +144,467 @@
 </template>
 
 <script lang="ts" setup>
-  import type { StationPrediction } from '@/types/Predictions'
+  import { computed, ref, watch, type Ref } from 'vue'
+
+  import type {
+    DataStationPrediction,
+    DatesAvailableResponse,
+    PredictionTypeName,
+    StationPrediction,
+  } from '@/types/Predictions'
+  import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+
   import ContentSaihAlertStatus from './ContentSaih/ContentSaihAlertStatus.vue'
+  import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import ContentObservedData from './ContentSaih/ContentObservedData.vue'
   import ContentSaihOperationalSummary from './ContentSaih/ContentSaihOperationalSummary.vue'
-  import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
-  import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
   import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
+  import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
   import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
 
-  const emit = defineEmits<{
-    (event: 'update:resguardo-prediction', value: StationPrediction | undefined): void
-    (event: 'update:volumen-minimo-prediction', value: StationPrediction | undefined): void
-    (event: 'update:chart-threshold-action-loading', value: boolean): void
-    (event: 'update:selected-harmonie-caudal-date', value: string): void
-    (event: 'update:selected-harmonie-precip-date', value: string): void
-    (event: 'update:selected-eps-caudal-date', value: string): void
-    (event: 'update:selected-eps-precip-date', value: string): void
-  }>()
+  type ForecastKey = keyof DataStationPrediction
+  type ForecastRefsMap = Record<ForecastKey, Ref<StationPrediction | undefined>>
+  type ForecastRequestDef = {
+    key: ForecastKey
+    predictionType: PredictionTypeName
+    simulationDate?: string
+    percentile?: string
+  }
 
-  defineProps<{
-    loading?: boolean
-    loadingCaudales?: boolean
-    caudalHistorical?: StationPrediction
-    caudalOutflowHistorical?: StationPrediction
-    embalseVolumeHistorical?: StationPrediction
-    caudalForecastHarmonie?: StationPrediction
-    caudalForecastEpstat?: StationPrediction
-    caudalChartData?: Record<string, unknown>
-    focusThresholdRequest?: Record<string, unknown> | null
-    chartThresholdActionLoading?: boolean
-    selectedThreshold?: { kind: 'caudal' | 'volumen'; level: 1 | 2 | 3 } | null
-    handleThresholdFocus?: (
-      payload: { kind: 'caudal' | 'volumen'; level: 1 | 2 | 3 } | null
-    ) => void
-    matrixLoading?: boolean
-    resguardoPrediction?: StationPrediction
-    volumenMinimoPrediction?: StationPrediction
+  type ThresholdType = 'caudal' | 'volumen'
+  type ThresholdLevel = 1 | 2 | 3
+  type ThresholdSelection = { kind: ThresholdType; level: ThresholdLevel } | null
+
+  const props = defineProps<{
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
-    activeTab?: 'caudal' | 'precipitaciones'
-    sidePanelsLoading?: boolean
-    loadingHarmoniePredict?: boolean
-    loadingEpsPredict?: boolean
-    precipitationsForecastHarmonie?: StationPrediction
-    precipitationsForecastEpstat?: StationPrediction
-    selectedHarmonieCaudalDate?: string
-    selectedHarmoniePrecipDate?: string
-    selectedEpsCaudalDate?: string
-    selectedEpsPrecipDate?: string
-    harmonieCaudalDates?: string[]
-    harmoniePrecipDates?: string[]
-    epsCaudalDates?: string[]
-    epsPrecipDates?: string[]
+    normalizedStationCode: string
   }>()
-</script>
 
-<style scoped>
-  .sticky-right-col {
-    position: sticky;
-    right: 0;
-    z-index: 10;
-    align-self: flex-start;
+  const emit = defineEmits<{
+    (e: 'update:selected-harmonie-caudal-date', value: string): void
+    (e: 'update:selected-eps-caudal-date', value: string): void
+  }>()
+
+  const resguardoPrediction = ref<StationPrediction>()
+  const volumenMinimoPrediction = ref<StationPrediction>()
+  const selectedThreshold = ref<ThresholdSelection>(null)
+
+  function handleThresholdFocus(payload: ThresholdSelection): void {
+    selectedThreshold.value = payload
   }
-</style>
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  const loadingCaudales = ref(false)
+  const loadingHarmoniePredict = ref(false)
+  const loadingEpsPredict = ref(false)
+
+  // ── Caudal data ───────────────────────────────────────────────────────────
+  const caudalHistorical = ref<StationPrediction>()
+  const caudalForecastEpstat = ref<StationPrediction>()
+  const caudalForecastHarmonie = ref<StationPrediction>()
+  const caudalForecastEnsP10 = ref<StationPrediction>()
+  const caudalForecastEnsP25 = ref<StationPrediction>()
+  const caudalForecastEnsP75 = ref<StationPrediction>()
+  const caudalForecastEnsP90 = ref<StationPrediction>()
+  const caudalOutflowHistorical = ref<StationPrediction>()
+  const embalseVolumeHistorical = ref<StationPrediction>()
+
+  // ── Available dates ───────────────────────────────────────────────────────
+  const observedCaudalDates = ref<string[]>([])
+  const harmonieCaudalDates = ref<string[]>([])
+  const harmoniePrecipDates = ref<string[]>([])
+  const epsCaudalDates = ref<string[]>([])
+  const epsPrecipDates = ref<string[]>([])
+
+  // ── Selected dates ────────────────────────────────────────────────────────
+  const selectedObservedCaudalDate = ref('')
+  const selectedHarmonieCaudalDate = ref('')
+  const selectedEpsCaudalDate = ref('')
+
+  // ── Code type (E = embalse/aforo-especial, default = aforo) ──────────────
+  const codeType = computed(() => {
+    const val = props.thresholds?.tipoCod
+    return typeof val === 'string' ? val : undefined
+  })
+
+  // ── Mocks ─────────────────────────────────────────────────────────────────
+  function currentHydrologicalYearBounds(now: Date): { start: Date; end: Date } {
+    const month = now.getMonth()
+    const year = now.getFullYear()
+    if (month >= 8) {
+      return { start: new Date(year, 8, 1, 0, 0, 0), end: new Date(year + 1, 8, 1, 0, 0, 0) }
+    }
+    return { start: new Date(year - 1, 8, 1, 0, 0, 0), end: new Date(year, 8, 1, 0, 0, 0) }
+  }
+
+  function hashCode(text: string): number {
+    let hash = 0
+    for (let i = 0; i < text.length; i++) {
+      hash = (hash * 31 + text.charCodeAt(i)) >>> 0
+    }
+    return hash
+  }
+
+  const resguardoVolumeMock = computed<StationPrediction | undefined>(() => {
+    if (!props.isEmbalse || !props.normalizedStationCode) return undefined
+    const stationId = props.normalizedStationCode
+    const bounds = currentHydrologicalYearBounds(new Date())
+    const seed = hashCode(stationId)
+    const hm3Value = 35 + (seed % 1200) / 10
+    return {
+      id: `resguardo-${stationId}-${bounds.start.getFullYear()}`,
+      stationId,
+      stationName: stationId,
+      predictionTypeName: 'resguardo.hydrologicalYear.mock',
+      simulationDate: bounds.start.toISOString(),
+      predictionDate: new Date().toISOString(),
+      predictionProvider: 'mock',
+      predictedBy: 'ui-mock',
+      results: [
+        { id: 1, date: bounds.start.toISOString(), value: hm3Value, flag: 0 },
+        { id: 2, date: bounds.end.toISOString(), value: hm3Value, flag: 0 },
+      ],
+    }
+  })
+
+  const volumenMinimoMock = computed<StationPrediction | undefined>(() => {
+    if (!props.isEmbalse || !props.normalizedStationCode) return undefined
+    const stationId = props.normalizedStationCode
+    const bounds = currentHydrologicalYearBounds(new Date())
+    const seed = hashCode(`${stationId}-min`)
+    const hm3Value = 10 + (seed % 500) / 10
+    return {
+      id: `minimo-${stationId}-${bounds.start.getFullYear()}`,
+      stationId,
+      stationName: stationId,
+      predictionTypeName: 'volumen.minimo.hydrologicalYear.mock',
+      simulationDate: bounds.start.toISOString(),
+      predictionDate: new Date().toISOString(),
+      predictionProvider: 'mock',
+      predictedBy: 'ui-mock',
+      results: [
+        { id: 1, date: bounds.start.toISOString(), value: hm3Value, flag: 0 },
+        { id: 2, date: bounds.end.toISOString(), value: hm3Value, flag: 0 },
+      ],
+    }
+  })
+
+  const editedResguardoPrediction = ref<StationPrediction>()
+  const editedMinimoPrediction = ref<StationPrediction>()
+  const effectiveResguardoPrediction = computed(
+    () => editedResguardoPrediction.value ?? resguardoVolumeMock.value
+  )
+  const effectiveMinimoPrediction = computed(
+    () => editedMinimoPrediction.value ?? volumenMinimoMock.value
+  )
+
+  // ── Refs map & chart data ─────────────────────────────────────────────────
+  const caudalRefs: ForecastRefsMap = {
+    historical: caudalHistorical,
+    forecastHarmonie: caudalForecastHarmonie,
+    forecastEpsat: caudalForecastEpstat,
+    forecastEnsP10: caudalForecastEnsP10,
+    forecastEnsP25: caudalForecastEnsP25,
+    forecastEnsP75: caudalForecastEnsP75,
+    forecastEnsP90: caudalForecastEnsP90,
+  }
+
+  // caudalChartData se usará al descomentar <ForecastChartNew />
+  const caudalChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  void caudalChartData.value
+
+  // ── Request definitions por tipo de estación ──────────────────────────────
+  const caudalRequestsByType = computed<Record<'default' | 'E', ForecastRequestDef[]>>(() => ({
+    default: [
+      {
+        key: 'historical',
+        predictionType: 'FICT98.historical',
+        simulationDate: selectedObservedCaudalDate.value,
+      },
+      {
+        key: 'forecastHarmonie',
+        predictionType: 'Q.NAM.harmonie',
+        simulationDate: selectedHarmonieCaudalDate.value,
+      },
+      {
+        key: 'forecastEpsat',
+        predictionType: 'Q.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+      },
+      {
+        key: 'forecastEnsP10',
+        predictionType: 'Q.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '10',
+      },
+      {
+        key: 'forecastEnsP25',
+        predictionType: 'Q.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '25',
+      },
+      {
+        key: 'forecastEnsP75',
+        predictionType: 'Q.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '75',
+      },
+      {
+        key: 'forecastEnsP90',
+        predictionType: 'Q.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '90',
+      },
+    ],
+    E: [
+      {
+        key: 'historical',
+        predictionType: 'FICT99.historical',
+        simulationDate: selectedObservedCaudalDate.value,
+      },
+      {
+        key: 'forecastHarmonie',
+        predictionType: 'I.NAM.harmonie',
+        simulationDate: selectedHarmonieCaudalDate.value,
+      },
+      {
+        key: 'forecastEpsat',
+        predictionType: 'I.NAM.ens.medio',
+        simulationDate: selectedEpsCaudalDate.value,
+      },
+      {
+        key: 'forecastEnsP10',
+        predictionType: 'I.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '10',
+      },
+      {
+        key: 'forecastEnsP25',
+        predictionType: 'I.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '25',
+      },
+      {
+        key: 'forecastEnsP75',
+        predictionType: 'I.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '75',
+      },
+      {
+        key: 'forecastEnsP90',
+        predictionType: 'I.NAM.ens',
+        simulationDate: selectedEpsCaudalDate.value,
+        percentile: '90',
+      },
+    ],
+  }))
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function clearForecasts(target: ForecastRefsMap) {
+    Object.values(target).forEach((r) => {
+      r.value = undefined
+    })
+  }
+
+  function pickDefaultDate(current: string, options: string[]): string {
+    if (current && options.includes(current)) return current
+    return options[0] ?? ''
+  }
+
+  function applyForecastData(target: ForecastRefsMap, payload: Partial<DataStationPrediction>) {
+    for (const key in target) target[key as ForecastKey].value = payload[key as ForecastKey]
+  }
+
+  async function fetchPredictionBatch(
+    stationId: string,
+    requests: ForecastRequestDef[]
+  ): Promise<Partial<DataStationPrediction>> {
+    const entries = await Promise.all(
+      requests.map(async (req) => {
+        if (!req.simulationDate) return [req.key, undefined] as const
+        const prediction = await getPredictionsService(
+          stationId,
+          req.predictionType,
+          req.simulationDate,
+          req.percentile
+        )
+        return [req.key, prediction] as const
+      })
+    )
+    const result: Partial<DataStationPrediction> = {}
+    for (const [key, prediction] of entries) result[key] = prediction
+    return result
+  }
+
+  // ── Fetch available dates ─────────────────────────────────────────────────
+  async function getAvailableDates(code: string) {
+    const selectedCodeType = codeType.value === 'E' ? 'E' : 'default'
+    const observedCaudalType: PredictionTypeName =
+      selectedCodeType === 'E' ? 'FICT99.historical' : 'FICT98.historical'
+    const harmonieCaudalType: PredictionTypeName =
+      selectedCodeType === 'E' ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
+    const epsCaudalTypes: PredictionTypeName[] =
+      selectedCodeType === 'E' ? ['I.NAM.ens.medio', 'I.NAM.ens'] : ['Q.NAM.ens']
+
+    try {
+      const [
+        observedCaudalResponse,
+        harmonieCaudalResponse,
+        harmoniePrecipResponse,
+        ...epsResponses
+      ] = await Promise.all([
+        getAvailablePredictionsService(code, observedCaudalType),
+        getAvailablePredictionsService(code, harmonieCaudalType),
+        getAvailablePredictionsService(code, 'P.harmonie.forecast'),
+        ...epsCaudalTypes.map((type) => getAvailablePredictionsService(code, type)),
+      ])
+
+      const toDateList = (response: DatesAvailableResponse): string[] => {
+        const fromSimulationDates = (response.simulationDates ?? [])
+          .map((item) => item.simulationDate)
+          .filter((v): v is string => Boolean(v))
+        const fromDates = (response.dates ?? []).filter((v): v is string => Boolean(v))
+        return Array.from(new Set([...fromSimulationDates, ...fromDates])).sort((a, b) =>
+          b.localeCompare(a)
+        )
+      }
+
+      observedCaudalDates.value = toDateList(observedCaudalResponse)
+      harmonieCaudalDates.value = toDateList(harmonieCaudalResponse)
+      harmoniePrecipDates.value = toDateList(harmoniePrecipResponse)
+      epsCaudalDates.value = Array.from(new Set(epsResponses.flatMap(toDateList))).sort((a, b) =>
+        b.localeCompare(a)
+      )
+    } catch (err) {
+      console.error('Error loading available dates:', err)
+      observedCaudalDates.value = []
+      harmonieCaudalDates.value = []
+      harmoniePrecipDates.value = []
+      epsCaudalDates.value = []
+      epsPrecipDates.value = []
+    }
+  }
+
+  // ── Refresh caudal predictions ────────────────────────────────────────────
+  let fetchRequestId = 0
+  let isFullReloading = false
+  let skipNextDateWatch = false
+
+  async function refreshCaudalPredictions(requestId: number) {
+    const code = props.normalizedStationCode
+    if (!code) return
+
+    try {
+      const requests =
+        codeType.value === 'E' ? caudalRequestsByType.value.E : caudalRequestsByType.value.default
+
+      const caudalData = await fetchPredictionBatch(code, requests)
+      if (requestId !== fetchRequestId) return
+      applyForecastData(caudalRefs, caudalData)
+
+      if (props.isEmbalse && selectedObservedCaudalDate.value) {
+        const [outflow, volume] = await Promise.all([
+          getPredictionsService(code, 'FICT95.historical', selectedObservedCaudalDate.value),
+          getPredictionsService(code, 'VICT01.historical', selectedObservedCaudalDate.value),
+        ])
+        if (requestId !== fetchRequestId) return
+        caudalOutflowHistorical.value = outflow
+        embalseVolumeHistorical.value = volume
+      } else {
+        caudalOutflowHistorical.value = undefined
+        embalseVolumeHistorical.value = undefined
+      }
+    } catch (err) {
+      console.error('Error loading caudal predictions:', err)
+      if (requestId !== fetchRequestId) return
+      clearForecasts(caudalRefs)
+      caudalOutflowHistorical.value = undefined
+      embalseVolumeHistorical.value = undefined
+    }
+  }
+
+  // ── Watchers ──────────────────────────────────────────────────────────────
+  watch(
+    [() => props.normalizedStationCode, codeType],
+    async ([code]) => {
+      isFullReloading = true
+      clearForecasts(caudalRefs)
+      caudalOutflowHistorical.value = undefined
+      embalseVolumeHistorical.value = undefined
+      observedCaudalDates.value = []
+      harmonieCaudalDates.value = []
+      harmoniePrecipDates.value = []
+      epsCaudalDates.value = []
+      epsPrecipDates.value = []
+      selectedObservedCaudalDate.value = ''
+      selectedHarmonieCaudalDate.value = ''
+      selectedEpsCaudalDate.value = ''
+
+      if (!code) {
+        loadingCaudales.value = false
+        isFullReloading = false
+        return
+      }
+
+      const requestId = ++fetchRequestId
+      loadingCaudales.value = true
+      try {
+        await getAvailableDates(code)
+        if (requestId !== fetchRequestId) return
+
+        skipNextDateWatch = true
+        selectedObservedCaudalDate.value = pickDefaultDate('', observedCaudalDates.value)
+        selectedHarmonieCaudalDate.value = pickDefaultDate('', harmonieCaudalDates.value)
+        selectedEpsCaudalDate.value = pickDefaultDate('', epsCaudalDates.value)
+
+        await refreshCaudalPredictions(requestId)
+      } finally {
+        isFullReloading = false
+        if (requestId === fetchRequestId) loadingCaudales.value = false
+      }
+    },
+    { immediate: true }
+  )
+
+  watch(
+    [selectedHarmonieCaudalDate, selectedEpsCaudalDate],
+    async (currentValues, previousValues) => {
+      if (skipNextDateWatch) {
+        skipNextDateWatch = false
+        return
+      }
+      if (isFullReloading) return
+
+      const harmonieChanged = currentValues[0] !== previousValues?.[0]
+      const epsChanged = currentValues[1] !== previousValues?.[1]
+      if (!harmonieChanged && !epsChanged) return
+
+      loadingHarmoniePredict.value = harmonieChanged
+      loadingEpsPredict.value = epsChanged
+
+      const requestId = ++fetchRequestId
+      try {
+        await refreshCaudalPredictions(requestId)
+      } finally {
+        loadingHarmoniePredict.value = false
+        loadingEpsPredict.value = false
+      }
+    }
+  )
+</script>
