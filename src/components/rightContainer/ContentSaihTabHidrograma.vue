@@ -120,10 +120,10 @@
       >
         <ContentSaihResguardosData
           class="flex-grow-1"
-          :resguardo-prediction="resguardoPrediction"
-          :volumen-minimo-prediction="volumenMinimoPrediction"
-          @update:resguardo-prediction="resguardoPrediction = $event"
-          @update:volumen-minimo-prediction="volumenMinimoPrediction = $event"
+          :resguardo-prediction="effectiveResguardoPrediction"
+          :volumen-minimo-prediction="effectiveMinimoPrediction"
+          @update:resguardo-prediction="editedResguardoPrediction = $event"
+          @update:volumen-minimo-prediction="editedMinimoPrediction = $event"
         />
       </v-card>
     </v-col>
@@ -135,8 +135,8 @@
       >
         <ContentSaihResguardosChart
           class="flex-grow-1"
-          :resguardo-prediction="resguardoPrediction"
-          :volumen-minimo-prediction="volumenMinimoPrediction"
+          :resguardo-prediction="effectiveResguardoPrediction"
+          :volumen-minimo-prediction="effectiveMinimoPrediction"
         />
       </v-card>
     </v-col>
@@ -189,8 +189,6 @@
     (e: 'update:selected-eps-caudal-date', value: string): void
   }>()
 
-  const resguardoPrediction = ref<StationPrediction>()
-  const volumenMinimoPrediction = ref<StationPrediction>()
   const selectedThreshold = ref<ThresholdSelection>(null)
 
   function handleThresholdFocus(payload: ThresholdSelection): void {

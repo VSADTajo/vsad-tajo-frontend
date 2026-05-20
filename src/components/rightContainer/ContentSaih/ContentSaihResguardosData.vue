@@ -1,6 +1,8 @@
 <template>
   <v-card class="bg-surface" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">Resguardos</v-card-title>
+    <v-card-title class="text-subtitle-1 font-weight-bold">
+      Resguardos y Volúmenes Mínimos
+    </v-card-title>
     <v-divider />
 
     <v-card-text class="pa-2">
