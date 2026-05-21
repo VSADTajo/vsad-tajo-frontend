@@ -1,4 +1,5 @@
 import { getSaihAlertInfo, getSaihPrecipMaxInfo } from '@/utils/saihAlerts'
+import { formatPopupDate } from './dates'
 
 export const SAIH_TYPE_COLORS: Record<string, string> = {
   AR: '#4775a8',
@@ -105,30 +106,6 @@ function buildAlertChip(
   return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">${formatValue} m3/s</span>`
 }
 
-function formatPopupDate(value: string | null): string {
-  if (!value) return '-'
-
-  const parsed = new Date(value)
-  if (!Number.isNaN(parsed.getTime())) {
-    return new Intl.DateTimeFormat('es-ES', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-      timeZone: 'UTC',
-    }).format(parsed)
-  }
-
-  if (value.length === 14) {
-    const year = value.slice(0, 4)
-    const month = value.slice(4, 6)
-    const day = value.slice(6, 8)
-    const hour = value.slice(8, 10)
-    const minute = value.slice(10, 12)
-    return `${day}/${month}/${year} ${hour}:${minute}`
-  }
-
-  return value
-}
-
 export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
 
@@ -144,7 +121,7 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
 
   const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
 
-  const maxTime = escapeHtml(formatPopupDate(alertInfo.simulationDate))
+  const maxTime = escapeHtml(formatPopupDate(alertInfo.maxDate))
 
   const caudalSection =
     alertInfo.maxValue != null
@@ -162,7 +139,7 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
           ? String(precipInfo.maxValue)
           : precipInfo.maxValue.toFixed(1)) + ' mm'
       : '-'
-  const precipTime = escapeHtml(formatPopupDate(precipInfo.simulationDate))
+  const precipTime = escapeHtml(formatPopupDate(precipInfo.maxDate))
   const precipSection =
     precipInfo.maxValue != null
       ? `

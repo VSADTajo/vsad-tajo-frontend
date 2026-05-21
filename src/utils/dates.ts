@@ -31,6 +31,20 @@ export function dateFormattedWithHoursAndMinutesFromDate(date: Date): string {
   })
 }
 
+export function formatPopupDate(dateValue: string | null | undefined): string {
+  if (!dateValue) return '-'
+
+  const parsedDate = parseDate(dateValue)
+
+  if (!parsedDate) {
+    return dateValue
+  }
+
+  return format(parsedDate, 'dd/MM/yyyy HH:mm', {
+    locale: es,
+  })
+}
+
 export function formatSimulationDate(dateStr: string): string {
   try {
     const year = dateStr.substring(0, 4)

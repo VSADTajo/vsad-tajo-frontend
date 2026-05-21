@@ -25,6 +25,43 @@ interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
 }
 
+function parseInCqlFilter(filter: string): { field: string; values: string[] } | null {
+  const match = filter.match(/^\s*([A-Za-z_][\w]*)\s+IN\s*\((.*)\)\s*$/i)
+  if (!match) return null
+
+  const [, field, rawValues] = match
+  const values = rawValues
+    .split(',')
+    .map((value) =>
+      value
+        .trim()
+        .replace(/^'+|'+$/g, '')
+        .replace(/^"+|"+$/g, '')
+    )
+    .filter(Boolean)
+
+  if (!values.length) return null
+
+  return { field, values }
+}
+
+function applyStationsCqlFilter(
+  items: StationsApiResponse['items'],
+  cqlFilter?: string
+): StationsApiResponse['items'] {
+  if (!cqlFilter) return items
+
+  const parsedFilter = parseInCqlFilter(cqlFilter)
+  if (!parsedFilter) return items
+
+  const allowedValues = new Set(parsedFilter.values.map((value) => value.toUpperCase()))
+
+  return items.filter((station) => {
+    const stationValue = String(station[parsedFilter.field] ?? '').toUpperCase()
+    return allowedValues.has(stationValue)
+  })
+}
+
 export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, string>): L.Layer {
   const paneName = config.pane ?? 'overlayPane'
   let bounds: L.LatLngBounds | undefined
@@ -80,7 +117,9 @@ export async function createAPIStationsLayer(
   try {
     const response = await api.get(config.url, { timeout: false }).json<StationsApiResponse>()
 
-    const geojson = stationsToGeoJSON(response.items)
+    const filteredItems = applyStationsCqlFilter(response.items, extraParams?.CQL_FILTER)
+
+    const geojson = stationsToGeoJSON(filteredItems)
 
     const geojsonLayer = L.geoJSON(geojson, {
       pointToLayer: config.pointToLayer,

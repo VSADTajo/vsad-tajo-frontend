@@ -8,56 +8,59 @@
               Umbrales de caudal
             </div>
             <template v-if="hasAnyThreshold">
-              <v-row>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                  <span
+              <div class="thresholds-row">
+                <div class="threshold-item">
+                  <v-chip
                     :class="[
-                      'threshold-badge',
-                      'threshold-badge--yellow',
-                      { 'threshold-badge--active': isSelected('caudal', 1) },
+                      'threshold-chip',
+                      { 'threshold-chip--active': isSelected('caudal', 1) },
                     ]"
-                    role="button"
-                    tabindex="0"
+                    color="#fde68a"
+                    size="x-small"
+                    variant="flat"
+                    clickable
                     :aria-pressed="isSelected('caudal', 1)"
                     @click="focusThreshold('caudal', 1)"
                   >
-                    Nivel 1:
-                  </span>
-                  <span class="font-weight-medium">{{ threshold1Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                  <span
+                    Nivel 1
+                  </v-chip>
+                  <span class="threshold-value">{{ threshold1Label }}</span>
+                </div>
+                <div class="threshold-item">
+                  <v-chip
                     :class="[
-                      'threshold-badge',
-                      'threshold-badge--orange',
-                      { 'threshold-badge--active': isSelected('caudal', 2) },
+                      'threshold-chip',
+                      { 'threshold-chip--active': isSelected('caudal', 2) },
                     ]"
-                    role="button"
-                    tabindex="0"
+                    color="#fdba74"
+                    size="x-small"
+                    variant="flat"
+                    clickable
                     :aria-pressed="isSelected('caudal', 2)"
                     @click="focusThreshold('caudal', 2)"
                   >
                     Nivel 2
-                  </span>
-                  <span class="font-weight-medium">{{ threshold2Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                  <span
+                  </v-chip>
+                  <span class="threshold-value">{{ threshold2Label }}</span>
+                </div>
+                <div class="threshold-item">
+                  <v-chip
                     :class="[
-                      'threshold-badge',
-                      'threshold-badge--red',
-                      { 'threshold-badge--active': isSelected('caudal', 3) },
+                      'threshold-chip',
+                      { 'threshold-chip--active': isSelected('caudal', 3) },
                     ]"
-                    role="button"
-                    tabindex="0"
+                    color="#fca5a5"
+                    size="x-small"
+                    variant="flat"
+                    clickable
                     :aria-pressed="isSelected('caudal', 3)"
                     @click="focusThreshold('caudal', 3)"
                   >
-                    Nivel 3:
-                  </span>
-                  <span class="font-weight-medium">{{ threshold3Label }}</span>
-                </v-col>
-              </v-row>
+                    Nivel 3
+                  </v-chip>
+                  <span class="threshold-value">{{ threshold3Label }}</span>
+                </div>
+              </div>
             </template>
             <div v-else class="text-caption text-medium-emphasis">No hay umbrales de caudal.</div>
           </v-col>
@@ -67,56 +70,59 @@
               Umbrales de volumen
             </div>
             <template v-if="hasAnyVolumeThreshold">
-              <v-row>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                  <span
+              <div class="thresholds-row">
+                <div class="threshold-item">
+                  <v-chip
                     :class="[
-                      'threshold-badge',
-                      'threshold-badge--yellow',
-                      { 'threshold-badge--active': isSelected('volumen', 1) },
+                      'threshold-chip',
+                      { 'threshold-chip--active': isSelected('volumen', 1) },
                     ]"
-                    role="button"
-                    tabindex="0"
+                    color="#fde68a"
+                    size="x-small"
+                    variant="flat"
+                    clickable
                     :aria-pressed="isSelected('volumen', 1)"
                     @click="focusThreshold('volumen', 1)"
                   >
-                    Nivel 1:
-                  </span>
-                  <span class="font-weight-medium">{{ volumeThreshold1Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                  <span
+                    Nivel 1
+                  </v-chip>
+                  <span class="threshold-value">{{ volumeThreshold1Label }}</span>
+                </div>
+                <div class="threshold-item">
+                  <v-chip
                     :class="[
-                      'threshold-badge',
-                      'threshold-badge--orange',
-                      { 'threshold-badge--active': isSelected('volumen', 2) },
+                      'threshold-chip',
+                      { 'threshold-chip--active': isSelected('volumen', 2) },
                     ]"
-                    role="button"
-                    tabindex="0"
+                    color="#fdba74"
+                    size="x-small"
+                    variant="flat"
+                    clickable
                     :aria-pressed="isSelected('volumen', 2)"
                     @click="focusThreshold('volumen', 2)"
                   >
                     Nivel 2
-                  </span>
-                  <span class="font-weight-medium">{{ volumeThreshold2Label }}</span>
-                </v-col>
-                <v-col cols="12" md="4" class="d-flex align-center ga-2">
-                  <span
+                  </v-chip>
+                  <span class="threshold-value">{{ volumeThreshold2Label }}</span>
+                </div>
+                <div class="threshold-item">
+                  <v-chip
                     :class="[
-                      'threshold-badge',
-                      'threshold-badge--red',
-                      { 'threshold-badge--active': isSelected('volumen', 3) },
+                      'threshold-chip',
+                      { 'threshold-chip--active': isSelected('volumen', 3) },
                     ]"
-                    role="button"
-                    tabindex="0"
+                    color="#fca5a5"
+                    size="x-small"
+                    variant="flat"
+                    clickable
                     :aria-pressed="isSelected('volumen', 3)"
                     @click="focusThreshold('volumen', 3)"
                   >
-                    Nivel 3:
-                  </span>
-                  <span class="font-weight-medium">{{ volumeThreshold3Label }}</span>
-                </v-col>
-              </v-row>
+                    Nivel 3
+                  </v-chip>
+                  <span class="threshold-value">{{ volumeThreshold3Label }}</span>
+                </div>
+              </div>
             </template>
             <div v-else class="text-caption text-medium-emphasis">No hay umbrales de volumen.</div>
           </v-col>
@@ -220,36 +226,43 @@
 </script>
 
 <style scoped>
-  .threshold-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
+  .thresholds-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px 12px;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  .threshold-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .threshold-value {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
+  .threshold-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-weight: 600;
-    cursor: pointer;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    min-width: 58px;
     transition: transform 0.15s ease;
   }
 
-  .threshold-badge:hover {
+  .threshold-chip:hover {
     transform: translateY(-1px);
   }
 
-  .threshold-badge--active {
+  .threshold-chip--active {
     box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.45);
     transform: translateY(-1px) scale(1.02);
-  }
-
-  .threshold-badge--yellow {
-    background: #fde68a;
-    color: #7c2d12;
-  }
-
-  .threshold-badge--orange {
-    background: #fdba74;
-    color: #7c2d12;
-  }
-
-  .threshold-badge--red {
-    background: #fca5a5;
-    color: #7f1d1d;
   }
 </style>

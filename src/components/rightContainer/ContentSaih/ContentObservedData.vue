@@ -1,5 +1,5 @@
 <template>
-  <v-card class="bg-surface h-100" elevation="2">
+  <v-card class="bg-surface" elevation="2">
     <v-card-title class="text-subtitle-1 font-weight-bold">Resumen datos observados</v-card-title>
     <v-divider />
     <v-card-text v-if="loading" class="pa-4">
@@ -10,8 +10,8 @@
       <v-skeleton-loader type="list-item-two-line" />
     </v-card-text>
 
-    <v-card-text v-else>
-      <template v-if="activeTab === 'caudal'">
+    <v-card-text v-else class="observed-content">
+      <template v-if="hasObservedData && activeTab === 'caudal'">
         <v-btn-toggle
           v-if="isEmbalse"
           v-model="embalseObservedMode"
@@ -26,14 +26,14 @@
           <v-btn value="volumen" size="small" class="observed-mode-btn">Volumen</v-btn>
         </v-btn-toggle>
 
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-1 mt-4">
+        <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
           {{ observedSectionTitle }}
         </div>
-        <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+        <v-row class="mt-2">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Último observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip :color="currentLastValueColor" size="small" variant="flat">
               {{ currentSummary.lastValueLabel }}
             </v-chip>
@@ -48,10 +48,10 @@
           </v-col>
         </v-row>
         <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Máximo observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip :color="currentMaxValueColor" size="small" variant="flat">
               {{ currentSummary.maxValueLabel }}
             </v-chip>
@@ -67,12 +67,12 @@
         </v-row>
       </template>
 
-      <template v-else>
+      <template v-else-if="hasObservedData">
         <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Último observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip size="small" variant="flat">
               {{ lastObservedValueLabel }}
             </v-chip>
@@ -87,10 +87,10 @@
           </v-col>
         </v-row>
         <v-row>
-          <v-col cols="7" class="text-caption text-medium-emphasis align-center">
+          <v-col cols="6" class="text-caption text-medium-emphasis align-center">
             Máximo observado
           </v-col>
-          <v-col cols="5" class="text-right font-weight-medium pr-2 align-center">
+          <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
             <v-chip size="small" variant="flat">
               {{ maxObservedValueLabel }}
             </v-chip>
@@ -105,6 +105,10 @@
           </v-col>
         </v-row>
       </template>
+
+      <div v-else class="observed-empty-state text-medium-emphasis">
+        No se han encontrado datos observados
+      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -116,16 +120,21 @@
 
   type EmbalseObservedMode = 'entrada' | 'salida' | 'volumen'
 
-  const props = defineProps<{
-    activeTab: 'caudal' | 'precipitaciones'
-    loading?: boolean
-    isEmbalse?: boolean
-    caudalHistorical?: StationPrediction
-    caudalOutflowHistorical?: StationPrediction
-    embalseVolumeHistorical?: StationPrediction
-    precipitationsHistorical?: StationPrediction
-    thresholds?: Record<string, unknown>
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      activeTab?: 'caudal' | 'precipitaciones'
+      loading?: boolean
+      isEmbalse?: boolean
+      caudalHistorical?: StationPrediction
+      caudalOutflowHistorical?: StationPrediction
+      embalseVolumeHistorical?: StationPrediction
+      precipitationsHistorical?: StationPrediction
+      thresholds?: Record<string, unknown>
+    }>(),
+    {
+      activeTab: 'caudal',
+    }
+  )
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
     if (!source) return null
@@ -212,6 +221,30 @@
     return baseSummary.value
   })
 
+  function hasResults(prediction: StationPrediction | undefined): boolean {
+    return Boolean(prediction?.results?.length)
+  }
+
+  const hasObservedData = computed(() => {
+    if (props.activeTab !== 'caudal') {
+      return hasResults(props.precipitationsHistorical)
+    }
+
+    if (!props.isEmbalse) {
+      return hasResults(props.caudalHistorical)
+    }
+
+    if (embalseObservedMode.value === 'salida') {
+      return hasResults(props.caudalOutflowHistorical)
+    }
+
+    if (embalseObservedMode.value === 'volumen') {
+      return hasResults(props.embalseVolumeHistorical)
+    }
+
+    return hasResults(props.caudalHistorical)
+  })
+
   const lastObservedValueLabel = computed(() => baseSummary.value.lastValueLabel)
   const maxObservedValueLabel = computed(() => baseSummary.value.maxValueLabel)
   const lastObservedDateLabel = computed(() => baseSummary.value.lastDateLabel)
@@ -274,6 +307,20 @@
 </script>
 
 <style scoped>
+  .observed-content {
+    min-height: 220px;
+  }
+
+  .observed-empty-state {
+    min-height: inherit;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 500;
+  }
+
   .observed-mode-toggle {
     width: 100%;
     display: flex;
