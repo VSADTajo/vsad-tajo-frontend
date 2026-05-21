@@ -86,7 +86,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     id: 'saih',
     name: 'SAIH',
     type: 'API_STATIONS',
-    url: 'stations?limit=200&page=1',
+    url: 'stations',
     pane: MAP_PANES.SAIH,
     pointToLayer: saihPointStyle,
     interactive: true,

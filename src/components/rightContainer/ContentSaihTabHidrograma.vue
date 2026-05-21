@@ -1,7 +1,17 @@
 <template>
-  <v-row justify="center" class="px-3">
-    <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
-      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+  <v-row justify="center" class="px-3 align-stretch">
+    <v-col
+      cols="12"
+      md="3"
+      lg="2"
+      class="order-2 order-md-1 d-flex flex-column"
+      style="min-height: 0"
+    >
+      <v-card
+        ref="leftStatusCardEl"
+        class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
+        elevation="2"
+      >
         <ContentSaihAlertStatus
           :loading="loadingCaudales"
           :caudal-historical="caudalHistorical"
@@ -9,7 +19,11 @@
         />
       </v-card>
 
-      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+      <v-card
+        ref="leftObservedCardEl"
+        class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
+        elevation="2"
+      >
         <v-row>
           <v-col cols="6" md="12">
             <ContentObservedData
@@ -24,7 +38,12 @@
         </v-row>
       </v-card>
 
-      <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
+      <v-card
+        ref="leftSummaryCardEl"
+        class="ma-2 mt-0 pa-2 bg-background w-100 d-flex flex-column summary-container-card"
+        elevation="2"
+        :style="leftSummaryCardStyle"
+      >
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
           mode="observed"
@@ -36,7 +55,7 @@
     </v-col>
 
     <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex flex-column">
-      <div class="w-100 d-flex flex-column">
+      <div ref="centerStackEl" class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
             <v-sheet class="pa-5">
@@ -108,8 +127,18 @@
       </div>
     </v-col>
 
-    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column">
-      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+    <v-col
+      cols="12"
+      md="3"
+      lg="2"
+      class="order-3 order-md-3 d-flex flex-column pl-0"
+      style="min-height: 0"
+    >
+      <v-card
+        ref="rightStatusCardEl"
+        class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
+        elevation="2"
+      >
         <ContentSaihAlertStatus
           :loading="loadingCaudales"
           :caudal-forecast-harmonie="caudalForecastHarmonie"
@@ -118,7 +147,11 @@
           :thresholds="thresholds"
         />
       </v-card>
-      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+      <v-card
+        ref="rightLatestCardEl"
+        class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
+        elevation="2"
+      >
         <ContentSaihPredictionsLatest
           class="ma-2"
           active-tab="caudal"
@@ -139,7 +172,12 @@
         />
       </v-card>
 
-      <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
+      <v-card
+        ref="rightSummaryCardEl"
+        class="ma-2 mt-0 pa-2 bg-background w-100 d-flex flex-column summary-container-card"
+        elevation="2"
+        :style="rightSummaryCardStyle"
+      >
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
           mode="predictions"
@@ -188,7 +226,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, ref, watch, type Ref } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 
   import type {
     DataStationPrediction,
@@ -243,6 +281,98 @@
   const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
   const thresholdFocusNonce = ref(0)
   const selectedEmbalseChartTab = ref<'caudal' | 'volumen'>('caudal')
+
+  const centerStackEl = ref<HTMLElement | null>(null)
+  const leftStatusCardEl = ref<unknown>(null)
+  const leftObservedCardEl = ref<unknown>(null)
+  const leftSummaryCardEl = ref<unknown>(null)
+  const rightStatusCardEl = ref<unknown>(null)
+  const rightLatestCardEl = ref<unknown>(null)
+  const rightSummaryCardEl = ref<unknown>(null)
+
+  const leftSummaryHeightPx = ref(280)
+  const rightSummaryHeightPx = ref(280)
+
+  const leftSummaryCardStyle = computed(() => ({
+    minHeight: '0',
+    height: `${leftSummaryHeightPx.value}px`,
+    maxHeight: `${leftSummaryHeightPx.value}px`,
+  }))
+
+  const rightSummaryCardStyle = computed(() => ({
+    minHeight: '0',
+    height: `${rightSummaryHeightPx.value}px`,
+    maxHeight: `${rightSummaryHeightPx.value}px`,
+  }))
+
+  function resolveElement(target: unknown): HTMLElement | null {
+    if (target instanceof HTMLElement) return target
+    if (
+      typeof target === 'object' &&
+      target !== null &&
+      '$el' in target &&
+      (target as { $el?: unknown }).$el instanceof HTMLElement
+    ) {
+      return (target as { $el: HTMLElement }).$el
+    }
+    return null
+  }
+
+  function outerHeightWithMargins(target: unknown): number {
+    const el = resolveElement(target)
+    if (!el) return 0
+    const rect = el.getBoundingClientRect()
+    const styles = window.getComputedStyle(el)
+    const mt = Number.parseFloat(styles.marginTop || '0') || 0
+    const mb = Number.parseFloat(styles.marginBottom || '0') || 0
+    return rect.height + mt + mb
+  }
+
+  function updateSummaryHeights(): void {
+    const target = resolveElement(centerStackEl.value)?.getBoundingClientRect().height ?? 0
+    if (target <= 0) return
+
+    const leftBase =
+      outerHeightWithMargins(leftStatusCardEl.value) +
+      outerHeightWithMargins(leftObservedCardEl.value)
+    const rightBase =
+      outerHeightWithMargins(rightStatusCardEl.value) +
+      outerHeightWithMargins(rightLatestCardEl.value)
+
+    leftSummaryHeightPx.value = Math.max(0, target - leftBase)
+    rightSummaryHeightPx.value = Math.max(0, target - rightBase)
+  }
+
+  let layoutObserver: ResizeObserver | null = null
+
+  onMounted(() => {
+    nextTick(() => {
+      updateSummaryHeights()
+
+      if (typeof ResizeObserver !== 'undefined') {
+        layoutObserver = new ResizeObserver(() => updateSummaryHeights())
+        const observed = [
+          centerStackEl.value,
+          leftStatusCardEl.value,
+          leftObservedCardEl.value,
+          rightStatusCardEl.value,
+          rightLatestCardEl.value,
+          leftSummaryCardEl.value,
+          rightSummaryCardEl.value,
+        ]
+
+        for (const target of observed) {
+          const el = resolveElement(target)
+          if (el) layoutObserver.observe(el)
+        }
+      }
+    })
+  })
+
+  onBeforeUnmount(() => {
+    layoutObserver?.disconnect()
+    layoutObserver = null
+  })
 
   function handleThresholdFocus(payload: ThresholdSelection): void {
     selectedThreshold.value = payload
@@ -660,4 +790,24 @@
       }
     }
   )
+
+  watch(
+    [
+      loadingCaudales,
+      loadingHarmoniePredict,
+      loadingEpsPredict,
+      selectedEmbalseChartTab,
+      () => props.isEmbalse,
+    ],
+    () => {
+      nextTick(updateSummaryHeights)
+    }
+  )
 </script>
+
+<style scoped>
+  .summary-container-card {
+    min-height: 0;
+    overflow: hidden;
+  }
+</style>
