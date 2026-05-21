@@ -62,7 +62,7 @@ function pickBestEntry(current: StationMaxLatestValue | undefined, next: Station
   if (!current) return next
   if (next.maxValue > current.maxValue) return next
   if (next.maxValue < current.maxValue) return current
-  return next.simulationDate > current.simulationDate ? next : current
+  return next.maxDate > current.maxDate ? next : current
 }
 
 function setBestByStation(
@@ -125,7 +125,7 @@ export function getSaihAlertInfo(feature: Feature): {
   maxValue: number | null
   latestValue: number | null
   latestDate: string | null
-  simulationDate: string | null
+  maxDate: string | null
   backgroundColor: string | null
 } {
   const stationCode = getStationCode(feature)
@@ -134,7 +134,7 @@ export function getSaihAlertInfo(feature: Feature): {
       maxValue: null,
       latestValue: null,
       latestDate: null,
-      simulationDate: null,
+      maxDate: null,
       backgroundColor: null,
     }
   }
@@ -147,7 +147,7 @@ export function getSaihAlertInfo(feature: Feature): {
       maxValue: null,
       latestValue: null,
       latestDate: null,
-      simulationDate: null,
+      maxDate: null,
       backgroundColor: null,
     }
   }
@@ -167,23 +167,23 @@ export function getSaihAlertInfo(feature: Feature): {
     maxValue: bestEntry.maxValue,
     latestValue: bestEntry.latestValue,
     latestDate: bestEntry.latestDate,
-    simulationDate: bestEntry.simulationDate,
+    maxDate: bestEntry.maxDate,
     backgroundColor,
   }
 }
 
 export function getSaihPrecipMaxInfo(feature: Feature): {
   maxValue: number | null
-  simulationDate: string | null
+  maxDate: string | null
 } {
   const stationCode = getStationCode(feature)
-  if (!stationCode) return { maxValue: null, simulationDate: null }
+  if (!stationCode) return { maxValue: null, maxDate: null }
 
   const bestEntry = bestPByStation.get(stationCode)
-  if (!bestEntry) return { maxValue: null, simulationDate: null }
+  if (!bestEntry) return { maxValue: null, maxDate: null }
 
   return {
     maxValue: bestEntry.maxValue,
-    simulationDate: bestEntry.simulationDate,
+    maxDate: bestEntry.maxDate,
   }
 }

@@ -51,9 +51,11 @@
                     <ForecastChartNew
                       :data="caudalOnlyChartData"
                       :is-embalse="true"
+                      :height="550"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
-                      :height="550"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
                     />
                   </v-window-item>
 
@@ -61,9 +63,11 @@
                     <ForecastChartNew
                       :data="volumenOnlyChartData"
                       :is-embalse="true"
+                      :height="550"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
-                      :height="550"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
                     />
                   </v-window-item>
                 </v-window>
@@ -75,6 +79,8 @@
                   :is-embalse="isEmbalse"
                   :loading="loadingCaudales"
                   :thresholds="thresholds"
+                  :focus-threshold-request="thresholdFocusRequest"
+                  @focus-threshold-complete="handleThresholdFocusComplete"
                 />
               </template>
             </v-sheet>
@@ -215,6 +221,12 @@
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
   type ThresholdSelection = { kind: ThresholdType; level: ThresholdLevel } | null
+  type ThresholdFocusRequest = {
+    action: 'focus' | 'reset'
+    kind?: ThresholdType
+    level?: ThresholdLevel
+    nonce: number
+  }
 
   const props = defineProps<{
     isEmbalse?: boolean
@@ -228,10 +240,33 @@
   }>()
 
   const selectedThreshold = ref<ThresholdSelection>(null)
+  const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
+  const thresholdFocusNonce = ref(0)
   const selectedEmbalseChartTab = ref<'caudal' | 'volumen'>('caudal')
 
   function handleThresholdFocus(payload: ThresholdSelection): void {
     selectedThreshold.value = payload
+
+    thresholdFocusNonce.value += 1
+
+    if (!payload) {
+      thresholdFocusRequest.value = {
+        action: 'reset',
+        nonce: thresholdFocusNonce.value,
+      }
+      return
+    }
+
+    thresholdFocusRequest.value = {
+      action: 'focus',
+      kind: payload.kind,
+      level: payload.level,
+      nonce: thresholdFocusNonce.value,
+    }
+  }
+
+  function handleThresholdFocusComplete(): void {
+    // Intentionally left blank: the selection stays active until the user toggles it off.
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────

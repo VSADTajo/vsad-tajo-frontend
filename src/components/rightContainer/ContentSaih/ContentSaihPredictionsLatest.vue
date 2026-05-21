@@ -118,11 +118,11 @@
         </template>
         <template v-else>
           <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-4">
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(epstatData.lastValue)"
-                size="x-small"
+                size="small"
                 variant="flat"
                 style="max-width: 100%"
               >
@@ -137,11 +137,11 @@
             </v-col>
           </v-row>
           <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-4">
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(epstatData.maxValue)"
-                size="x-small"
+                size="small"
                 variant="flat"
                 style="max-width: 100%"
               >

@@ -1,5 +1,5 @@
 <template>
-  <v-row>
+  <v-row class="align-stretch">
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
       <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatus
@@ -35,12 +35,13 @@
     </v-col>
 
     <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex flex-column">
-      <div class="w-100 d-flex flex-column">
-        <v-card class="bg-background w-100 d-flex flex-column">
-          <v-card-text>
-            <v-sheet class="pa-5">
+      <div class="w-100 h-100 d-flex flex-column">
+        <v-card class="bg-background w-100 d-flex flex-column flex-grow-1" elevation="2">
+          <v-card-text class="pa-2 d-flex flex-column flex-grow-1">
+            <v-sheet class="pa-2 h-100 d-flex flex-column">
               <PrecipitationsChart
                 :data="precipitationsChartData"
+                :height="700"
                 :loading="loadingPrecipitaciones"
               />
             </v-sheet>
