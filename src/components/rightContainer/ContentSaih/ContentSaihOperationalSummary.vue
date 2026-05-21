@@ -8,8 +8,8 @@
     </v-card-title>
     <v-divider />
 
-    <v-card-text class="pa-2 d-flex flex-column flex-grow-1">
-      <v-card class="bg-surface w-100 h-100" elevation="0">
+    <v-card-text class="pa-2 d-flex flex-column flex-grow-1 operational-summary-body">
+      <v-card class="bg-surface w-100 h-100 operational-summary-inner" elevation="0">
         <v-card-text v-if="loading" class="pa-4">
           <v-skeleton-loader type="list-item-two-line" class="mb-2" />
           <v-skeleton-loader type="list-item-two-line" class="mb-2" />
@@ -257,17 +257,43 @@
 <style scoped>
   .operational-summary-card {
     height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+  }
+
+  .operational-summary-body,
+  .operational-summary-inner {
+    min-height: 0;
   }
 
   .operational-summary-content {
     flex: 1;
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(110, 118, 129, 0.7) transparent;
+  }
+
+  .operational-summary-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .operational-summary-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .operational-summary-content::-webkit-scrollbar-thumb {
+    background: rgba(110, 118, 129, 0.7);
+    border-radius: 999px;
   }
 
   .observed-empty-state {

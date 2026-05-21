@@ -50,7 +50,7 @@
       </div>
     </v-col>
 
-    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column pe-3">
+    <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column pe-3 pl-0">
       <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatus
           active-tab="precipitaciones"
