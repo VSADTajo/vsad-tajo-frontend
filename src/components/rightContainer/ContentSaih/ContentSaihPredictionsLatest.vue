@@ -1,6 +1,6 @@
 <template>
-  <v-card class="bg-surface h-100" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">Resumen Datos predicciones</v-card-title>
+  <v-card class="bg-surface" elevation="2">
+    <v-card-title class="text-subtitle-1 font-weight-bold">Resumen Datos Predicciones</v-card-title>
     <v-divider />
     <v-card-text v-if="loading" class="pa-4">
       <v-skeleton-loader type="heading" height="22" class="mb-2" />
@@ -11,29 +11,34 @@
     </v-card-text>
 
     <v-card-text v-else class="pa-2">
-      <template v-for="model in models" :key="model.key">
-        <div class="text-caption font-weight-bold text-primary mb-1 mt-2 pl-2">
-          {{ model.label }}
-        </div>
+      <div class="mb-3 d-flex justify-center">
+        <v-btn-toggle v-model="selectedModel" mandatory density="compact">
+          <v-btn value="harmonie" size="x-small">Harmonie</v-btn>
+          <v-btn value="eps" size="x-small">EPS Medio</v-btn>
+        </v-btn-toggle>
+      </div>
+
+      <div v-if="selectedModel === 'harmonie'">
+        <div class="text-caption font-weight-bold text-primary mb-1 mt-2 pl-2">Harmonie</div>
 
         <v-row>
           <v-col cols="12" class="text-caption text-medium-emphasis pl-4">Fecha simulacion</v-col>
           <v-col cols="12" class="text-right font-weight-medium rounded px-4 pt-0">
             <v-select
-              :model-value="model.selectedDate"
-              :items="model.dateOptions"
+              :model-value="harmonieSelectedDate"
+              :items="harmonieDateOptions"
               item-title="title"
               item-value="value"
               variant="outlined"
               density="compact"
               hide-details
               color="primary"
-              @update:model-value="(value) => model.onUpdateDate(String(value ?? ''))"
+              @update:model-value="setHarmonieDate"
             />
           </v-col>
         </v-row>
 
-        <template v-if="model.loading">
+        <template v-if="loadingHarmonie">
           <v-row>
             <v-col cols="12" class="px-4 py-1">
               <v-skeleton-loader type="list-item-two-line" />
@@ -43,49 +48,127 @@
         </template>
         <template v-else>
           <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-4">
-              <v-chip :color="getThresholdClass(model.lastValue)" size="small" variant="flat">
-                {{ model.lastValueLabel }}
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip
+                :color="getThresholdClass(harmonieData.lastValue)"
+                size="small"
+                variant="flat"
+                style="max-width: 100%"
+              >
+                {{ harmonieData.lastValueLabel }}
               </v-chip>
             </v-col>
           </v-row>
           <v-row>
             <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha ultimo</v-col>
             <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
-              {{ model.lastDateLabel }}
+              {{ harmonieData.lastDateLabel }}
             </v-col>
           </v-row>
           <v-row>
-            <v-col cols="7" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
-            <v-col cols="5" class="text-right font-weight-medium pr-4">
-              <v-chip :color="getThresholdClass(model.maxValue)" size="small" variant="flat">
-                {{ model.maxValueLabel }}
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip
+                :color="getThresholdClass(harmonieData.maxValue)"
+                size="small"
+                variant="flat"
+                style="max-width: 100%"
+              >
+                {{ harmonieData.maxValueLabel }}
               </v-chip>
             </v-col>
           </v-row>
           <v-row>
             <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha maximo</v-col>
             <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
-              {{ model.maxDateLabel }}
+              {{ harmonieData.maxDateLabel }}
             </v-col>
           </v-row>
         </template>
+      </div>
 
-        <v-divider class="my-1" />
-      </template>
+      <div v-else>
+        <div class="text-caption font-weight-bold text-primary mb-1 mt-2 pl-2">EPS Medio</div>
+
+        <v-row>
+          <v-col cols="12" class="text-caption text-medium-emphasis pl-4">Fecha simulacion</v-col>
+          <v-col cols="12" class="text-right font-weight-medium rounded px-4 pt-0">
+            <v-select
+              :model-value="epsSelectedDate"
+              :items="epsDateOptions"
+              item-title="title"
+              item-value="value"
+              variant="outlined"
+              density="compact"
+              hide-details
+              color="primary"
+              @update:model-value="setEpsDate"
+            />
+          </v-col>
+        </v-row>
+
+        <template v-if="loadingEps">
+          <v-row>
+            <v-col cols="12" class="px-4 py-1">
+              <v-skeleton-loader type="list-item-two-line" />
+              <v-skeleton-loader type="list-item-two-line" />
+            </v-col>
+          </v-row>
+        </template>
+        <template v-else>
+          <v-row>
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip
+                :color="getThresholdClass(epstatData.lastValue)"
+                size="small"
+                variant="flat"
+                style="max-width: 100%"
+              >
+                {{ epstatData.lastValueLabel }}
+              </v-chip>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha ultimo</v-col>
+            <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
+              {{ epstatData.lastDateLabel }}
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip
+                :color="getThresholdClass(epstatData.maxValue)"
+                size="small"
+                variant="flat"
+                style="max-width: 100%"
+              >
+                {{ epstatData.maxValueLabel }}
+              </v-chip>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha maximo</v-col>
+            <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
+              {{ epstatData.maxDateLabel }}
+            </v-col>
+          </v-row>
+        </template>
+      </div>
     </v-card-text>
   </v-card>
 </template>
 
 <script lang="ts" setup>
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { useVModel } from '@vueuse/core'
   import { formatDate, formatSimulationDate, parseDate } from '@/utils/dates'
   import type { StationPrediction } from '@/types/Predictions'
 
   const props = defineProps<{
-    activeTab: 'caudal' | 'precipitaciones'
+    activeTab?: 'caudal' | 'precipitaciones'
     loading?: boolean
     loadingHarmonie?: boolean
     loadingEps?: boolean
@@ -110,6 +193,8 @@
     (e: 'update:selectedEpsCaudalDate', value: string): void
     (e: 'update:selectedEpsPrecipDate', value: string): void
   }>()
+
+  const selectedModel = ref<'harmonie' | 'eps'>('harmonie')
 
   const selectedHarmonieCaudalDateModel = useVModel(props, 'selectedHarmonieCaudalDate', emit, {
     defaultValue: '',
@@ -215,6 +300,8 @@
       : selectedHarmoniePrecipDateModel.value
   )
 
+  const setHarmonieDate = (value: string) => updateHarmonieDate(value)
+
   const harmonieDateOptions = computed(() => {
     const dates =
       props.activeTab === 'caudal' ? props.harmonieCaudalDates : props.harmoniePrecipDates
@@ -229,6 +316,8 @@
       ? selectedEpsCaudalDateModel.value
       : selectedEpsPrecipDateModel.value
   )
+
+  const setEpsDate = (value: string) => updateEpsDate(value)
 
   const epsDateOptions = computed(() => {
     const dates = props.activeTab === 'caudal' ? props.epsCaudalDates : props.epsPrecipDates
@@ -253,27 +342,6 @@
       selectedEpsPrecipDateModel.value = value
     }
   }
-
-  const models = computed(() => [
-    {
-      key: 'harmonie',
-      label: 'Harmonie',
-      selectedDate: harmonieSelectedDate.value,
-      dateOptions: harmonieDateOptions.value,
-      onUpdateDate: updateHarmonieDate,
-      loading: props.loadingHarmonie ?? false,
-      ...harmonieData.value,
-    },
-    {
-      key: 'epstat',
-      label: 'EPS Medio',
-      selectedDate: epsSelectedDate.value,
-      dateOptions: epsDateOptions.value,
-      onUpdateDate: updateEpsDate,
-      loading: props.loadingEps ?? false,
-      ...epstatData.value,
-    },
-  ])
 </script>
 
 <style scoped></style>
