@@ -183,10 +183,14 @@ export class MapLayerManager {
 
         const layerStateObj = this.layersStore.layers[layerState.id] ?? layersState[layerState.id]
 
-        // Si sigue sin time → NO crear capa
-        const time = layerStateObj?.params?.time
+        const temporalParams = layerStateObj?.params
+        const isRangeTemporal = config.temporalControlMode === 'range'
+        const hasTemporalParams = isRangeTemporal
+          ? Boolean(temporalParams?.from && temporalParams?.to)
+          : Boolean(temporalParams?.time)
 
-        if (config.temporal && !time) {
+        // Si sigue sin parámetros temporales válidos → NO crear capa
+        if (config.temporal && !hasTemporalParams) {
           console.debug('[MapLayerManager] Capa temporal sin time, no se crea capa todavía', {
             layerId: layerState.id,
           })
@@ -195,10 +199,23 @@ export class MapLayerManager {
 
         const canUseCache = !config.temporal
 
+        const extraTemporalParams: Record<string, string> = {}
+
+        if (isRangeTemporal) {
+          if (temporalParams?.from) extraTemporalParams.from = temporalParams.from
+          if (temporalParams?.to) extraTemporalParams.to = temporalParams.to
+        } else if (temporalParams?.time) {
+          extraTemporalParams.time = temporalParams.time
+        }
+
         // Crear capa con callback de dblclick
         const layer =
           (canUseCache ? this.cache[layerState.id] : undefined) ??
-          (await this.createLayerWithCallback(config, time ? { time } : {}, layerState.id))
+          (await this.createLayerWithCallback(
+            config,
+            hasTemporalParams ? extraTemporalParams : {},
+            layerState.id
+          ))
 
         if (!layer) continue
 
@@ -225,19 +242,10 @@ export class MapLayerManager {
 
         if (config.type === 'WMS') {
           const wmsConfig = config as WMSLayerConfig
-          console.debug('[MapLayerManager] Evaluando leyenda WMS', {
-            layerId: wmsConfig.id,
-            legendType: wmsConfig.legend ?? 'none',
-            styleName: wmsConfig.styles,
-            layerName: wmsConfig.layers,
-          })
 
           if (config.legend === 'efas') {
             const legendUrl = getLayerLegendUrl(wmsConfig.layers)
-            console.debug('[MapLayerManager] Añadiendo leyenda EFAS', {
-              layerId: wmsConfig.id,
-              legendUrl,
-            })
+
             this.legendManager.addLegend(config.id, legendUrl)
           } else {
             const customLegend = getCustomLegendInfo(wmsConfig)
@@ -248,12 +256,6 @@ export class MapLayerManager {
                 layerName: wmsConfig.layers,
                 styleName: wmsConfig.styles,
                 format: wmsConfig.format,
-              })
-
-              console.debug('[MapLayerManager] Añadiendo leyenda custom GeoServer', {
-                layerId: wmsConfig.id,
-                legendUrl,
-                customLegend,
               })
 
               await this.legendManager.addGradientLegend(config.id, {

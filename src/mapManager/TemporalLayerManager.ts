@@ -15,6 +15,26 @@ type GenerationById = Record<string, number>
 type TemporalWmsLayer = L.TileLayer.WMS & { __temporalReady?: boolean }
 const DEBUG_TEMPORAL_WMS = true
 
+function toIsoWithoutMilliseconds(value: Date): string {
+  return value.toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+function getTemporalParamSignature(layer: L.TileLayer.WMS): string | undefined {
+  const params = (layer.wmsParams as unknown as Record<string, unknown>) ?? {}
+  const time = params.time
+  if (typeof time === 'string' && time.length) {
+    return time
+  }
+
+  const from = params.from
+  const to = params.to
+  if (typeof from === 'string' && typeof to === 'string' && from.length && to.length) {
+    return `${from}/${to}`
+  }
+
+  return undefined
+}
+
 export class TemporalLayerManager {
   private map: L.Map
   private configMap: Map<string, LayerConfig>
@@ -26,6 +46,7 @@ export class TemporalLayerManager {
 
   private debugLog(message: string, payload?: unknown): void {
     if (!DEBUG_TEMPORAL_WMS) return
+    void message
     if (payload === undefined) {
       return
     }
@@ -76,13 +97,23 @@ export class TemporalLayerManager {
       return
     }
 
-    const newTime = layerState.params?.time
+    const config = this.configMap.get(layerState.id)
+    if (!config) {
+      return
+    }
+
+    const isRangeTemporal = config.temporalControlMode === 'range'
+    const newTime = isRangeTemporal
+      ? layerState.params?.from && layerState.params?.to
+        ? `${layerState.params.from}/${layerState.params.to}`
+        : undefined
+      : layerState.params?.time
 
     if (!newTime) {
       return
     }
 
-    const currentTime = (current.wmsParams as unknown as Record<string, unknown>)?.time
+    const currentTime = getTemporalParamSignature(current)
 
     this.debugLog('updateTimeState candidate', {
       layerId: layerState.id,
@@ -104,11 +135,6 @@ export class TemporalLayerManager {
       return
     }
 
-    const config = this.configMap.get(layerState.id)
-    if (!config) {
-      return
-    }
-
     this.layersStore.setTemporalLoadState(layerState.id, {
       requestedTime: newTime,
       loadedTime: undefined,
@@ -120,9 +146,16 @@ export class TemporalLayerManager {
       requestedTime: newTime,
     })
 
+    const layerParams = layerState.params ?? {}
+
     const createdLayer =
       this.findTemporalLayer(layerState.id, newTime) ??
-      (await createLayer(config, { time: newTime }))
+      (await createLayer(
+        config,
+        isRangeTemporal
+          ? { from: layerParams.from ?? '', to: layerParams.to ?? '' }
+          : { time: newTime }
+      ))
 
     if (!(createdLayer instanceof L.TileLayer.WMS)) {
       this.layersStore.setTemporalLoadState(layerState.id, {
@@ -212,11 +245,49 @@ export class TemporalLayerManager {
       return
     }
 
-    if (layer.temporal) {
+    if (layer.temporal && (layer.params?.time || (layer.params?.from && layer.params?.to))) {
       return
     }
 
     try {
+      if (layer.temporal && !layer.params?.time && !(layer.params?.from && layer.params?.to)) {
+        const existingTemporal = layer.temporal
+        const existingStart = parseISO(existingTemporal.start)
+        const existingEnd = parseISO(existingTemporal.end)
+        const isRangeTemporal = config.temporalControlMode === 'range'
+
+        if (isRangeTemporal) {
+          layer.params = {
+            ...layer.params,
+            from: toIsoWithoutMilliseconds(existingStart),
+            to: toIsoWithoutMilliseconds(existingEnd),
+          }
+        } else {
+          layer.params = {
+            ...layer.params,
+            time: toIsoWithoutMilliseconds(existingStart),
+          }
+        }
+
+        layer.temporalLoadState = {
+          requestedTime: layer.params.time ?? `${layer.params.from}/${layer.params.to}`,
+          loadedTime: undefined,
+          loading: false,
+        }
+
+        this.debugLog(
+          'loadTemporalDimension restored missing temporal params from existing state',
+          {
+            layerId: config.id,
+            initialParamTime: layer.params.time,
+            initialFrom: layer.params.from,
+            initialTo: layer.params.to,
+          }
+        )
+
+        return
+      }
+
       const wmsConfig = config as WMSLayerConfig
 
       const timeDimension =
@@ -233,31 +304,51 @@ export class TemporalLayerManager {
 
       const startDate = config.start ? parseISO(config.start) : parseISO(timeDimension.start)
       const endDate = parseISO(timeDimension.end)
-      const safeEnd = subHours(endDate, timeDimension.stepHours)
-
       const safeStart = isAfter(startDate, endDate)
         ? subHours(endDate, 10 * timeDimension.stepHours)
         : startDate
 
       const isRangeTemporal = config.temporalControlMode === 'range'
-      const candidateEnd = addHours(safeStart, timeDimension.stepHours)
-      const safeRangeEnd = isAfter(candidateEnd, safeEnd) ? safeEnd : candidateEnd
+      const hasRealRange = isAfter(endDate, safeStart)
+      const rangeEnd = hasRealRange ? endDate : safeStart
+      const instantEnd = subHours(endDate, timeDimension.stepHours)
+
+      if (isRangeTemporal && !hasRealRange) {
+        console.warn(
+          '[TemporalLayerManager] Capa range con una unica fecha publicada por backend (from=to)',
+          {
+            layerId: config.id,
+            layerName: wmsConfig.layers,
+            backendStart: timeDimension.start,
+            backendEnd: timeDimension.end,
+            backendStepHours: timeDimension.stepHours,
+            appliedFrom: toIsoWithoutMilliseconds(safeStart),
+            appliedTo: toIsoWithoutMilliseconds(rangeEnd),
+          }
+        )
+      }
 
       layer.temporal = {
-        start: safeStart.toISOString(),
-        end: safeEnd.toISOString(),
+        start: toIsoWithoutMilliseconds(safeStart),
+        end: toIsoWithoutMilliseconds(isRangeTemporal ? rangeEnd : instantEnd),
         stepHours: timeDimension.stepHours,
       }
 
-      layer.params = {
-        ...layer.params,
-        time: isRangeTemporal
-          ? `${safeStart.toISOString()}/${safeRangeEnd.toISOString()}`
-          : safeStart.toISOString(),
+      if (isRangeTemporal) {
+        layer.params = {
+          ...layer.params,
+          from: toIsoWithoutMilliseconds(safeStart),
+          to: toIsoWithoutMilliseconds(rangeEnd),
+        }
+      } else {
+        layer.params = {
+          ...layer.params,
+          time: toIsoWithoutMilliseconds(safeStart),
+        }
       }
 
       layer.temporalLoadState = {
-        requestedTime: layer.params.time,
+        requestedTime: layer.params.time ?? `${layer.params.from}/${layer.params.to}`,
         loadedTime: undefined,
         loading: false,
       }
@@ -265,9 +356,11 @@ export class TemporalLayerManager {
       this.debugLog('loadTemporalDimension initialized', {
         layerId: config.id,
         timeDimension,
-        safeStartIso: safeStart.toISOString(),
-        safeEndIso: safeEnd.toISOString(),
+        safeStartIso: toIsoWithoutMilliseconds(safeStart),
+        safeEndIso: toIsoWithoutMilliseconds(isRangeTemporal ? rangeEnd : instantEnd),
         initialParamTime: layer.params.time,
+        initialFrom: layer.params.from,
+        initialTo: layer.params.to,
       })
     } catch (err) {
       console.error('Error loading temporal dimension', err)
@@ -284,7 +377,7 @@ export class TemporalLayerManager {
     const temporalList = this.temporalLayers[layerId]
 
     return temporalList?.find((layer) => {
-      const currentTime = (layer.wmsParams as unknown as Record<string, unknown>)?.time
+      const currentTime = getTemporalParamSignature(layer)
       return currentTime === time
     })
   }

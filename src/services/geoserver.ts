@@ -25,6 +25,25 @@ interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
 }
 
+function normalizeIsoForWms(value: string): string {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+function toRangeParams(timeValue: string): { from: string; to: string } | null {
+  const [fromRaw, toRaw] = timeValue.split('/')
+  if (!fromRaw || !toRaw) return null
+
+  return {
+    from: normalizeIsoForWms(fromRaw),
+    to: normalizeIsoForWms(toRaw),
+  }
+}
+
 function parseInCqlFilter(filter: string): { field: string; values: string[] } | null {
   const match = filter.match(/^\s*([A-Za-z_][\w]*)\s+IN\s*\((.*)\)\s*$/i)
   if (!match) return null
@@ -66,6 +85,22 @@ export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, s
   const paneName = config.pane ?? 'overlayPane'
   let bounds: L.LatLngBounds | undefined
 
+  const wmsParams = { ...(params ?? {}) }
+
+  if (config.temporalControlMode === 'range') {
+    const rangeFromTime = wmsParams.time ? toRangeParams(wmsParams.time) : null
+
+    if (rangeFromTime) {
+      wmsParams.from = rangeFromTime.from
+      wmsParams.to = rangeFromTime.to
+      delete wmsParams.time
+    } else {
+      if (wmsParams.from) wmsParams.from = normalizeIsoForWms(wmsParams.from)
+      if (wmsParams.to) wmsParams.to = normalizeIsoForWms(wmsParams.to)
+      delete wmsParams.time
+    }
+  }
+
   if (config.bbox) {
     bounds = L.latLngBounds(config.bbox)
   } else if (config.mask && boundaryStore[config.mask]) {
@@ -83,7 +118,7 @@ export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, s
     updateWhenZooming: false,
     updateWhenIdle: true,
     keepBuffer: 2,
-    ...params,
+    ...wmsParams,
   } as WMSOptionsExtended)
 
   if (config.mask) {

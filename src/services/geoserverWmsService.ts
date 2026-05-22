@@ -160,6 +160,11 @@ export async function getGeoServerLayerTimeDimension(options: {
     if (name && normalizeLayerName(name) === requestedLayerName) {
       const timeDimension = getInheritedTimeDimensionText(layer)
 
+      console.debug('[geoserverWmsService] timeDimension raw', {
+        matchedLayerName: name,
+        raw: timeDimension,
+      })
+
       if (!timeDimension) {
         return null
       }

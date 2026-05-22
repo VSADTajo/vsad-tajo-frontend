@@ -58,6 +58,10 @@
 
   const timeRange = ref<[number, number]>([0, 1])
 
+  function toIsoWithoutMilliseconds(value: Date): string {
+    return value.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  }
+
   const temporalRangeLayers = computed(() =>
     Object.values(layersStore.layers).filter(
       (layer) => layer.visible && layer.temporal && rangeLayerIds.has(layer.id)
@@ -148,11 +152,13 @@
 
       if (!startTime || !endTime) return
 
-      const value = `${startTime.toISOString()}/${endTime.toISOString()}`
+      const from = toIsoWithoutMilliseconds(startTime)
+      const to = toIsoWithoutMilliseconds(endTime)
 
       temporalRangeLayers.value.forEach((layer) => {
         layersStore.setTimeParams(layer.id, {
-          time: value,
+          from,
+          to,
         })
       })
     },
@@ -160,13 +166,23 @@
   )
 
   watch(
-    () => temporalRangeLayers.value.map((l) => l.params?.time),
-    (times) => {
-      const value = times.find((v): v is string => typeof v === 'string' && v.includes('/'))
+    () =>
+      temporalRangeLayers.value.map((l) => ({
+        from: l.params?.from,
+        to: l.params?.to,
+      })),
+    (ranges) => {
+      const value = ranges.find(
+        (v): v is { from: string; to: string } =>
+          typeof v.from === 'string' &&
+          typeof v.to === 'string' &&
+          v.from.length > 0 &&
+          v.to.length > 0
+      )
       if (!value) return
 
-      const [startIso, endIso] = value.split('/')
-      if (!startIso || !endIso) return
+      const startIso = value.from
+      const endIso = value.to
 
       const startMs = new Date(startIso).getTime()
       const endMs = new Date(endIso).getTime()

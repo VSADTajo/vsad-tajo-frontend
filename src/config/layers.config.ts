@@ -151,12 +151,13 @@ export const dynamicLayersConfig: LayerConfig[] = [
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
+
   {
     id: 'eps_precipitacion_media_acumulada',
     name: 'Precipitacion Media Acumulada',
     type: 'WMS',
     url: geoserverTajoWmsUrl,
-    layers: 'Tajo:eps_precipitacion_media_acumulada',
+    layers: 'Tajo:eps_precipitacion_media_acumulado',
     format: 'image/png',
     styles: 'raster-precipitaciones',
     transparent: true,

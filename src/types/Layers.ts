@@ -29,6 +29,8 @@ export interface TemporalLoadState {
 
 export interface TimeParams {
   time: string
+  from?: string
+  to?: string
   step: number
 }
 
