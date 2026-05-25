@@ -112,6 +112,16 @@
     return xLabels.value[index] ?? null
   })
 
+  const observedEndDate = computed(() => {
+    if (!historicalData.value?.length) return null
+
+    const lastObserved = [...historicalData.value]
+      .reverse()
+      .find((item) => Number.isFinite(item.value))
+
+    return lastObserved?.date ?? null
+  })
+
   const observedEndXAnnotation = computed(() => {
     if (!observedEndLabel.value) return []
 
@@ -147,6 +157,56 @@
     )
   }
 
+  function computeObservedCumulative(): Array<number | null> {
+    const observedMap = new Map((historicalData.value ?? []).map((d) => [d.date, d.value]))
+    let running = 0
+
+    return allDates.value.map((date) => {
+      const value = observedMap.get(date)
+      if (!Number.isFinite(value)) return null
+      running += value as number
+      return running
+    })
+  }
+
+  const observedCumulativeValues = computed(() => computeObservedCumulative())
+
+  const observedCumulativeEnd = computed(() => {
+    for (let i = observedCumulativeValues.value.length - 1; i >= 0; i--) {
+      const value = observedCumulativeValues.value[i]
+      if (Number.isFinite(value)) {
+        return {
+          date: allDates.value[i],
+          value: value as number,
+        }
+      }
+    }
+
+    return null
+  })
+
+  function computeForecastCumulativeValues(
+    source: Array<{ date: string; value: number | null }> | null | undefined
+  ): Array<number | null> {
+    const sourceMap = new Map((source ?? []).map((d) => [d.date, d.value]))
+    const startDate = observedEndDate.value
+    let running = observedCumulativeEnd.value?.value ?? 0
+
+    return allDates.value.map((date) => {
+      if (startDate && date < startDate) {
+        return null
+      }
+
+      const value = sourceMap.get(date)
+      if (!Number.isFinite(value)) {
+        return null
+      }
+
+      running += value as number
+      return running
+    })
+  }
+
   const series = computed<SeriesItem[]>(() => {
     if (allDates.value.length === 0) return []
 
@@ -164,27 +224,6 @@
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
-          })),
-        })
-      }
-    }
-
-    // P10-P90 RangeArea (must come before bars so it renders behind)
-    if (p10Data.value && p90Data.value) {
-      const p10Map = new Map(p10Data.value.map((d) => [d.date, d.value]))
-      const p90Map = new Map(p90Data.value.map((d) => [d.date, d.value]))
-      const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
-        const low = p10Map.get(date) ?? null
-        const high = p90Map.get(date) ?? null
-        return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
-      })
-      if (hasFiniteRange(ranges)) {
-        result.push({
-          name: 'Percentiles P10-P90',
-          type: 'rangeArea',
-          data: allDates.value.map((date, i) => ({
-            x: labels[i],
-            y: ranges[i],
           })),
         })
       }
@@ -222,6 +261,27 @@
       }
     }
 
+    // P10-P90 RangeArea (must come before bars so it renders behind)
+    if (p10Data.value && p90Data.value) {
+      const p10Map = new Map(p10Data.value.map((d) => [d.date, d.value]))
+      const p90Map = new Map(p90Data.value.map((d) => [d.date, d.value]))
+      const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
+        const low = p10Map.get(date) ?? null
+        const high = p90Map.get(date) ?? null
+        return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
+      })
+      if (hasFiniteRange(ranges)) {
+        result.push({
+          name: 'Percentiles P10-P90',
+          type: 'rangeArea',
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: ranges[i],
+          })),
+        })
+      }
+    }
+
     // P25-P75 RangeArea
     if (p25Data.value && p75Data.value) {
       const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
@@ -243,50 +303,178 @@
       }
     }
 
+    // Acumulado observado (eje derecho)
+    if (historicalData.value) {
+      const values = observedCumulativeValues.value
+      if (hasFiniteValue(values)) {
+        result.push({
+          name: 'Acumulado Observado',
+          type: 'line',
+          yAxisIndex: 1,
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: values[i],
+          })),
+        })
+      }
+    }
+
+    // Acumulados de prediccion (eje derecho, arrancan desde fin observado)
+    const cumulativeForecastSeries: Array<{
+      name: string
+      source: Array<{ date: string; value: number | null }> | null | undefined
+    }> = [
+      { name: 'Acumulado Det. Harmonie', source: HarmonieData.value },
+      { name: 'Acumulado EPS Medio', source: epsatData.value },
+      { name: 'Acumulado EPS P10', source: p10Data.value },
+      { name: 'Acumulado EPS P25', source: p25Data.value },
+      { name: 'Acumulado EPS P75', source: p75Data.value },
+      { name: 'Acumulado EPS P90', source: p90Data.value },
+    ]
+
+    cumulativeForecastSeries.forEach((serie) => {
+      const values = computeForecastCumulativeValues(serie.source)
+      if (!hasFiniteValue(values)) return
+
+      result.push({
+        name: serie.name,
+        type: 'line',
+        yAxisIndex: 1,
+        data: allDates.value.map((date, i) => ({
+          x: labels[i],
+          y: values[i],
+        })),
+      })
+    })
+
     return result
   })
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
 
-  // Colores dinámicos basados en qué series existen (mismo orden que series)
+  function getSeriesColor(name: string): string {
+    function darkenHex(hex: string, amount: number): string {
+      const safeHex = hex.replace('#', '')
+      const value = Number.parseInt(safeHex, 16)
+      if (!Number.isFinite(value)) return hex
+
+      const r = Math.max(0, Math.min(255, Math.round(((value >> 16) & 0xff) * (1 - amount))))
+      const g = Math.max(0, Math.min(255, Math.round(((value >> 8) & 0xff) * (1 - amount))))
+      const b = Math.max(0, Math.min(255, Math.round((value & 0xff) * (1 - amount))))
+
+      return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+    }
+
+    const baseColors: Record<string, string> = {
+      'Precipitación Observada': '#2E7D32',
+      'Predicción Det. Harmonie': '#1565C0',
+      'Predicción Prob. EPS': '#FF9800',
+      'Percentiles P10-P90': '#D3D3D3',
+      'Percentiles P25-P75': '#696969',
+    }
+
+    const cumulativePairs: Record<string, string> = {
+      'Acumulado Observado': 'Precipitación Observada',
+      'Acumulado Det. Harmonie': 'Predicción Det. Harmonie',
+      'Acumulado EPS Medio': 'Predicción Prob. EPS',
+      'Acumulado EPS P10': 'Percentiles P10-P90',
+      'Acumulado EPS P25': 'Percentiles P25-P75',
+      'Acumulado EPS P75': 'Percentiles P25-P75',
+      'Acumulado EPS P90': 'Percentiles P10-P90',
+    }
+
+    if (cumulativePairs[name]) {
+      const pairColor = baseColors[cumulativePairs[name]] ?? '#9E9E9E'
+      return darkenHex(pairColor, 0.22)
+    }
+
+    if (baseColors[name]) {
+      return baseColors[name]
+    }
+
+    switch (name) {
+      default:
+        return '#9E9E9E'
+    }
+  }
+
+  function getSeriesFillOpacity(name: string): number {
+    if (name === 'Percentiles P10-P90' || name === 'Percentiles P25-P75') {
+      return 0.35
+    }
+    return 1
+  }
+
+  function getSeriesStrokeWidth(name: string): number {
+    if (name === 'Precipitación Observada') return 2
+    if (name === 'Percentiles P10-P90' || name === 'Percentiles P25-P75') return 1
+    if (name.startsWith('Acumulado ')) return 2
+    return 0
+  }
+
+  // Colores dinámicos en el mismo orden de series
   const dynamicColors = computed(() => {
-    const names = new Set(series.value.map((serie) => serie.name))
-    const colors: string[] = []
-    if (names.has('Precipitación Observada')) colors.push('#2E7D32') // Verde
-    if (names.has('Percentiles P10-P90')) colors.push('#D3D3D3') // Gris claro
-    if (names.has('Percentiles P25-P75')) colors.push('#696969') // Gris oscuro
-    if (names.has('Predicción Det. Harmonie')) colors.push('#1565C0') // Azul
-    if (names.has('Predicción Prob. EPS')) colors.push('#FF9800') // Amarillo
-    return colors
+    return series.value.map((serie) => getSeriesColor(serie.name))
   })
 
   // Opacidad de relleno por serie (rangeArea necesita opacidad explícita)
   const dynamicFillOpacity = computed(() => {
-    const names = new Set(series.value.map((serie) => serie.name))
-    const opacity: number[] = []
-    if (names.has('Precipitación Observada')) opacity.push(1)
-    if (names.has('Percentiles P10-P90')) opacity.push(0.35)
-    if (names.has('Percentiles P25-P75')) opacity.push(0.35)
-    if (names.has('Predicción Det. Harmonie')) opacity.push(1)
-    if (names.has('Predicción Prob. EPS')) opacity.push(1)
-    return opacity
+    return series.value.map((serie) => getSeriesFillOpacity(serie.name))
   })
 
   // Ancho de trazo por serie
   const dynamicStrokeWidth = computed(() => {
-    const names = new Set(series.value.map((serie) => serie.name))
-    const widths: number[] = []
-    if (names.has('Precipitación Observada')) widths.push(2)
-    if (names.has('Percentiles P10-P90')) widths.push(1)
-    if (names.has('Percentiles P25-P75')) widths.push(1)
-    if (names.has('Predicción Det. Harmonie')) widths.push(0)
-    if (names.has('Predicción Prob. EPS')) widths.push(0)
-    return widths
+    return series.value.map((serie) => getSeriesStrokeWidth(serie.name))
   })
 
   const dynamicStrokeCurve = computed(() =>
     series.value.map((serie) => (serie.type === 'bar' ? 'straight' : 'smooth'))
   )
+
+  function organizeLegendRows(rootEl: HTMLElement): void {
+    const legendRoot = rootEl.querySelector('.apexcharts-legend') as HTMLElement | null
+    if (!legendRoot) return
+
+    const legendSeries = Array.from(
+      rootEl.querySelectorAll('.apexcharts-legend-series')
+    ) as HTMLElement[]
+
+    const nonAccum: HTMLElement[] = []
+    const accum: HTMLElement[] = []
+    let firstAccumMarked = false
+
+    legendSeries.forEach((item) => {
+      const label = item.querySelector('.apexcharts-legend-text')?.textContent?.trim() ?? ''
+      item.classList.remove(
+        'legend-series--nonaccum',
+        'legend-series--accum',
+        'legend-series--accum-break'
+      )
+
+      if (label.startsWith('Acumulado')) {
+        item.classList.add('legend-series--accum')
+        if (!firstAccumMarked) {
+          item.classList.add('legend-series--accum-break')
+          firstAccumMarked = true
+        }
+        accum.push(item)
+      } else {
+        item.classList.add('legend-series--nonaccum')
+        nonAccum.push(item)
+      }
+    })
+
+    // Flatten Apex internal groups and enforce deterministic row order.
+    ;[...nonAccum, ...accum].forEach((item) => {
+      legendRoot.appendChild(item)
+    })
+
+    rootEl.querySelectorAll('.apexcharts-legend-group').forEach((group) => {
+      if (group.childElementCount === 0) {
+        group.remove()
+      }
+    })
+  }
 
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
@@ -307,6 +495,15 @@
             })
             // also clear title attribute if present
             if (el.getAttribute('title')) el.removeAttribute('title')
+
+            organizeLegendRows(el)
+          } catch {
+            // ignore
+          }
+        },
+        updated: (chartContext: { el: HTMLElement }) => {
+          try {
+            organizeLegendRows(chartContext.el as HTMLElement)
           } catch {
             // ignore
           }
@@ -324,6 +521,7 @@
     },
     legend: {
       position: 'bottom' as const,
+      clusterGroupedSeries: false,
     },
     dataLabels: {
       enabled: false,
@@ -338,15 +536,27 @@
         hideOverlappingLabels: true,
       },
     },
-    yaxis: {
-      min: 0,
-      title: {
-        text: 'mm',
+    yaxis: [
+      {
+        min: 0,
+        title: {
+          text: 'mm',
+        },
+        labels: {
+          formatter: (value: number) => Number(value).toFixed(1),
+        },
       },
-      labels: {
-        formatter: (value: number) => Number(value).toFixed(1),
+      {
+        min: 0,
+        opposite: true,
+        title: {
+          text: 'mm acumulado',
+        },
+        labels: {
+          formatter: (value: number) => Number(value).toFixed(1),
+        },
       },
-    },
+    ],
     annotations: {
       xaxis: observedEndXAnnotation.value,
     },
@@ -456,13 +666,17 @@
 
   .precipitations-chart .apexcharts-legend {
     display: flex !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     gap: 8px 12px;
     align-items: center;
     justify-content: center;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
     overflow-y: hidden !important;
-    white-space: nowrap;
+    white-space: normal;
+  }
+
+  .precipitations-chart .apexcharts-legend-group {
+    display: contents !important;
   }
 
   .precipitations-chart .apexcharts-legend-series {
@@ -472,6 +686,19 @@
     width: auto !important;
     min-height: 28px;
     min-width: max-content;
+  }
+
+  .precipitations-chart .apexcharts-legend-series.legend-series--nonaccum {
+    order: 1;
+  }
+
+  .precipitations-chart .apexcharts-legend-series.legend-series--accum {
+    order: 2;
+  }
+
+  .precipitations-chart .apexcharts-legend-series.legend-series--accum-break {
+    flex-basis: 100%;
+    margin-left: 0 !important;
   }
 
   .precipitations-chart .apexcharts-legend-text {

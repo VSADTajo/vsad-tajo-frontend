@@ -828,10 +828,15 @@
   }
 
   function getFocusedRange(value: number): { min: number; max: number } {
-    const padding = Math.max(Math.abs(value) * 0.2, 1)
+    // Keep baseline at 0 and scale Y so the selected threshold becomes the visual reference.
+    const safeValue = Math.max(0, value)
+    const maxFromCentering = safeValue * 2
+    const maxWithPadding = safeValue * 1.25
+    const max = Math.max(maxFromCentering, maxWithPadding, 1)
+
     return {
-      min: Math.max(0, value - padding),
-      max: value + padding,
+      min: 0,
+      max,
     }
   }
 
