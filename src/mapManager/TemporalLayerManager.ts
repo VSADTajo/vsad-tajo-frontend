@@ -158,14 +158,6 @@ export class TemporalLayerManager {
         touched.add(layer)
       }
     }
-
-    if (layerId === 'eps_precipitacion_media_acumulada') {
-      console.debug('[TemporalLayerManager] syncLayerOpacity accumulated layer', {
-        layerId,
-        targetOpacity,
-        touchedLayers: touched.size,
-      })
-    }
   }
 
   async updateTimeState(layerState: LayerState): Promise<void> {
@@ -277,14 +269,6 @@ export class TemporalLayerManager {
       if (!layerState.visible) {
         this.map.removeLayer(newLayer)
         return
-      }
-
-      if (layerState.id === 'eps_precipitacion_media_acumulada') {
-        console.debug('[TemporalLayerManager] applying opacity to accumulated layer', {
-          layerId: layerState.id,
-          targetOpacity,
-          requestedTime: newTime,
-        })
       }
 
       this.fadeLayer(newLayer, targetOpacity)

@@ -121,6 +121,13 @@ export const meteoMaps: LayerNode[] = [
         opacity: 1,
       },
       {
+        id: 'harmonie_precipitacion_acumulada',
+        title: 'Precipitaciones Acumulada',
+        parentLayer: 'harmonie',
+        opacityEnabled: true,
+        opacity: 1,
+      },
+      {
         id: 'harmonie_rayos',
         title: 'Rayos',
         parentLayer: 'harmonie',

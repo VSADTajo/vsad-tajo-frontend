@@ -388,12 +388,6 @@ export class MapLayerManager {
     }
 
     if (layer instanceof L.ImageOverlay) {
-      if (layerState.id === 'eps_precipitacion_media_acumulada') {
-        console.debug('[MapLayerManager] setOpacity on accumulated layer', {
-          layerId: layerState.id,
-          opacity: layerState.opacity,
-        })
-      }
       layer.setOpacity(layerState.opacity)
     }
   }
