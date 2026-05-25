@@ -5,6 +5,7 @@ import type {
   WMSLayerConfig,
   TMSLayerConfig,
   APIStationsLayerConfig,
+  MeteoAccumulatedImageLayerConfig,
 } from '@/types/Layers'
 import ky from 'ky'
 import { api } from './api'
@@ -20,6 +21,7 @@ import {
 import { StyleManager } from '@/mapManager/StyleManager'
 import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
 import type { StationsApiResponse } from '@/utils/stationsToGeoJSON'
+import { buildMeteoAccumulatedMapUrl, getMeteoLayerTimeDimension } from '@/services/meteoService'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
@@ -203,6 +205,57 @@ export async function createAPIStationsLayer(
   }
 }
 
+export async function createMeteoAccumulatedImageLayer(
+  config: MeteoAccumulatedImageLayerConfig,
+  extraParams?: Record<string, string>
+): Promise<L.ImageOverlay | null> {
+  try {
+    const dimension = await getMeteoLayerTimeDimension(config)
+    if (!dimension) return null
+
+    const from = extraParams?.from ?? dimension.start
+    const to = extraParams?.to ?? dimension.end
+
+    const imageUrl = buildMeteoAccumulatedMapUrl(config, dimension, { from, to })
+    const token = localStorage.getItem('token')
+    const imageBlob = await ky
+      .get(imageUrl, {
+        timeout: false,
+        headers: {
+          Accept: config.imageFormat ?? 'image/jpeg',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+      .blob()
+
+    const objectUrl = URL.createObjectURL(imageBlob)
+    const bounds = L.latLngBounds(
+      [dimension.bbox.minY, dimension.bbox.minX],
+      [dimension.bbox.maxY, dimension.bbox.maxX]
+    )
+
+    const overlay = L.imageOverlay(objectUrl, bounds, {
+      opacity: config.opacity ?? 1,
+      pane: config.pane,
+      interactive: config.interactive ?? false,
+    }) as L.ImageOverlay & { __temporalSignature?: string; __objectUrl?: string }
+
+    overlay.__temporalSignature = `${from}/${to}`
+    overlay.__objectUrl = objectUrl
+    overlay.once('remove', () => {
+      if (overlay.__objectUrl) {
+        URL.revokeObjectURL(overlay.__objectUrl)
+        overlay.__objectUrl = undefined
+      }
+    })
+
+    return overlay
+  } catch (error) {
+    console.error('[createMeteoAccumulatedImageLayer] Error creating layer', config.id, error)
+    return null
+  }
+}
+
 // ==============================
 // �🟦 WFS (fetch + create)
 // ==============================
@@ -320,6 +373,9 @@ const layerFactories: {
 
   API_STATIONS: (config, extra, callback) =>
     createAPIStationsLayer(config as APIStationsLayerConfig, extra, callback),
+
+  METEO_ACCUMULATED_IMAGE: (config, extra) =>
+    createMeteoAccumulatedImageLayer(config as MeteoAccumulatedImageLayerConfig, extra),
 }
 
 export async function createLayer(

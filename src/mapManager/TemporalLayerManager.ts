@@ -4,15 +4,28 @@ import { createLayer } from '@/services/geoserver'
 import { useLayersStore } from '@/stores/layersStore'
 import { getLayerTimeDimension } from '@/services/efasWmsService'
 import { getGeoServerLayerTimeDimension } from '@/services/geoserverWmsService'
+import { getMeteoLayerTimeDimension } from '@/services/meteoService'
 import { efas_url } from '@/config/efasConfig'
-import type { LayerConfig, LayerState, WMSLayerConfig } from '@/types/Layers'
+import type {
+  LayerConfig,
+  LayerState,
+  MeteoAccumulatedImageLayerConfig,
+  WMSLayerConfig,
+} from '@/types/Layers'
 import { LayerInteractionManager } from './LayerInteractionManager'
 import { isPrecipitacionLayerId } from './layerConstants'
 
 type LayerById = Record<string, L.Layer>
-type TemporalLayerById = Record<string, L.TileLayer.WMS[]>
+type TemporalLayerById = Record<string, Array<L.TileLayer.WMS | L.ImageOverlay>>
 type GenerationById = Record<string, number>
-type TemporalWmsLayer = L.TileLayer.WMS & { __temporalReady?: boolean }
+type TemporalMapLayer = (L.TileLayer.WMS | L.ImageOverlay) & {
+  __temporalReady?: boolean
+  __temporalSignature?: string
+}
+type OpacityLayer = L.Layer & {
+  setOpacity: (opacity: number) => L.Layer
+  options?: { opacity?: number }
+}
 const DEBUG_TEMPORAL_WMS = true
 
 function toIsoWithoutMilliseconds(value: Date): string {
@@ -35,6 +48,25 @@ function getTemporalParamSignature(layer: L.TileLayer.WMS): string | undefined {
   return undefined
 }
 
+function getTemporalLayerSignature(layer: L.Layer): string | undefined {
+  if (layer instanceof L.TileLayer.WMS) {
+    return getTemporalParamSignature(layer)
+  }
+
+  if (layer instanceof L.ImageOverlay) {
+    const temporalSignature = (layer as TemporalMapLayer).__temporalSignature
+    return typeof temporalSignature === 'string' && temporalSignature.length
+      ? temporalSignature
+      : undefined
+  }
+
+  return undefined
+}
+
+function isOpacityLayer(layer: L.Layer): layer is OpacityLayer {
+  return typeof (layer as OpacityLayer).setOpacity === 'function'
+}
+
 export class TemporalLayerManager {
   private map: L.Map
   private configMap: Map<string, LayerConfig>
@@ -43,6 +75,7 @@ export class TemporalLayerManager {
   private layerGeneration: GenerationById
   private interactionManager: LayerInteractionManager
   private layersStore = useLayersStore()
+  private fadingOutLayers: Record<string, L.Layer[]> = {}
 
   private debugLog(message: string, payload?: unknown): void {
     if (!DEBUG_TEMPORAL_WMS) return
@@ -72,7 +105,21 @@ export class TemporalLayerManager {
     this.layerGeneration[layerId] = (this.layerGeneration[layerId] ?? 0) + 1
   }
 
+  registerInitialTemporalLayer(layerId: string, layer: L.Layer): void {
+    if (layer instanceof L.TileLayer.WMS || layer instanceof L.ImageOverlay) {
+      this.registerTemporalLayer(layerId, layer as TemporalMapLayer)
+    }
+  }
+
   removeTemporalLayers(layerId: string): void {
+    const fadingOut = this.fadingOutLayers[layerId]
+    if (fadingOut?.length) {
+      for (const fadingLayer of fadingOut) {
+        this.map.removeLayer(fadingLayer)
+      }
+      delete this.fadingOutLayers[layerId]
+    }
+
     const temporalList = this.temporalLayers[layerId]
 
     if (!temporalList?.length) {
@@ -86,6 +133,41 @@ export class TemporalLayerManager {
     delete this.temporalLayers[layerId]
   }
 
+  syncLayerOpacity(layerId: string, opacity: number): void {
+    const targetOpacity = Math.max(0, Math.min(1, opacity))
+    const touched = new Set<L.Layer>()
+
+    const active = this.activeLayers[layerId]
+    if (active && isOpacityLayer(active)) {
+      active.setOpacity(targetOpacity)
+      touched.add(active)
+    }
+
+    const temporalList = this.temporalLayers[layerId] ?? []
+    for (const layer of temporalList) {
+      if (!touched.has(layer) && isOpacityLayer(layer)) {
+        layer.setOpacity(targetOpacity)
+        touched.add(layer)
+      }
+    }
+
+    const fadingList = this.fadingOutLayers[layerId] ?? []
+    for (const layer of fadingList) {
+      if (!touched.has(layer) && isOpacityLayer(layer)) {
+        layer.setOpacity(targetOpacity)
+        touched.add(layer)
+      }
+    }
+
+    if (layerId === 'eps_precipitacion_media_acumulada') {
+      console.debug('[TemporalLayerManager] syncLayerOpacity accumulated layer', {
+        layerId,
+        targetOpacity,
+        touchedLayers: touched.size,
+      })
+    }
+  }
+
   async updateTimeState(layerState: LayerState): Promise<void> {
     if (!layerState.visible) {
       return
@@ -93,7 +175,7 @@ export class TemporalLayerManager {
 
     const current = this.activeLayers[layerState.id]
 
-    if (!(current instanceof L.TileLayer.WMS)) {
+    if (!(current instanceof L.TileLayer.WMS) && !(current instanceof L.ImageOverlay)) {
       return
     }
 
@@ -113,7 +195,7 @@ export class TemporalLayerManager {
       return
     }
 
-    const currentTime = getTemporalParamSignature(current)
+    const currentTime = getTemporalLayerSignature(current)
 
     this.debugLog('updateTimeState candidate', {
       layerId: layerState.id,
@@ -147,6 +229,7 @@ export class TemporalLayerManager {
     })
 
     const layerParams = layerState.params ?? {}
+    const targetOpacity = Math.max(0, Math.min(1, layerState.opacity ?? 1))
 
     const createdLayer =
       this.findTemporalLayer(layerState.id, newTime) ??
@@ -157,7 +240,7 @@ export class TemporalLayerManager {
           : { time: newTime }
       ))
 
-    if (!(createdLayer instanceof L.TileLayer.WMS)) {
+    if (!(createdLayer instanceof L.TileLayer.WMS) && !(createdLayer instanceof L.ImageOverlay)) {
       this.layersStore.setTemporalLoadState(layerState.id, {
         loading: false,
       })
@@ -168,7 +251,8 @@ export class TemporalLayerManager {
       return
     }
 
-    const newLayer = createdLayer as TemporalWmsLayer
+    const newLayer = createdLayer as TemporalMapLayer
+    newLayer.__temporalSignature = newTime
 
     newLayer.setOpacity(0)
     if (!this.map.hasLayer(newLayer)) {
@@ -195,9 +279,32 @@ export class TemporalLayerManager {
         return
       }
 
-      this.fadeLayer(newLayer, 1)
+      if (layerState.id === 'eps_precipitacion_media_acumulada') {
+        console.debug('[TemporalLayerManager] applying opacity to accumulated layer', {
+          layerId: layerState.id,
+          targetOpacity,
+          requestedTime: newTime,
+        })
+      }
+
+      this.fadeLayer(newLayer, targetOpacity)
+      if (!this.fadingOutLayers[layerState.id]) {
+        this.fadingOutLayers[layerState.id] = []
+      }
+      if (!this.fadingOutLayers[layerState.id].includes(current)) {
+        this.fadingOutLayers[layerState.id].push(current)
+      }
       this.fadeLayer(current, 0, () => {
         this.map.removeLayer(current)
+        const fadingList = this.fadingOutLayers[layerState.id]
+        if (!fadingList?.length) {
+          return
+        }
+
+        this.fadingOutLayers[layerState.id] = fadingList.filter((item) => item !== current)
+        if (!this.fadingOutLayers[layerState.id].length) {
+          delete this.fadingOutLayers[layerState.id]
+        }
       })
 
       this.activeLayers[layerState.id] = newLayer
@@ -220,7 +327,9 @@ export class TemporalLayerManager {
         this.interactionManager.attachPrecipitacionClick(layerState.id, newLayer)
       }
 
-      void this.prefetchNextTemporalLayer(layerState, config, newTime)
+      if (newLayer instanceof L.TileLayer.WMS) {
+        void this.prefetchNextTemporalLayer(layerState, config, newTime)
+      }
     }
 
     if (newLayer.__temporalReady) {
@@ -235,7 +344,7 @@ export class TemporalLayerManager {
   }
 
   async loadTemporalDimension(config: LayerConfig): Promise<void> {
-    if (config.type !== 'WMS') {
+    if (config.type !== 'WMS' && config.type !== 'METEO_ACCUMULATED_IMAGE') {
       return
     }
 
@@ -288,15 +397,20 @@ export class TemporalLayerManager {
         return
       }
 
-      const wmsConfig = config as WMSLayerConfig
+      let timeDimension: { start: string; end: string; stepHours: number } | null = null
 
-      const timeDimension =
-        wmsConfig.url === efas_url
-          ? await getLayerTimeDimension(wmsConfig.layers)
-          : await getGeoServerLayerTimeDimension({
-              url: wmsConfig.url,
-              layerName: wmsConfig.layers,
-            })
+      if (config.type === 'METEO_ACCUMULATED_IMAGE') {
+        timeDimension = await getMeteoLayerTimeDimension(config as MeteoAccumulatedImageLayerConfig)
+      } else {
+        const wmsConfig = config as WMSLayerConfig
+        timeDimension =
+          wmsConfig.url === efas_url
+            ? await getLayerTimeDimension(wmsConfig.layers)
+            : await getGeoServerLayerTimeDimension({
+                url: wmsConfig.url,
+                layerName: wmsConfig.layers,
+              })
+      }
 
       if (!timeDimension) {
         return
@@ -318,7 +432,7 @@ export class TemporalLayerManager {
           '[TemporalLayerManager] Capa range con una unica fecha publicada por backend (from=to)',
           {
             layerId: config.id,
-            layerName: wmsConfig.layers,
+            layerName: config.type === 'WMS' ? (config as WMSLayerConfig).layers : config.id,
             backendStart: timeDimension.start,
             backendEnd: timeDimension.end,
             backendStepHours: timeDimension.stepHours,
@@ -373,16 +487,16 @@ export class TemporalLayerManager {
     return nextValue
   }
 
-  private findTemporalLayer(layerId: string, time: string): L.TileLayer.WMS | undefined {
+  private findTemporalLayer(layerId: string, time: string): TemporalMapLayer | undefined {
     const temporalList = this.temporalLayers[layerId]
 
     return temporalList?.find((layer) => {
-      const currentTime = getTemporalParamSignature(layer)
+      const currentTime = getTemporalLayerSignature(layer)
       return currentTime === time
-    })
+    }) as TemporalMapLayer | undefined
   }
 
-  private registerTemporalLayer(layerId: string, layer: TemporalWmsLayer): void {
+  private registerTemporalLayer(layerId: string, layer: TemporalMapLayer): void {
     if (!this.temporalLayers[layerId]) {
       this.temporalLayers[layerId] = []
     }
@@ -414,17 +528,10 @@ export class TemporalLayerManager {
 
       const [removable] = temporalList.splice(removableIndex, 1)
       if (removable) {
-        const activeTime = activeLayer
-          ? ((activeLayer as L.TileLayer.WMS).wmsParams as unknown as Record<string, unknown>)?.time
-          : undefined
-        const evictedTime = (
-          (removable as L.TileLayer.WMS).wmsParams as unknown as Record<string, unknown>
-        )?.time
-
         this.debugLog('evict temporal cached layer', {
           layerId,
-          activeTime,
-          evictedTime,
+          activeTime: getTemporalLayerSignature(activeLayer as L.Layer),
+          evictedTime: getTemporalLayerSignature(removable),
         })
         this.map.removeLayer(removable)
       }
@@ -470,8 +577,9 @@ export class TemporalLayerManager {
       return
     }
 
-    const temporalLayer = prefetchedLayer as TemporalWmsLayer
+    const temporalLayer = prefetchedLayer as TemporalMapLayer
     temporalLayer.__temporalReady = false
+    temporalLayer.__temporalSignature = nextTime
     temporalLayer.setOpacity(0)
     temporalLayer.addTo(this.map)
 
@@ -482,7 +590,12 @@ export class TemporalLayerManager {
     })
   }
 
-  private fadeLayer(layer: L.TileLayer, targetOpacity: number, onEnd?: () => void): void {
+  private fadeLayer(layer: L.Layer, targetOpacity: number, onEnd?: () => void): void {
+    if (!isOpacityLayer(layer)) {
+      onEnd?.()
+      return
+    }
+
     let opacity = layer.options.opacity ?? 1
     const step = targetOpacity > opacity ? 0.1 : -0.1
 

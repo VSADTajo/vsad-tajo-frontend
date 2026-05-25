@@ -1,15 +1,37 @@
 <template>
   <div class="time-controls">
     <v-card elevation="8" class="pa-4 bg-primary opacity-90 time-card">
-      <div class="d-flex align-center justify-space-between mb-2">
-        <div class="time-main">{{ formattedStartDate }} - {{ formattedEndDate }}</div>
+      <div class="d-flex align-center justify-space-between mb-2 time-summary">
+        <div class="time-block time-block-start">
+          <div class="time-main">{{ formattedStartDate }}</div>
+          <div class="time-sub">{{ formattedStartHour }}</div>
+        </div>
 
-        <div class="time-sub">{{ formattedStartHour }} - {{ formattedEndHour }}</div>
+        <div class="time-block time-block-end text-right">
+          <div class="time-main">{{ formattedEndDate }}</div>
+          <div class="time-sub">{{ formattedEndHour }}</div>
+        </div>
       </div>
 
       <div class="d-flex align-center ga-2">
-        <v-btn icon size="small" @click="stepBack">
+        <v-btn
+          icon
+          size="small"
+          title="From -1h"
+          :disabled="isFromBackDisabled"
+          @click="stepFromBack"
+        >
           <v-icon>mdi-skip-previous</v-icon>
+        </v-btn>
+
+        <v-btn
+          icon
+          size="small"
+          title="From +1h"
+          :disabled="isFromForwardDisabled"
+          @click="stepFromForward"
+        >
+          <v-icon>mdi-skip-next</v-icon>
         </v-btn>
 
         <v-range-slider
@@ -22,9 +44,20 @@
           track-color="green"
           thumb-color="white"
           class="timeline-slider mr-5 ml-5"
+          @end="onSliderEnd"
         />
 
-        <v-btn icon size="small" @click="stepForward">
+        <v-btn icon size="small" title="To -1h" :disabled="isToBackDisabled" @click="stepToBack">
+          <v-icon>mdi-skip-previous</v-icon>
+        </v-btn>
+
+        <v-btn
+          icon
+          size="small"
+          title="To +1h"
+          :disabled="isToForwardDisabled"
+          @click="stepToForward"
+        >
           <v-icon>mdi-skip-next</v-icon>
         </v-btn>
       </div>
@@ -56,7 +89,8 @@
       .map((config) => config.id)
   )
 
-  const timeRange = ref<[number, number]>([0, 1])
+  const timeRange = ref<[number, number]>([0, 0])
+  let timeRangeInitialized = false
 
   function toIsoWithoutMilliseconds(value: Date): string {
     return value.toISOString().replace(/\.\d{3}Z$/, 'Z')
@@ -124,43 +158,66 @@
     return dateFormattedWithHoursAndMinutesFromDate(timeline.value[timeline.value.length - 1])
   })
 
+  const isFromBackDisabled = computed(() => !timeline.value.length || timeRange.value[0] <= 0)
+  const isFromForwardDisabled = computed(
+    () => !timeline.value.length || timeRange.value[0] >= timeRange.value[1]
+  )
+  const isToBackDisabled = computed(
+    () => !timeline.value.length || timeRange.value[1] <= timeRange.value[0]
+  )
+  const isToForwardDisabled = computed(
+    () => !timeline.value.length || timeRange.value[1] >= timeline.value.length - 1
+  )
+
+  function syncTimeRangeToStore() {
+    const [startIndex, endIndex] = timeRange.value
+    const startTime = timeline.value[startIndex]
+    const endTime = timeline.value[endIndex]
+
+    if (!startTime || !endTime) return
+
+    const from = toIsoWithoutMilliseconds(startTime)
+    const to = toIsoWithoutMilliseconds(endTime)
+
+    temporalRangeLayers.value.forEach((layer) => {
+      if (layer.params?.from === from && layer.params?.to === to) {
+        return
+      }
+
+      layersStore.setTimeParams(layer.id, {
+        from,
+        to,
+      })
+    })
+  }
+
+  function onSliderEnd() {
+    syncTimeRangeToStore()
+  }
+
   watch(
     timeline,
     (currentTimeline) => {
       if (!currentTimeline.length) {
-        timeRange.value = [0, 1]
+        timeRange.value = [0, 0]
+        timeRangeInitialized = false
         return
       }
 
       const maxIndex = currentTimeline.length - 1
+
+      if (!timeRangeInitialized) {
+        timeRange.value = [0, maxIndex]
+        timeRangeInitialized = true
+        return
+      }
+
       const start = Math.max(0, Math.min(timeRange.value[0], maxIndex))
       const end = Math.max(start, Math.min(timeRange.value[1], maxIndex))
 
       if (start !== timeRange.value[0] || end !== timeRange.value[1]) {
         timeRange.value = [start, end]
       }
-    },
-    { immediate: true }
-  )
-
-  watch(
-    timeRange,
-    (nextRange) => {
-      const [startIndex, endIndex] = nextRange
-      const startTime = timeline.value[startIndex]
-      const endTime = timeline.value[endIndex]
-
-      if (!startTime || !endTime) return
-
-      const from = toIsoWithoutMilliseconds(startTime)
-      const to = toIsoWithoutMilliseconds(endTime)
-
-      temporalRangeLayers.value.forEach((layer) => {
-        layersStore.setTimeParams(layer.id, {
-          from,
-          to,
-        })
-      })
     },
     { immediate: true }
   )
@@ -199,20 +256,44 @@
     { immediate: true }
   )
 
-  function stepForward() {
+  function stepFromBack() {
+    if (!timeline.value.length) return
+
+    const [startIndex, endIndex] = timeRange.value
+    if (startIndex <= 0) return
+
+    timeRange.value = [startIndex - 1, endIndex]
+    syncTimeRangeToStore()
+  }
+
+  function stepFromForward() {
+    if (!timeline.value.length) return
+
+    const [startIndex, endIndex] = timeRange.value
+    if (startIndex >= endIndex) return
+
+    timeRange.value = [startIndex + 1, endIndex]
+    syncTimeRangeToStore()
+  }
+
+  function stepToForward() {
     if (!timeline.value.length) return
 
     const [startIndex, endIndex] = timeRange.value
     if (endIndex >= timeline.value.length - 1) return
 
-    timeRange.value = [startIndex + 1, endIndex + 1]
+    timeRange.value = [startIndex, endIndex + 1]
+    syncTimeRangeToStore()
   }
 
-  function stepBack() {
-    const [startIndex, endIndex] = timeRange.value
-    if (startIndex <= 0) return
+  function stepToBack() {
+    if (!timeline.value.length) return
 
-    timeRange.value = [startIndex - 1, endIndex - 1]
+    const [startIndex, endIndex] = timeRange.value
+    if (endIndex <= startIndex) return
+
+    timeRange.value = [startIndex, endIndex - 1]
+    syncTimeRangeToStore()
   }
 </script>
 
@@ -235,6 +316,22 @@
     font-size: 18px;
     font-weight: 600;
     color: white;
+  }
+
+  .time-block {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .time-block-end {
+    align-items: flex-end;
+  }
+
+  .time-summary {
+    gap: 12px;
   }
 
   .time-sub {

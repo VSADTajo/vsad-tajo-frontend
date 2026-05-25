@@ -2,7 +2,12 @@
 import L from 'leaflet'
 import { dynamicLayersConfig } from '@/config/layers.config'
 import { createLayer } from '@/services/geoserver'
-import type { LayerConfig, LayerState, WMSLayerConfig } from '@/types/Layers'
+import type {
+  LayerConfig,
+  LayerState,
+  MeteoAccumulatedImageLayerConfig,
+  WMSLayerConfig,
+} from '@/types/Layers'
 import router from '@/router'
 import { getLayerLegendUrl } from '@/services/efasWmsService'
 import { getGeoServerLegendUrl } from '@/services/geoserverWmsService'
@@ -30,7 +35,7 @@ export class MapLayerManager {
   // ==============================
 
   private groupedLayers: Record<string, L.Layer> = {}
-  private temporalLayers: Record<string, L.TileLayer.WMS[]> = {}
+  private temporalLayers: Record<string, Array<L.TileLayer.WMS | L.ImageOverlay>> = {}
   private layerGeneration: Record<string, number> = {}
   private cachedGroupCQLFilters: Record<string, string> = {}
   private layersStore = useLayersStore()
@@ -229,6 +234,9 @@ export class MapLayerManager {
         }
 
         this.activeLayers[layerState.id] = layer
+        if (config.temporal) {
+          this.temporalLayerManager.registerInitialTemporalLayer(layerState.id, layer)
+        }
         if (canUseCache) {
           this.cache[layerState.id] = layer
         }
@@ -274,6 +282,17 @@ export class MapLayerManager {
             }
           }
         }
+
+        if (config.type === 'METEO_ACCUMULATED_IMAGE') {
+          const meteoConfig = config as MeteoAccumulatedImageLayerConfig
+          if (meteoConfig.legendUrl) {
+            await this.legendManager.addGradientLegend(config.id, {
+              title: config.name,
+              legendUrl: meteoConfig.legendUrl,
+              units: 'mm',
+            })
+          }
+        }
       }
 
       // Desactivar
@@ -310,6 +329,14 @@ export class MapLayerManager {
           delete layerState.params.time
         }
 
+        if (layerState.params?.from) {
+          delete layerState.params.from
+        }
+
+        if (layerState.params?.to) {
+          delete layerState.params.to
+        }
+
         this.legendManager.removeLegend(layerState.id)
 
         if (isSelectableLayerId(layerState.id)) {
@@ -342,6 +369,10 @@ export class MapLayerManager {
 
     if (!layer) return
 
+    if (config?.temporal) {
+      this.temporalLayerManager.syncLayerOpacity(layerState.id, layerState.opacity)
+    }
+
     if (layer instanceof L.GeoJSON) {
       const baseOpacity = config?.type === 'WFS' ? (config.style?.normal.opacity ?? 1) : 1
       const baseFillOpacity = config?.type === 'WFS' ? (config.style?.normal.fillOpacity ?? 1) : 1
@@ -353,6 +384,16 @@ export class MapLayerManager {
     }
 
     if (layer instanceof L.TileLayer) {
+      layer.setOpacity(layerState.opacity)
+    }
+
+    if (layer instanceof L.ImageOverlay) {
+      if (layerState.id === 'eps_precipitacion_media_acumulada') {
+        console.debug('[MapLayerManager] setOpacity on accumulated layer', {
+          layerId: layerState.id,
+          opacity: layerState.opacity,
+        })
+      }
       layer.setOpacity(layerState.opacity)
     }
   }

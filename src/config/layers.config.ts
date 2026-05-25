@@ -1,4 +1,5 @@
 import type { LayerConfig } from '@/types/Layers'
+import { getGeoServerLegendUrl } from '@/services/geoserverWmsService'
 import {
   saihPointStyle,
   subcuencasStyle,
@@ -155,12 +156,19 @@ export const dynamicLayersConfig: LayerConfig[] = [
   {
     id: 'eps_precipitacion_media_acumulada',
     name: 'Precipitacion Media Acumulada',
-    type: 'WMS',
-    url: geoserverTajoWmsUrl,
-    layers: 'Tajo:eps_precipitacion_media_acumulado',
-    format: 'image/png',
-    styles: 'raster-precipitaciones',
-    transparent: true,
+    type: 'METEO_ACCUMULATED_IMAGE',
+    url: import.meta.env.VITE_API_URL,
+    provider: 'EPS',
+    variable: 'Precipitacion_media',
+    infoPath: 'meteo/info',
+    mapPath: 'meteo/accumulate/map',
+    imageFormat: 'image/jpeg',
+    legendUrl: getGeoServerLegendUrl({
+      url: geoserverTajoWmsUrl,
+      layerName: 'Tajo:eps_precipitacion_media',
+      styleName: 'raster-precipitaciones',
+      format: 'image/png',
+    }),
     opacity: 1,
     temporal: true,
     temporalControlMode: 'range',
