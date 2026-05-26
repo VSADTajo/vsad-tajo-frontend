@@ -44,7 +44,10 @@
   import { computed, ref } from 'vue'
   import type { ApexOptions } from 'apexcharts'
   import type { StationPrediction } from '@/types/Predictions'
-  import { extractAccumulatedHorizonValues, PRECIP_HORIZON_META } from '../utils/precipAccumulation'
+  import {
+    extractAccumulatedHorizonValuesWithMode,
+    PRECIP_HORIZON_META,
+  } from '../utils/precipAccumulation'
 
   type ThresholdValues = {
     h0?: number
@@ -140,7 +143,12 @@
     return epsPrediction.value
   })
 
-  const horizonValues = computed(() => extractAccumulatedHorizonValues(selectedPrediction.value))
+  const horizonValues = computed(() =>
+    extractAccumulatedHorizonValuesWithMode(
+      selectedPrediction.value,
+      selectedProvider.value === 'observed' ? 'backward' : 'forward'
+    )
+  )
 
   const categories = computed(() => PRECIP_HORIZON_META.map((item) => item.label))
   const values = computed(() =>

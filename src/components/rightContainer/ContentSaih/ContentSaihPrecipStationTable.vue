@@ -67,7 +67,10 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import type { StationPrediction } from '@/types/Predictions'
-  import { extractAccumulatedHorizonValues, PRECIP_HORIZON_META } from '../utils/precipAccumulation'
+  import {
+    extractAccumulatedHorizonValuesWithMode,
+    PRECIP_HORIZON_META,
+  } from '../utils/precipAccumulation'
 
   type ThresholdValues = {
     h0?: number
@@ -158,7 +161,12 @@
         : epsPrediction.value
   )
 
-  const horizonValues = computed(() => extractAccumulatedHorizonValues(selectedPrediction.value))
+  const horizonValues = computed(() =>
+    extractAccumulatedHorizonValuesWithMode(
+      selectedPrediction.value,
+      selectedProvider.value === 'observed' ? 'backward' : 'forward'
+    )
+  )
 
   function getStatus(
     valor: number | null,

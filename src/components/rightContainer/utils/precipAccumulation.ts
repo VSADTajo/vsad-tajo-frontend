@@ -29,6 +29,13 @@ export function emptyHorizons(): HorizonValues {
 }
 
 export function extractAccumulatedHorizonValues(prediction?: StationPrediction): HorizonValues {
+  return extractAccumulatedHorizonValuesWithMode(prediction, 'forward')
+}
+
+export function extractAccumulatedHorizonValuesWithMode(
+  prediction: StationPrediction | undefined,
+  mode: 'forward' | 'backward'
+): HorizonValues {
   const result = emptyHorizons()
   if (!prediction?.results?.length) return result
 
@@ -43,6 +50,7 @@ export function extractAccumulatedHorizonValues(prediction?: StationPrediction):
   if (!orderedResults.length) return result
 
   const startTimestamp = orderedResults[0].timestamp
+  const endTimestamp = orderedResults[orderedResults.length - 1].timestamp
 
   for (const horizon of PRECIP_HORIZON_META) {
     if (horizon.hours === 0) {
@@ -50,9 +58,14 @@ export function extractAccumulatedHorizonValues(prediction?: StationPrediction):
       continue
     }
 
-    const targetMs = startTimestamp + horizon.hours * 60 * 60 * 1000
+    const targetMs =
+      mode === 'backward'
+        ? endTimestamp - horizon.hours * 60 * 60 * 1000
+        : startTimestamp + horizon.hours * 60 * 60 * 1000
     const accumulated = orderedResults
-      .filter((entry) => entry.timestamp <= targetMs)
+      .filter((entry) =>
+        mode === 'backward' ? entry.timestamp >= targetMs : entry.timestamp <= targetMs
+      )
       .reduce((sum, entry) => sum + entry.value, 0)
 
     result[horizon.key] = Number.isFinite(accumulated) ? accumulated : null
