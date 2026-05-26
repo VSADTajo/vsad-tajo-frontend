@@ -16,6 +16,7 @@
           v-if="isEmbalse"
           v-model="embalseObservedMode"
           mandatory
+          density="compact"
           divided
           color="primary"
           variant="outlined"
@@ -324,11 +325,11 @@
   .observed-mode-toggle {
     width: 100%;
     display: flex;
-    height: 60px !important;
+    height: 38px !important;
   }
 
   .observed-mode-btn {
     flex: 1;
-    min-height: 56px !important;
+    min-height: 38px !important;
   }
 </style>

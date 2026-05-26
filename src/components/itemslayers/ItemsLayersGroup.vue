@@ -127,7 +127,7 @@
   import { ref } from 'vue'
   import { computed } from 'vue'
   import { useLayersStore } from '@/stores/layersStore'
-  import { zonasLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
+  import { zonasLayers, meteoMaps, efasLayers, avisosLayers } from '@/constants/itemsLayers'
 
   const componentProps = defineProps<{
     layers: LayerNode[]
@@ -141,7 +141,12 @@
   const isOpen = ref(componentProps.defaultOpen ?? true)
 
   const groupLeafIds = computed(() => getAllLeafIds(componentProps.layers))
-  const exclusiveSingleGroupLeafIds = getAllLeafIds([...zonasLayers, ...meteoMaps, ...efasLayers])
+  const exclusiveSingleGroupLeafIds = getAllLeafIds([
+    ...zonasLayers,
+    ...meteoMaps,
+    ...efasLayers,
+    ...avisosLayers,
+  ])
 
   const selectedLayers = computed<string[]>({
     get: () => groupLeafIds.value.filter((id) => store.layers[id]?.visible),

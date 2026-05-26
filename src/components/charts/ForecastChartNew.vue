@@ -344,6 +344,10 @@
     )
   }
 
+  function isVolumeSeriesName(name?: string): boolean {
+    return name === 'Volumen observado' || name === 'Resguardo volumen' || name === 'Volumen minimo'
+  }
+
   // Series para el gráfico
   const series = computed<ApexSeriesItem[]>(() => {
     if (allDates.value.length === 0) return []
@@ -552,13 +556,32 @@
       }
     }
 
+    const hasNonVolumeSeries = result.some((serie) => !isVolumeSeriesName(serie.name))
+
+    if (!hasNonVolumeSeries) {
+      return result.map((serie) => ({
+        ...serie,
+        yAxisIndex: isVolumeSeriesName(serie.name) ? 0 : serie.yAxisIndex,
+      }))
+    }
+
     return result
   })
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
 
+  const hasCaudalSeries = computed(() =>
+    series.value.some((serie) => !isVolumeSeriesName(serie.name))
+  )
+
+  const isVolumeOnlySeries = computed(() => hasVolumeSeries.value && !hasCaudalSeries.value)
+
   const chartInstanceKey = computed(() => {
-    const axisMode = hasVolumeSeries.value ? 'dual' : 'single'
+    const axisMode = isVolumeOnlySeries.value
+      ? 'volume-only'
+      : hasVolumeSeries.value
+        ? 'dual'
+        : 'single'
     const names = series.value.map((s) => s.name).join('|')
     return `${axisMode}:${names}`
   })
@@ -620,12 +643,14 @@
   )
 
   const hasVolumeSeries = computed(() =>
-    series.value.some(
-      (serie) =>
-        serie.name === 'Volumen observado' ||
-        serie.name === 'Resguardo volumen' ||
-        serie.name === 'Volumen minimo'
-    )
+    series.value.some((serie) => isVolumeSeriesName(serie.name))
+  )
+
+  const resolvedVolumeThresholdAnnotations = computed(() =>
+    volumeThresholdAnnotations.value.map((annotation) => ({
+      ...annotation,
+      yAxisIndex: isVolumeOnlySeries.value ? 0 : 1,
+    }))
   )
 
   const dynamicYAxis = computed<ApexOptions['yaxis']>(() => {
@@ -637,6 +662,18 @@
       },
     }
 
+    const volumeAxis = {
+      min: 0,
+      title: { text: 'hm3' },
+      labels: {
+        formatter: (value: number) => Number(value).toFixed(2),
+      },
+    }
+
+    if (isVolumeOnlySeries.value) {
+      return volumeAxis
+    }
+
     if (!hasVolumeSeries.value) {
       return caudalAxis
     }
@@ -644,12 +681,8 @@
     return [
       caudalAxis,
       {
+        ...volumeAxis,
         opposite: true,
-        min: 0,
-        title: { text: 'hm3' },
-        labels: {
-          formatter: (value: number) => Number(value).toFixed(2),
-        },
       },
     ]
   })
@@ -723,7 +756,7 @@
       xaxis: observedEndXAnnotation.value,
       yaxis: [
         ...caudalThresholdAnnotations.value,
-        ...(hasVolumeSeries.value ? volumeThresholdAnnotations.value : []),
+        ...(hasVolumeSeries.value ? resolvedVolumeThresholdAnnotations.value : []),
       ],
     },
     tooltip: {

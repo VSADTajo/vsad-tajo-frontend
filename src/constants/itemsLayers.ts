@@ -220,3 +220,10 @@ export const efasLayers: LayerNode[] = [
     opacity: 1,
   },
 ]
+
+export const avisosLayers: LayerNode[] = [
+  {
+    id: 'avisos_aemet',
+    title: 'AEMET',
+  },
+]

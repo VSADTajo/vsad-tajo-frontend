@@ -7,6 +7,7 @@
         mandatory
         density="compact"
         color="primary"
+        divided
         variant="outlined"
       >
         <v-btn value="observed" size="small">Observado</v-btn>
@@ -221,6 +222,9 @@
       },
       min: 0,
       forceNiceScale: true,
+      labels: {
+        formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(2) : '--'),
+      },
     },
     colors: [
       selectedProvider.value === 'observed'

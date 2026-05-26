@@ -11,6 +11,7 @@
         v-model="selectedProvider"
         mandatory
         density="compact"
+        divided
         color="primary"
         variant="outlined"
       >
