@@ -90,6 +90,8 @@ export interface MeteoAccumulatedImageLayerConfig extends BaseLayerConfig {
   variable: string
   provider: string
   chartSourceLayerId?: string
+  extentProvider?: string
+  extentVariable?: string
   infoPath?: string
   mapPath?: string
   imageFormat?: string

@@ -213,10 +213,28 @@ export async function createMeteoAccumulatedImageLayer(
     const dimension = await getMeteoLayerTimeDimension(config)
     if (!dimension) return null
 
+    const extentDimension =
+      config.extentProvider && config.extentVariable
+        ? await getMeteoLayerTimeDimension({
+            provider: config.extentProvider,
+            variable: config.extentVariable,
+            infoPath: config.infoPath,
+          })
+        : null
+
+    const renderDimension = extentDimension
+      ? {
+          ...dimension,
+          bbox: extentDimension.bbox,
+          width: extentDimension.width,
+          height: extentDimension.height,
+        }
+      : dimension
+
     const from = extraParams?.from ?? dimension.start
     const to = extraParams?.to ?? dimension.end
 
-    const imageUrl = buildMeteoAccumulatedMapUrl(config, dimension, { from, to })
+    const imageUrl = buildMeteoAccumulatedMapUrl(config, renderDimension, { from, to })
     const token = localStorage.getItem('token')
     const imageBlob = await ky
       .get(imageUrl, {
@@ -230,15 +248,18 @@ export async function createMeteoAccumulatedImageLayer(
 
     const objectUrl = URL.createObjectURL(imageBlob)
     const bounds = L.latLngBounds(
-      [dimension.bbox.minY, dimension.bbox.minX],
-      [dimension.bbox.maxY, dimension.bbox.maxX]
+      [renderDimension.bbox.minY, renderDimension.bbox.minX],
+      [renderDimension.bbox.maxY, renderDimension.bbox.maxX]
     )
 
     const overlay = L.imageOverlay(objectUrl, bounds, {
       opacity: config.opacity ?? 1,
       pane: config.pane,
       interactive: config.interactive ?? false,
-    }) as L.ImageOverlay & { __temporalSignature?: string; __objectUrl?: string }
+    }) as L.ImageOverlay & {
+      __temporalSignature?: string
+      __objectUrl?: string
+    }
 
     overlay.__temporalSignature = `${from}/${to}`
     overlay.__objectUrl = objectUrl

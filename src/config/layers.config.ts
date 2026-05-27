@@ -240,6 +240,8 @@ export const dynamicLayersConfig: LayerConfig[] = [
     provider: 'Harmonie',
     variable: 'Precipitacion',
     chartSourceLayerId: 'harmonie_precipitacion',
+    extentProvider: 'EPS',
+    extentVariable: 'Precipitacion_media',
     infoPath: 'meteo/info',
     mapPath: 'meteo/accumulate/map',
     imageFormat: 'image/png',
