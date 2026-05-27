@@ -7,7 +7,13 @@
 
     <v-card-text class="pa-2">
       <div class="mb-3">
-        <v-btn-toggle v-model="selectedKind" mandatory class="w-100">
+        <v-btn-toggle
+          v-model="selectedKind"
+          mandatory
+          class="w-100"
+          variant="outlined"
+          density="compact"
+        >
           <v-btn value="resguardo" size="small" class="flex-grow-1">Resguardo</v-btn>
           <v-btn value="minimo" size="small" class="flex-grow-1">Vol minimo</v-btn>
         </v-btn-toggle>

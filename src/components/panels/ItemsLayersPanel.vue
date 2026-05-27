@@ -19,18 +19,19 @@
       <v-row>
         <v-col cols="12" class="pb-1 px-4">
           <ItemsLayersGroup
-            :layers="zonasLayers"
-            title="Zonas"
+            v-col
+            :layers="stationLayers"
+            title="Estaciones"
             :multiple="false"
-            :default-open="false"
+            :default-open="true"
           />
         </v-col>
         <v-col cols="12" class="pt-1 pb-1 px-4">
           <ItemsLayersGroup
-            :layers="stationLayers"
-            title="Estaciones"
-            :multiple="true"
-            :default-open="true"
+            :layers="zonasLayers"
+            title="Zonas"
+            :multiple="false"
+            :default-open="false"
           />
         </v-col>
         <v-col cols="12" class="pt-1 pb-1 px-4">
@@ -41,10 +42,19 @@
             :default-open="false"
           />
         </v-col>
-        <v-col cols="12" class="pt-1 px-4">
+        <v-col cols="12" class="pt-1 pb-1 px-4">
           <ItemsLayersGroup
             :layers="efasLayers"
             title="Mapas Efas"
+            :multiple="false"
+            :default-open="false"
+          />
+        </v-col>
+
+        <v-col cols="12" class="pt-1 px-4">
+          <ItemsLayersGroup
+            :layers="avisosLayers"
+            title="Avisos"
             :multiple="false"
             :default-open="false"
           />
@@ -58,7 +68,13 @@
   import { useRouter } from 'vue-router'
   import ItemsLayersGroup from '../itemslayers/ItemsLayersGroup.vue'
 
-  import { stationLayers, zonasLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
+  import {
+    stationLayers,
+    zonasLayers,
+    meteoMaps,
+    efasLayers,
+    avisosLayers,
+  } from '@/constants/itemsLayers'
   import { useDisplay } from 'vuetify'
 
   const { mdAndUp } = useDisplay()

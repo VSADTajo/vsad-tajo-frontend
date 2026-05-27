@@ -2,19 +2,24 @@
   <v-card class="pa-2 bg-surface" elevation="2">
     <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
       <span class="text-subtitle-1 font-weight-bold pl-2">Prevision Precipitación</span>
+    </v-card-title>
+
+    <v-divider class="mb-2" />
+
+    <v-card-text class="pa-0 justify-center d-flex align-center">
       <v-btn-toggle
         v-model="selectedProvider"
         mandatory
         density="compact"
+        divided
         color="primary"
         variant="outlined"
       >
+        <v-btn value="observed" size="small">Observado</v-btn>
         <v-btn value="harmonie" size="small">Harmonie</v-btn>
         <v-btn value="eps" size="small">EPS</v-btn>
       </v-btn-toggle>
-    </v-card-title>
-
-    <v-divider class="mb-2" />
+    </v-card-text>
 
     <v-data-table
       :headers="headers"
@@ -62,11 +67,13 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import type { StationPrediction } from '@/types/Predictions'
-  import { extractAccumulatedHorizonValues, PRECIP_HORIZON_META } from '../utils/precipAccumulation'
+  import {
+    extractAccumulatedHorizonValuesWithMode,
+    PRECIP_HORIZON_META,
+  } from '../utils/precipAccumulation'
 
   type ThresholdValues = {
     h0?: number
-    h15m?: number
     h1?: number
     h2?: number
     h4?: number
@@ -85,6 +92,7 @@
 
   const props = withDefaults(
     defineProps<{
+      precipitationsHistorical?: StationPrediction
       precipitationsForecastHarmonie?: StationPrediction
       precipitationsForecastEpstat?: StationPrediction
       precipitationsForecastEnsP10?: StationPrediction
@@ -99,6 +107,7 @@
     }>(),
     {
       precipitationsForecastHarmonie: undefined,
+      precipitationsHistorical: undefined,
       precipitationsForecastEpstat: undefined,
       precipitationsForecastEnsP10: undefined,
       precipitationsForecastEnsP25: undefined,
@@ -108,7 +117,6 @@
       forecastEpsat: undefined,
       loading: false,
       thresholdsLeve: () => ({
-        h15m: 5,
         h1: 10,
         h2: 12,
         h4: 13,
@@ -117,7 +125,6 @@
         h24: 30,
       }),
       thresholdsGrave: () => ({
-        h15m: 7.5,
         h1: 15,
         h2: 18,
         h4: 19.5,
@@ -128,7 +135,7 @@
     }
   )
 
-  const selectedProvider = ref<'harmonie' | 'eps'>('eps')
+  const selectedProvider = ref<'observed' | 'harmonie' | 'eps'>('observed')
 
   const headers = [
     { title: 'Periodo', key: 'periodo', sortable: false, width: 80 },
@@ -147,10 +154,19 @@
   )
 
   const selectedPrediction = computed<StationPrediction | undefined>(() =>
-    selectedProvider.value === 'harmonie' ? harmoniePrediction.value : epsPrediction.value
+    selectedProvider.value === 'observed'
+      ? props.precipitationsHistorical
+      : selectedProvider.value === 'harmonie'
+        ? harmoniePrediction.value
+        : epsPrediction.value
   )
 
-  const horizonValues = computed(() => extractAccumulatedHorizonValues(selectedPrediction.value))
+  const horizonValues = computed(() =>
+    extractAccumulatedHorizonValuesWithMode(
+      selectedPrediction.value,
+      selectedProvider.value === 'observed' ? 'backward' : 'forward'
+    )
+  )
 
   function getStatus(
     valor: number | null,

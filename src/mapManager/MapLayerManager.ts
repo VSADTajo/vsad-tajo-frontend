@@ -2,7 +2,12 @@
 import L from 'leaflet'
 import { dynamicLayersConfig } from '@/config/layers.config'
 import { createLayer } from '@/services/geoserver'
-import type { LayerConfig, LayerState, WMSLayerConfig } from '@/types/Layers'
+import type {
+  LayerConfig,
+  LayerState,
+  MeteoAccumulatedImageLayerConfig,
+  WMSLayerConfig,
+} from '@/types/Layers'
 import router from '@/router'
 import { getLayerLegendUrl } from '@/services/efasWmsService'
 import { getGeoServerLegendUrl } from '@/services/geoserverWmsService'
@@ -30,7 +35,7 @@ export class MapLayerManager {
   // ==============================
 
   private groupedLayers: Record<string, L.Layer> = {}
-  private temporalLayers: Record<string, L.TileLayer.WMS[]> = {}
+  private temporalLayers: Record<string, Array<L.TileLayer.WMS | L.ImageOverlay>> = {}
   private layerGeneration: Record<string, number> = {}
   private cachedGroupCQLFilters: Record<string, string> = {}
   private layersStore = useLayersStore()
@@ -183,10 +188,14 @@ export class MapLayerManager {
 
         const layerStateObj = this.layersStore.layers[layerState.id] ?? layersState[layerState.id]
 
-        // Si sigue sin time → NO crear capa
-        const time = layerStateObj?.params?.time
+        const temporalParams = layerStateObj?.params
+        const isRangeTemporal = config.temporalControlMode === 'range'
+        const hasTemporalParams = isRangeTemporal
+          ? Boolean(temporalParams?.from && temporalParams?.to)
+          : Boolean(temporalParams?.time)
 
-        if (config.temporal && !time) {
+        // Si sigue sin parámetros temporales válidos → NO crear capa
+        if (config.temporal && !hasTemporalParams) {
           console.debug('[MapLayerManager] Capa temporal sin time, no se crea capa todavía', {
             layerId: layerState.id,
           })
@@ -195,10 +204,23 @@ export class MapLayerManager {
 
         const canUseCache = !config.temporal
 
+        const extraTemporalParams: Record<string, string> = {}
+
+        if (isRangeTemporal) {
+          if (temporalParams?.from) extraTemporalParams.from = temporalParams.from
+          if (temporalParams?.to) extraTemporalParams.to = temporalParams.to
+        } else if (temporalParams?.time) {
+          extraTemporalParams.time = temporalParams.time
+        }
+
         // Crear capa con callback de dblclick
         const layer =
           (canUseCache ? this.cache[layerState.id] : undefined) ??
-          (await this.createLayerWithCallback(config, time ? { time } : {}, layerState.id))
+          (await this.createLayerWithCallback(
+            config,
+            hasTemporalParams ? extraTemporalParams : {},
+            layerState.id
+          ))
 
         if (!layer) continue
 
@@ -212,6 +234,9 @@ export class MapLayerManager {
         }
 
         this.activeLayers[layerState.id] = layer
+        if (config.temporal) {
+          this.temporalLayerManager.registerInitialTemporalLayer(layerState.id, layer)
+        }
         if (canUseCache) {
           this.cache[layerState.id] = layer
         }
@@ -225,19 +250,10 @@ export class MapLayerManager {
 
         if (config.type === 'WMS') {
           const wmsConfig = config as WMSLayerConfig
-          console.debug('[MapLayerManager] Evaluando leyenda WMS', {
-            layerId: wmsConfig.id,
-            legendType: wmsConfig.legend ?? 'none',
-            styleName: wmsConfig.styles,
-            layerName: wmsConfig.layers,
-          })
 
           if (config.legend === 'efas') {
             const legendUrl = getLayerLegendUrl(wmsConfig.layers)
-            console.debug('[MapLayerManager] Añadiendo leyenda EFAS', {
-              layerId: wmsConfig.id,
-              legendUrl,
-            })
+
             this.legendManager.addLegend(config.id, legendUrl)
           } else {
             const customLegend = getCustomLegendInfo(wmsConfig)
@@ -248,12 +264,6 @@ export class MapLayerManager {
                 layerName: wmsConfig.layers,
                 styleName: wmsConfig.styles,
                 format: wmsConfig.format,
-              })
-
-              console.debug('[MapLayerManager] Añadiendo leyenda custom GeoServer', {
-                layerId: wmsConfig.id,
-                legendUrl,
-                customLegend,
               })
 
               await this.legendManager.addGradientLegend(config.id, {
@@ -270,6 +280,17 @@ export class MapLayerManager {
                 }
               )
             }
+          }
+        }
+
+        if (config.type === 'METEO_ACCUMULATED_IMAGE') {
+          const meteoConfig = config as MeteoAccumulatedImageLayerConfig
+          if (meteoConfig.legendUrl) {
+            await this.legendManager.addGradientLegend(config.id, {
+              title: config.name,
+              legendUrl: meteoConfig.legendUrl,
+              units: 'mm',
+            })
           }
         }
       }
@@ -308,6 +329,14 @@ export class MapLayerManager {
           delete layerState.params.time
         }
 
+        if (layerState.params?.from) {
+          delete layerState.params.from
+        }
+
+        if (layerState.params?.to) {
+          delete layerState.params.to
+        }
+
         this.legendManager.removeLegend(layerState.id)
 
         if (isSelectableLayerId(layerState.id)) {
@@ -340,6 +369,10 @@ export class MapLayerManager {
 
     if (!layer) return
 
+    if (config?.temporal) {
+      this.temporalLayerManager.syncLayerOpacity(layerState.id, layerState.opacity)
+    }
+
     if (layer instanceof L.GeoJSON) {
       const baseOpacity = config?.type === 'WFS' ? (config.style?.normal.opacity ?? 1) : 1
       const baseFillOpacity = config?.type === 'WFS' ? (config.style?.normal.fillOpacity ?? 1) : 1
@@ -351,6 +384,10 @@ export class MapLayerManager {
     }
 
     if (layer instanceof L.TileLayer) {
+      layer.setOpacity(layerState.opacity)
+    }
+
+    if (layer instanceof L.ImageOverlay) {
       layer.setOpacity(layerState.opacity)
     }
   }

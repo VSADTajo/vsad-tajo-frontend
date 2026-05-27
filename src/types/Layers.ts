@@ -29,6 +29,8 @@ export interface TemporalLoadState {
 
 export interface TimeParams {
   time: string
+  from?: string
+  to?: string
   step: number
 }
 
@@ -83,7 +85,22 @@ export interface APIStationsLayerConfig extends BaseLayerConfig {
   pointToLayer?: (feature: GeoJSON.Feature, latlng: L.LatLng) => L.Layer
 }
 
-export type LayerConfig = WMSLayerConfig | WFSLayerConfig | TMSLayerConfig | APIStationsLayerConfig
+export interface MeteoAccumulatedImageLayerConfig extends BaseLayerConfig {
+  type: 'METEO_ACCUMULATED_IMAGE'
+  variable: string
+  provider: string
+  infoPath?: string
+  mapPath?: string
+  imageFormat?: string
+  legendUrl?: string
+}
+
+export type LayerConfig =
+  | WMSLayerConfig
+  | WFSLayerConfig
+  | TMSLayerConfig
+  | APIStationsLayerConfig
+  | MeteoAccumulatedImageLayerConfig
 
 export interface LayerStyle {
   normal: L.PathOptions

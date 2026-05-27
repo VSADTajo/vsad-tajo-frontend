@@ -7,8 +7,10 @@
         mandatory
         density="compact"
         color="primary"
+        divided
         variant="outlined"
       >
+        <v-btn value="observed" size="small">Observado</v-btn>
         <v-btn value="harmonie" size="small">Harmonie</v-btn>
         <v-btn value="eps" size="small">EPS Medio</v-btn>
         <v-btn value="p10" size="small">P10</v-btn>
@@ -42,11 +44,13 @@
   import { computed, ref } from 'vue'
   import type { ApexOptions } from 'apexcharts'
   import type { StationPrediction } from '@/types/Predictions'
-  import { extractAccumulatedHorizonValues, PRECIP_HORIZON_META } from '../utils/precipAccumulation'
+  import {
+    extractAccumulatedHorizonValuesWithMode,
+    PRECIP_HORIZON_META,
+  } from '../utils/precipAccumulation'
 
   type ThresholdValues = {
     h0?: number
-    h15m?: number
     h1?: number
     h2?: number
     h4?: number
@@ -57,6 +61,7 @@
 
   const props = withDefaults(
     defineProps<{
+      precipitationsHistorical?: StationPrediction
       precipitationsForecastHarmonie?: StationPrediction
       precipitationsForecastEpstat?: StationPrediction
       precipitationsForecastEnsP10?: StationPrediction
@@ -71,6 +76,7 @@
       height?: number
     }>(),
     {
+      precipitationsHistorical: undefined,
       precipitationsForecastHarmonie: undefined,
       precipitationsForecastEpstat: undefined,
       precipitationsForecastEnsP10: undefined,
@@ -81,7 +87,6 @@
       forecastEpsat: undefined,
       thresholdsLeve: () => ({
         h0: 0,
-        h15m: 5,
         h1: 10,
         h2: 12,
         h4: 13,
@@ -91,7 +96,6 @@
       }),
       thresholdsGrave: () => ({
         h0: 0,
-        h15m: 7.5,
         h1: 15,
         h2: 18,
         h4: 19.5,
@@ -104,7 +108,9 @@
     }
   )
 
-  const selectedProvider = ref<'harmonie' | 'eps' | 'p10' | 'p25' | 'p75' | 'p90'>('eps')
+  const selectedProvider = ref<'observed' | 'harmonie' | 'eps' | 'p10' | 'p25' | 'p75' | 'p90'>(
+    'observed'
+  )
 
   const harmoniePrediction = computed<StationPrediction | undefined>(
     () => props.precipitationsForecastHarmonie ?? props.forecastHarmonie
@@ -128,15 +134,21 @@
   )
 
   const selectedPrediction = computed<StationPrediction | undefined>(() => {
+    if (selectedProvider.value === 'observed') return props.precipitationsHistorical
     if (selectedProvider.value === 'harmonie') return harmoniePrediction.value
-    if (selectedProvider.value === 'eps') return epsPrediction.value
     if (selectedProvider.value === 'p10') return p10Prediction.value
     if (selectedProvider.value === 'p25') return p25Prediction.value
     if (selectedProvider.value === 'p75') return p75Prediction.value
-    return p90Prediction.value
+    if (selectedProvider.value === 'p90') return p90Prediction.value
+    return epsPrediction.value
   })
 
-  const horizonValues = computed(() => extractAccumulatedHorizonValues(selectedPrediction.value))
+  const horizonValues = computed(() =>
+    extractAccumulatedHorizonValuesWithMode(
+      selectedPrediction.value,
+      selectedProvider.value === 'observed' ? 'backward' : 'forward'
+    )
+  )
 
   const categories = computed(() => PRECIP_HORIZON_META.map((item) => item.label))
   const values = computed(() =>
@@ -155,11 +167,13 @@
     {
       type: 'bar',
       name:
-        selectedProvider.value === 'harmonie'
-          ? 'Harmonie'
-          : selectedProvider.value === 'eps'
-            ? 'EPS Medio'
-            : selectedProvider.value.toUpperCase(),
+        selectedProvider.value === 'observed'
+          ? 'Observado'
+          : selectedProvider.value === 'harmonie'
+            ? 'Harmonie'
+            : selectedProvider.value === 'eps'
+              ? 'EPS Medio'
+              : selectedProvider.value.toUpperCase(),
       data: values.value,
     },
     {
@@ -216,8 +230,27 @@
       },
       min: 0,
       forceNiceScale: true,
+      labels: {
+        formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(2) : '--'),
+      },
     },
-    colors: [selectedProvider.value === 'harmonie' ? '#1976d2' : '#00897b', '#fdd835', '#ef5350'],
+    colors: [
+      selectedProvider.value === 'observed'
+        ? '#2e7d32'
+        : selectedProvider.value === 'harmonie'
+          ? '#1976d2'
+          : selectedProvider.value === 'eps'
+            ? '#00897b'
+            : selectedProvider.value === 'p10'
+              ? '#b0bec5'
+              : selectedProvider.value === 'p25'
+                ? '#757575'
+                : selectedProvider.value === 'p75'
+                  ? '#616161'
+                  : '#90a4ae',
+      '#fdd835',
+      '#ef5350',
+    ],
     tooltip: {
       y: {
         formatter: (value: number) => `${value.toFixed(2)} mm`,

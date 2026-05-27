@@ -2,8 +2,7 @@
   <v-row class="align-stretch">
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
       <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
-        <ContentSaihAlertStatus
-          active-tab="precipitaciones"
+        <ContentSaihAlertStatusPrecipObserved
           :loading="loadingPrecipitaciones"
           :precipitations-historical="precipitationsHistorical"
           :thresholds="thresholds"
@@ -24,10 +23,9 @@
       </v-card>
 
       <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
-        <ContentSaihOperationalSummary
+        <ContentSaihOperationalSummaryPrecipObserved
           :loading="loadingPrecipitaciones"
           :precipitations-historical="precipitationsHistorical"
-          active-tab="precipitaciones"
           :thresholds="thresholds"
           title="Resumen Operativo Observado"
         />
@@ -52,10 +50,14 @@
 
     <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column pe-3 pl-0">
       <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
-        <ContentSaihAlertStatus
-          active-tab="precipitaciones"
+        <ContentSaihAlertStatusPrecipPredictions
           :loading="loadingPrecipitaciones"
-          :precipitations-historical="precipitationsHistorical"
+          :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
+          :precipitations-forecast-epstat="precipitationsForecastEpstat"
+          :precipitations-forecast-ens-p10="precipitationsForecastEnsP10"
+          :precipitations-forecast-ens-p25="precipitationsForecastEnsP25"
+          :precipitations-forecast-ens-p75="precipitationsForecastEnsP75"
+          :precipitations-forecast-ens-p90="precipitationsForecastEnsP90"
           :thresholds="thresholds"
         />
       </v-card>
@@ -80,10 +82,14 @@
       </v-card>
 
       <v-card class="ml-1 mr-1 mt-2 pa-2 bg-background w-100 flex-grow-1" elevation="2">
-        <ContentSaihOperationalSummary
+        <ContentSaihOperationalSummaryPrecipPredictions
           :loading="loadingPrecipitaciones"
-          :precipitations-historical="precipitationsHistorical"
-          active-tab="precipitaciones"
+          :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
+          :precipitations-forecast-epstat="precipitationsForecastEpstat"
+          :precipitations-forecast-ens-p10="precipitationsForecastEnsP10"
+          :precipitations-forecast-ens-p25="precipitationsForecastEnsP25"
+          :precipitations-forecast-ens-p75="precipitationsForecastEnsP75"
+          :precipitations-forecast-ens-p90="precipitationsForecastEnsP90"
           :thresholds="thresholds"
           title="Resumen Operativo Predicciones"
         />
@@ -99,6 +105,7 @@
       >
         <ContentSaihPrecipStationTable
           :loading="loadingPrecipitaciones"
+          :precipitations-historical="precipitationsHistorical"
           :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
           :precipitations-forecast-epstat="precipitationsForecastEpstat"
           :precipitations-forecast-ens-p10="precipitationsForecastEnsP10"
@@ -117,6 +124,7 @@
       >
         <ContentSaihPrecipAccumulatedBars
           :loading="loadingPrecipitaciones"
+          :precipitations-historical="precipitationsHistorical"
           :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
           :precipitations-forecast-epstat="precipitationsForecastEpstat"
           :precipitations-forecast-ens-p10="precipitationsForecastEnsP10"
@@ -140,9 +148,11 @@
   import { getAvailablePredictionsService } from '@/services/predictions'
 
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
-  import ContentSaihAlertStatus from './ContentSaih/ContentSaihAlertStatus.vue'
+  import ContentSaihAlertStatusPrecipObserved from './ContentSaih/ContentSaihAlertStatusPrecipObserved.vue'
+  import ContentSaihAlertStatusPrecipPredictions from './ContentSaih/ContentSaihAlertStatusPrecipPredictions.vue'
   import ContentObservedData from './ContentSaih/ContentObservedData.vue'
-  import ContentSaihOperationalSummary from './ContentSaih/ContentSaihOperationalSummary.vue'
+  import ContentSaihOperationalSummaryPrecipObserved from './ContentSaih/ContentSaihOperationalSummaryPrecipObserved.vue'
+  import ContentSaihOperationalSummaryPrecipPredictions from './ContentSaih/ContentSaihOperationalSummaryPrecipPredictions.vue'
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
   import ContentSaihPrecipStationTable from './ContentSaih/ContentSaihPrecipStationTable.vue'
   import ContentSaihPrecipAccumulatedBars from './ContentSaih/ContentSaihPrecipAccumulatedBars.vue'

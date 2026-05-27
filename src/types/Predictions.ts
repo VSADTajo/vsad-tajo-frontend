@@ -81,5 +81,6 @@ export type Point = { x: string; y: number | null }
 export type SeriesItem = {
   name: string
   type?: string
+  yAxisIndex?: number
   data: Array<Point | RangePoint | number | null>
 }

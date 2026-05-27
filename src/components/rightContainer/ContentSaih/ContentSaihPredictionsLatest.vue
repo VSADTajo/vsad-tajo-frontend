@@ -12,7 +12,13 @@
 
     <v-card-text v-else class="pa-2">
       <div class="mb-3 d-flex justify-center">
-        <v-btn-toggle v-model="selectedModel" mandatory density="compact">
+        <v-btn-toggle
+          v-model="selectedModel"
+          mandatory
+          density="compact"
+          divided
+          variant="outlined"
+        >
           <v-btn value="harmonie" size="x-small">Harmonie</v-btn>
           <v-btn value="eps" size="x-small">EPS Medio</v-btn>
         </v-btn-toggle>

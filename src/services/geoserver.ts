@@ -5,6 +5,7 @@ import type {
   WMSLayerConfig,
   TMSLayerConfig,
   APIStationsLayerConfig,
+  MeteoAccumulatedImageLayerConfig,
 } from '@/types/Layers'
 import ky from 'ky'
 import { api } from './api'
@@ -20,9 +21,29 @@ import {
 import { StyleManager } from '@/mapManager/StyleManager'
 import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
 import type { StationsApiResponse } from '@/utils/stationsToGeoJSON'
+import { buildMeteoAccumulatedMapUrl, getMeteoLayerTimeDimension } from '@/services/meteoService'
 
 interface WMSOptionsExtended extends L.WMSOptions {
   tiled?: boolean
+}
+
+function normalizeIsoForWms(value: string): string {
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return value
+  }
+
+  return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+function toRangeParams(timeValue: string): { from: string; to: string } | null {
+  const [fromRaw, toRaw] = timeValue.split('/')
+  if (!fromRaw || !toRaw) return null
+
+  return {
+    from: normalizeIsoForWms(fromRaw),
+    to: normalizeIsoForWms(toRaw),
+  }
 }
 
 function parseInCqlFilter(filter: string): { field: string; values: string[] } | null {
@@ -66,6 +87,22 @@ export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, s
   const paneName = config.pane ?? 'overlayPane'
   let bounds: L.LatLngBounds | undefined
 
+  const wmsParams = { ...(params ?? {}) }
+
+  if (config.temporalControlMode === 'range') {
+    const rangeFromTime = wmsParams.time ? toRangeParams(wmsParams.time) : null
+
+    if (rangeFromTime) {
+      wmsParams.from = rangeFromTime.from
+      wmsParams.to = rangeFromTime.to
+      delete wmsParams.time
+    } else {
+      if (wmsParams.from) wmsParams.from = normalizeIsoForWms(wmsParams.from)
+      if (wmsParams.to) wmsParams.to = normalizeIsoForWms(wmsParams.to)
+      delete wmsParams.time
+    }
+  }
+
   if (config.bbox) {
     bounds = L.latLngBounds(config.bbox)
   } else if (config.mask && boundaryStore[config.mask]) {
@@ -83,7 +120,7 @@ export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, s
     updateWhenZooming: false,
     updateWhenIdle: true,
     keepBuffer: 2,
-    ...params,
+    ...wmsParams,
   } as WMSOptionsExtended)
 
   if (config.mask) {
@@ -164,6 +201,57 @@ export async function createAPIStationsLayer(
     return geojsonLayer
   } catch (error) {
     console.error('[createAPIStationsLayer] Error fetching stations from', config.url, error)
+    return null
+  }
+}
+
+export async function createMeteoAccumulatedImageLayer(
+  config: MeteoAccumulatedImageLayerConfig,
+  extraParams?: Record<string, string>
+): Promise<L.ImageOverlay | null> {
+  try {
+    const dimension = await getMeteoLayerTimeDimension(config)
+    if (!dimension) return null
+
+    const from = extraParams?.from ?? dimension.start
+    const to = extraParams?.to ?? dimension.end
+
+    const imageUrl = buildMeteoAccumulatedMapUrl(config, dimension, { from, to })
+    const token = localStorage.getItem('token')
+    const imageBlob = await ky
+      .get(imageUrl, {
+        timeout: false,
+        headers: {
+          Accept: config.imageFormat ?? 'image/jpeg',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+      .blob()
+
+    const objectUrl = URL.createObjectURL(imageBlob)
+    const bounds = L.latLngBounds(
+      [dimension.bbox.minY, dimension.bbox.minX],
+      [dimension.bbox.maxY, dimension.bbox.maxX]
+    )
+
+    const overlay = L.imageOverlay(objectUrl, bounds, {
+      opacity: config.opacity ?? 1,
+      pane: config.pane,
+      interactive: config.interactive ?? false,
+    }) as L.ImageOverlay & { __temporalSignature?: string; __objectUrl?: string }
+
+    overlay.__temporalSignature = `${from}/${to}`
+    overlay.__objectUrl = objectUrl
+    overlay.once('remove', () => {
+      if (overlay.__objectUrl) {
+        URL.revokeObjectURL(overlay.__objectUrl)
+        overlay.__objectUrl = undefined
+      }
+    })
+
+    return overlay
+  } catch (error) {
+    console.error('[createMeteoAccumulatedImageLayer] Error creating layer', config.id, error)
     return null
   }
 }
@@ -285,6 +373,9 @@ const layerFactories: {
 
   API_STATIONS: (config, extra, callback) =>
     createAPIStationsLayer(config as APIStationsLayerConfig, extra, callback),
+
+  METEO_ACCUMULATED_IMAGE: (config, extra) =>
+    createMeteoAccumulatedImageLayer(config as MeteoAccumulatedImageLayerConfig, extra),
 }
 
 export async function createLayer(
