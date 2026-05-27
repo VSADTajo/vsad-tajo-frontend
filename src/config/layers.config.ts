@@ -162,7 +162,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     variable: 'Precipitacion_media',
     infoPath: 'meteo/info',
     mapPath: 'meteo/accumulate/map',
-    imageFormat: 'image/jpeg',
+    imageFormat: 'image/png',
     legendUrl: getGeoServerLegendUrl({
       url: geoserverTajoWmsUrl,
       layerName: 'Tajo:eps_precipitacion_media',
@@ -240,7 +240,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     variable: 'Precipitacion',
     infoPath: 'meteo/info',
     mapPath: 'meteo/accumulate/map',
-    imageFormat: 'image/jpeg',
+    imageFormat: 'image/png',
     legendUrl: getGeoServerLegendUrl({
       url: geoserverTajoWmsUrl,
       layerName: 'Tajo:harmonie_precipitacion',
