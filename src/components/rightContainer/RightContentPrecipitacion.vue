@@ -133,7 +133,7 @@
     fetchGeoServerLayerPointTimeSeries,
     getGeoServerLayerTimeDimension,
   } from '@/services/geoserverWmsService'
-  import type { WMSLayerConfig } from '@/types/Layers'
+  import type { MeteoAccumulatedImageLayerConfig, WMSLayerConfig } from '@/types/Layers'
 
   const route = useRoute()
   const router = useRouter()
@@ -154,7 +154,9 @@
       eps_precipitacion_25: 'EPS Precipitación P25',
       eps_precipitacion_75: 'EPS Precipitación P75',
       eps_precipitacion_media: 'EPS Precipitación Media',
+      eps_precipitacion_media_acumulada: 'EPS Precipitación Media Acumulada',
       harmonie_precipitacion: 'Harmonie Precipitación',
+      harmonie_precipitacion_acumulada: 'Harmonie Precipitación Acumulada',
     }
     return labels[id] ?? id
   })
@@ -165,10 +167,32 @@
     const id = selectedLayerId.value
     if (!id) return null
 
-    const config = dynamicLayersConfig.find((layer) => layer.id === id)
-    if (!config || config.type !== 'WMS') return null
+    return dynamicLayersConfig.find((layer) => layer.id === id) ?? null
+  })
 
-    return config as WMSLayerConfig
+  const isAccumulatedLayer = computed(
+    () => selectedLayerConfig.value?.type === 'METEO_ACCUMULATED_IMAGE'
+  )
+
+  const chartSourceLayerConfig = computed(() => {
+    const config = selectedLayerConfig.value
+    if (!config) return null
+
+    if (config.type === 'WMS') {
+      return config as WMSLayerConfig
+    }
+
+    if (config.type !== 'METEO_ACCUMULATED_IMAGE') {
+      return null
+    }
+
+    const sourceId = (config as MeteoAccumulatedImageLayerConfig).chartSourceLayerId
+    if (!sourceId) return null
+
+    const sourceConfig = dynamicLayersConfig.find((layer) => layer.id === sourceId)
+    if (!sourceConfig || sourceConfig.type !== 'WMS') return null
+
+    return sourceConfig as WMSLayerConfig
   })
 
   const selectedLayerState = computed(() => {
@@ -279,7 +303,18 @@
     end: string
     stepHours: number
   } | null> {
-    const stateTemporal = selectedLayerState.value?.temporal
+    const state = selectedLayerState.value
+    const hasRangeParams = Boolean(state?.params?.from && state?.params?.to)
+
+    if (isAccumulatedLayer.value && hasRangeParams) {
+      return {
+        start: state?.params?.from ?? '',
+        end: state?.params?.to ?? '',
+        stepHours: state?.temporal?.stepHours ?? 1,
+      }
+    }
+
+    const stateTemporal = state?.temporal
     if (stateTemporal) {
       return stateTemporal
     }
@@ -313,7 +348,7 @@
 
   async function loadChartData() {
     const currentCoords = coords.value
-    const layerConfig = selectedLayerConfig.value
+    const layerConfig = chartSourceLayerConfig.value
     const temporal = layerConfig ? await resolveTemporalRange(layerConfig) : null
 
     if (!currentCoords || !layerConfig || !temporal) {
@@ -336,13 +371,22 @@
         stepHours: temporal.stepHours,
       })
 
+      const isAccumulated = isAccumulatedLayer.value
+      let runningTotal = 0
+      const chartData = timeSeries.map((entry) => {
+        const value = entry.value ?? 0
+        runningTotal += value
+
+        return {
+          x: dateFormattedWithHours(new Date(entry.time).getTime()),
+          y: isAccumulated ? runningTotal : value,
+        }
+      })
+
       chartSeries.value = [
         {
           name: layerName.value ?? 'Precipitación',
-          data: timeSeries.map((entry) => ({
-            x: dateFormattedWithHours(new Date(entry.time).getTime()),
-            y: entry.value ?? 0,
-          })),
+          data: chartData,
         },
       ]
     } catch {
@@ -373,8 +417,13 @@
   )
 
   watch(
-    () => [route.query.precipitacionLayer, selectedLayerState.value?.params?.time],
-    (newValues) => {
+    () => [
+      route.query.precipitacionLayer,
+      selectedLayerState.value?.params?.time,
+      selectedLayerState.value?.params?.from,
+      selectedLayerState.value?.params?.to,
+    ],
+    () => {
       void loadChartData()
     }
   )

@@ -15,7 +15,9 @@ export const PRECIPITACION_LAYER_IDS = new Set([
   'eps_precipitacion_25',
   'eps_precipitacion_75',
   'eps_precipitacion_media',
+  'eps_precipitacion_media_acumulada',
   'harmonie_precipitacion',
+  'harmonie_precipitacion_acumulada',
 ])
 
 export function isPrecipitacionLayerId(layerId: string): boolean {
