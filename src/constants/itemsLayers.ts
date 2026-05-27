@@ -225,5 +225,21 @@ export const avisosLayers: LayerNode[] = [
   {
     id: 'avisos_aemet',
     title: 'AEMET',
+    children: [
+      { id: 'AT', title: 'Temperaturas máximas', parentLayer: 'avisos_aemet' },
+      { id: 'BT', title: 'Temperaturas mínimas', parentLayer: 'avisos_aemet' },
+      { id: 'P1', title: 'Lluvia acumulada en 1 hora', parentLayer: 'avisos_aemet' },
+      { id: 'P2', title: 'Lluvia acumulada en 12 horas', parentLayer: 'avisos_aemet' },
+      { id: 'NV', title: 'Nevadas', parentLayer: 'avisos_aemet' },
+      { id: 'VI', title: 'Viento', parentLayer: 'avisos_aemet' },
+      { id: 'TS', title: 'Tormentas', parentLayer: 'avisos_aemet' },
+      { id: 'NE', title: 'Nieblas', parentLayer: 'avisos_aemet' },
+      { id: 'PC', title: 'Fenómenos costeros', parentLayer: 'avisos_aemet' },
+      { id: 'GA', title: 'Galernas', parentLayer: 'avisos_aemet' },
+      { id: 'AL', title: 'Aludes', parentLayer: 'avisos_aemet' },
+      { id: 'DH', title: 'Deshielos', parentLayer: 'avisos_aemet' },
+      { id: 'PS', title: 'Polvo en suspensión', parentLayer: 'avisos_aemet' },
+      { id: 'RS', title: 'Rissagas', parentLayer: 'avisos_aemet' },
+    ],
   },
 ]
