@@ -161,6 +161,8 @@ export const dynamicLayersConfig: LayerConfig[] = [
     provider: 'EPS',
     variable: 'Precipitacion_media',
     chartSourceLayerId: 'eps_precipitacion_media',
+    extentProvider: 'EPS',
+    extentVariable: 'Precipitacion_media',
     infoPath: 'meteo/info',
     mapPath: 'meteo/accumulate/map',
     imageFormat: 'image/png',

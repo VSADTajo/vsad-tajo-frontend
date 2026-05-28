@@ -222,14 +222,16 @@ export async function createMeteoAccumulatedImageLayer(
           })
         : null
 
-    const renderDimension = extentDimension
-      ? {
-          ...dimension,
-          bbox: extentDimension.bbox,
-          width: extentDimension.width,
-          height: extentDimension.height,
-        }
-      : dimension
+    let renderDimension = dimension
+
+    if (extentDimension) {
+      renderDimension = {
+        ...dimension,
+        bbox: extentDimension.bbox,
+        width: extentDimension.width,
+        height: extentDimension.height,
+      }
+    }
 
     const from = extraParams?.from ?? dimension.start
     const to = extraParams?.to ?? dimension.end

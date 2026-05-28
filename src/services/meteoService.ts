@@ -43,6 +43,14 @@ function createCacheKey(provider: string, variable: string): string {
   return `${provider.trim().toUpperCase()}|${variable.trim()}`
 }
 
+function normalizeProvider(value: string): string {
+  return value.trim().toUpperCase()
+}
+
+function normalizeVariable(value: string): string {
+  return value.trim().toLowerCase()
+}
+
 function resolveBaseUrl(url: string): string {
   const normalized = url.trim()
   if (!normalized) {
@@ -105,14 +113,25 @@ export async function getMeteoLayerTimeDimension(
     })
     .json<MeteoInfoPayload[]>()
 
-  const matched =
-    response.find(
-      (entry) =>
-        entry.provider?.toUpperCase() === config.provider.toUpperCase() &&
-        entry.variable === config.variable
-    ) ?? response[0]
+  const normalizedProvider = normalizeProvider(config.provider)
+  const normalizedVariable = normalizeVariable(config.variable)
 
-  if (!matched) return null
+  const matched =
+    response.find((entry) => {
+      const entryProvider = normalizeProvider(entry.provider ?? '')
+      const entryVariable = normalizeVariable(entry.variable ?? '')
+
+      return entryProvider === normalizedProvider && entryVariable === normalizedVariable
+    }) ?? (response.length === 1 ? response[0] : null)
+
+  if (!matched) {
+    console.warn('[meteoService] Unable to match meteo info payload entry', {
+      provider: config.provider,
+      variable: config.variable,
+      responseEntries: response.length,
+    })
+    return null
+  }
 
   const dimension = toMeteoDimension(matched)
   if (!dimension) return null
