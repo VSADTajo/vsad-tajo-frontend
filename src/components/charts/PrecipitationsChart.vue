@@ -25,6 +25,7 @@
     data: DataStationPrediction
     height?: number
     loading?: boolean
+    mode?: 'all' | 'precipitations' | 'accumulated'
   }>()
 
   const chartHeight = computed(() => props.height ?? 550)
@@ -207,7 +208,7 @@
     })
   }
 
-  const series = computed<SeriesItem[]>(() => {
+  const allSeries = computed<SeriesItem[]>(() => {
     if (allDates.value.length === 0) return []
 
     const result: SeriesItem[] = []
@@ -310,7 +311,7 @@
         result.push({
           name: 'Acumulado Observado',
           type: 'line',
-          yAxisIndex: 1,
+          yAxisIndex: props.mode === 'accumulated' ? 0 : 1,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
@@ -339,7 +340,7 @@
       result.push({
         name: serie.name,
         type: 'line',
-        yAxisIndex: 1,
+        yAxisIndex: props.mode === 'accumulated' ? 0 : 1,
         data: allDates.value.map((date, i) => ({
           x: labels[i],
           y: values[i],
@@ -348,6 +349,17 @@
     })
 
     return result
+  })
+
+  const series = computed<SeriesItem[]>(() => {
+    const mode = props.mode ?? 'all'
+    if (mode === 'all') return allSeries.value
+
+    if (mode === 'accumulated') {
+      return allSeries.value.filter((serie) => serie.name.startsWith('Acumulado '))
+    }
+
+    return allSeries.value.filter((serie) => !serie.name.startsWith('Acumulado '))
   })
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
@@ -536,27 +548,52 @@
         hideOverlappingLabels: true,
       },
     },
-    yaxis: [
-      {
-        min: 0,
-        title: {
-          text: 'mm',
-        },
-        labels: {
-          formatter: (value: number) => Number(value).toFixed(1),
-        },
-      },
-      {
-        min: 0,
-        opposite: true,
-        title: {
-          text: 'mm acumulado',
-        },
-        labels: {
-          formatter: (value: number) => Number(value).toFixed(1),
-        },
-      },
-    ],
+    yaxis:
+      props.mode === 'accumulated'
+        ? [
+            {
+              min: 0,
+              title: {
+                text: 'mm acumulado',
+              },
+              labels: {
+                formatter: (value: number) => Number(value).toFixed(1),
+              },
+            },
+          ]
+        : props.mode === 'precipitations'
+          ? [
+              {
+                min: 0,
+                title: {
+                  text: 'mm',
+                },
+                labels: {
+                  formatter: (value: number) => Number(value).toFixed(1),
+                },
+              },
+            ]
+          : [
+              {
+                min: 0,
+                title: {
+                  text: 'mm',
+                },
+                labels: {
+                  formatter: (value: number) => Number(value).toFixed(1),
+                },
+              },
+              {
+                min: 0,
+                opposite: true,
+                title: {
+                  text: 'mm acumulado',
+                },
+                labels: {
+                  formatter: (value: number) => Number(value).toFixed(1),
+                },
+              },
+            ],
     annotations: {
       xaxis: observedEndXAnnotation.value,
     },

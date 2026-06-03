@@ -36,13 +36,34 @@
       <div class="w-100 h-100 d-flex flex-column">
         <v-card class="bg-background w-100 d-flex flex-column flex-grow-1" elevation="2">
           <v-card-text class="pa-2 d-flex flex-column flex-grow-1">
-            <v-sheet class="pa-2 h-100 d-flex flex-column">
-              <PrecipitationsChart
-                :data="precipitationsChartData"
-                :height="700"
-                :loading="loadingPrecipitaciones"
-              />
-            </v-sheet>
+            <v-tabs v-model="selectedPrecipChartTab" class="bg-surface px-2">
+              <v-tab value="precipitaciones">Precipitaciones</v-tab>
+              <v-tab value="acumuladas">Acumuladas</v-tab>
+            </v-tabs>
+
+            <v-window v-model="selectedPrecipChartTab" class="flex-grow-1">
+              <v-window-item value="precipitaciones" class="h-100">
+                <v-sheet class="pa-2 h-100 d-flex flex-column">
+                  <PrecipitationsChart
+                    :data="precipitationsChartData"
+                    :height="700"
+                    :loading="loadingPrecipitaciones"
+                    mode="precipitations"
+                  />
+                </v-sheet>
+              </v-window-item>
+
+              <v-window-item value="acumuladas" class="h-100">
+                <v-sheet class="pa-2 h-100 d-flex flex-column">
+                  <PrecipitationsChart
+                    :data="precipitationsChartData"
+                    :height="700"
+                    :loading="loadingPrecipitaciones"
+                    mode="accumulated"
+                  />
+                </v-sheet>
+              </v-window-item>
+            </v-window>
           </v-card-text>
         </v-card>
       </div>
@@ -193,6 +214,7 @@
   const selectedObservedPrecipDate = ref('')
   const selectedHarmoniePrecipDate = ref('')
   const selectedEpsPrecipDate = ref('')
+  const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
 
   const precipitationRefs: ForecastRefsMap = {
     historical: precipitationsHistorical,
