@@ -22,7 +22,7 @@
             v-col
             :layers="stationLayers"
             title="Estaciones"
-            :multiple="false"
+            :multiple="true"
             :default-open="true"
           />
         </v-col>
