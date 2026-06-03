@@ -124,6 +124,13 @@
     PRECIP_HORIZON_META,
     type PrecipHorizonKey,
   } from './utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+    type PrecipThresholdLevel,
+    type PrecipThresholdMap,
+  } from './utils/precipThresholds'
 
   const emit = defineEmits<{
     (e: 'update:selectedStationCode', value: string | null): void
@@ -141,8 +148,6 @@
     h24: number | null
   }
 
-  type PrecipThresholdMap = Record<PrecipHorizonKey, number | null>
-
   type StationForecastRow = HorizonValues & {
     nombre: string
     codigo: string
@@ -153,6 +158,7 @@
     umbral2: number | null
     umbral3: number | null
     precipThresholdsLeve: PrecipThresholdMap
+    precipThresholdsMedio: PrecipThresholdMap
     precipThresholdsGrave: PrecipThresholdMap
   }
 
@@ -185,26 +191,6 @@
     ...aforosWithCaudalPredictions,
     ...embalsesWithCaudalPredictions,
   ])
-
-  const DEFAULT_PRECIP_THRESHOLDS_LEVE: PrecipThresholdMap = {
-    h0: 0,
-    h1: 10,
-    h2: 12,
-    h4: 13,
-    h8: 15,
-    h12: 20,
-    h24: 30,
-  }
-
-  const DEFAULT_PRECIP_THRESHOLDS_GRAVE: PrecipThresholdMap = {
-    h0: 0,
-    h1: 15,
-    h2: 18,
-    h4: 19.5,
-    h8: 22.5,
-    h12: 30,
-    h24: 45,
-  }
 
   function stationHasCaudal(station: StationData): boolean {
     return stationsWithCaudal.has(station.stationCode.trim().toUpperCase())
@@ -264,23 +250,41 @@
 
   function thresholdKeysFor(
     horizon: { key: PrecipHorizonKey; hours: number },
-    level: 'leve' | 'grave'
+    level: PrecipThresholdLevel
   ): string[] {
-    const suffix = level === 'leve' ? ['leve', '1'] : ['grave', '2']
+    const suffixByLevel: Record<PrecipThresholdLevel, string[]> = {
+      leve: ['leve', 'amarillo', '1'],
+      medio: ['medio', 'naranja', '2'],
+      grave: ['grave', 'rojo', '3', '2'],
+    }
+
+    const suffix = suffixByLevel[level]
 
     return [
       `umbral_precip_${horizon.key}_${suffix[0]}`,
+      `umbral_precip_${horizon.key}_${suffix[1]}`,
       `umbral_precip_${horizon.hours}h_${suffix[0]}`,
-      `umbral_lluvia_${horizon.hours}h_${suffix[0]}`,
-      `precip_${horizon.key}_${suffix[0]}`,
-      `${horizon.key}_${suffix[0]}`,
       `umbral_precip_${horizon.hours}h_${suffix[1]}`,
+      `umbral_lluvia_${horizon.hours}h_${suffix[0]}`,
       `umbral_lluvia_${horizon.hours}h_${suffix[1]}`,
+      `precip_${horizon.key}_${suffix[0]}`,
+      `precip_${horizon.key}_${suffix[1]}`,
+      `${horizon.key}_${suffix[0]}`,
       `${horizon.key}_${suffix[1]}`,
+      ...suffix
+        .slice(2)
+        .flatMap((legacy) => [
+          `umbral_precip_${horizon.hours}h_${legacy}`,
+          `umbral_lluvia_${horizon.hours}h_${legacy}`,
+          `${horizon.key}_${legacy}`,
+        ]),
     ]
   }
 
-  function getPrecipThresholds(station: StationData, level: 'leve' | 'grave'): PrecipThresholdMap {
+  function getPrecipThresholds(
+    station: StationData,
+    level: PrecipThresholdLevel
+  ): PrecipThresholdMap {
     const thresholdSource =
       station.threshold && typeof station.threshold === 'object'
         ? (station.threshold as Record<string, unknown>)
@@ -290,13 +294,17 @@
       thresholdSource,
       level === 'leve'
         ? ['thresholdsLeve', 'thresholds_leve', 'umbralesLeve', 'umbralLeve']
-        : ['thresholdsGrave', 'thresholds_grave', 'umbralesGrave', 'umbralGrave']
+        : level === 'medio'
+          ? ['thresholdsMedio', 'thresholds_medio', 'umbralesMedio', 'umbralMedio']
+          : ['thresholdsGrave', 'thresholds_grave', 'umbralesGrave', 'umbralGrave']
     )
 
     const result =
       level === 'leve'
         ? { ...DEFAULT_PRECIP_THRESHOLDS_LEVE }
-        : { ...DEFAULT_PRECIP_THRESHOLDS_GRAVE }
+        : level === 'medio'
+          ? { ...DEFAULT_PRECIP_THRESHOLDS_MEDIO }
+          : { ...DEFAULT_PRECIP_THRESHOLDS_GRAVE }
 
     for (const horizon of PRECIP_HORIZON_META) {
       if (horizon.hours === 0) continue
@@ -318,6 +326,7 @@
       umbral2: getNumericThreshold(station, ['umbralCaudal2']),
       umbral3: getNumericThreshold(station, ['umbralCaudal3']),
       precipThresholdsLeve: getPrecipThresholds(station, 'leve'),
+      precipThresholdsMedio: getPrecipThresholds(station, 'medio'),
       precipThresholdsGrave: getPrecipThresholds(station, 'grave'),
     }))
   )
@@ -645,8 +654,10 @@
 
     if (selectedSeries.value === 'precipitacion') {
       const grave = row.precipThresholdsGrave[horizon]
+      const medio = row.precipThresholdsMedio[horizon]
       const leve = row.precipThresholdsLeve[horizon]
       if (grave != null && value >= grave) return 'cell-red'
+      if (medio != null && value >= medio) return 'cell-orange'
       if (leve != null && value >= leve) return 'cell-yellow'
       return ''
     }
