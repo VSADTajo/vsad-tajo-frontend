@@ -227,17 +227,16 @@
     },
     colors: [
       ({ value }: { value: number }) => {
-        if (value <= 0) return '#e3f2fd'
-        if (value <= 0.1) return '#bbdefb'
-        if (value <= 1) return '#81d4fa'
-        if (value <= 5) return '#86efac'
-        if (value <= 10) return '#22c55e'
-        if (value <= 20) return '#bef264'
-        if (value <= 40) return '#fde047'
-        if (value <= 70) return '#fb923c'
-        if (value <= 100) return '#ef4444'
-        if (value <= 150) return '#991b1b'
-        return '#450a0a'
+        if (value <= 0.1) return '#ffffff'
+        if (value <= 1) return '#c7c7c5'
+        if (value <= 5) return '#79baec'
+        if (value <= 10) return '#0000ff'
+        if (value <= 20) return '#4cc417'
+        if (value <= 40) return '#ffff00'
+        if (value <= 70) return '#f87a17'
+        if (value <= 100) return '#ff0000'
+        if (value <= 150) return '#461b7e'
+        return '#000000'
       },
     ],
     dataLabels: { enabled: false },

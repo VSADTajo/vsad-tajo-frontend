@@ -127,7 +127,7 @@
   import { ref } from 'vue'
   import { computed } from 'vue'
   import { useLayersStore } from '@/stores/layersStore'
-  import { zonasLayers, meteoMaps, efasLayers, avisosLayers } from '@/constants/itemsLayers'
+  import { zonasLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
 
   const componentProps = defineProps<{
     layers: LayerNode[]
@@ -140,16 +140,17 @@
 
   const isOpen = ref(componentProps.defaultOpen ?? true)
 
-  const groupLeafIds = computed(() => getAllLeafIds(componentProps.layers))
-  const exclusiveSingleGroupLeafIds = getAllLeafIds([
-    ...zonasLayers,
-    ...meteoMaps,
-    ...efasLayers,
-    ...avisosLayers,
-  ])
+  const groupLeafNodes = computed(() => getAllLeafNodes(componentProps.layers))
+  const exclusiveSingleGroupLeafIds = getAllLeafIds([...zonasLayers, ...meteoMaps, ...efasLayers])
 
   const selectedLayers = computed<string[]>({
-    get: () => groupLeafIds.value.filter((id) => store.layers[id]?.visible),
+    get: () =>
+      groupLeafNodes.value
+        .filter(
+          (node) =>
+            isMatchingLayerState(node.id, node.parentLayer) && store.layers[node.id]?.visible
+        )
+        .map((node) => node.id),
 
     set: (newIds: string[]) => {
       // En grupos de selección única, aplicar exclusividad también entre grupos simples
@@ -159,7 +160,7 @@
           const isVisible = store.layers[id]?.visible
 
           if (shouldBeVisible !== isVisible) {
-            store.toggleLayer(id)
+            store.setLayerVisibility(id, shouldBeVisible)
           }
         })
 
@@ -167,16 +168,25 @@
       }
 
       // Solo afectar a los ids de ESTE grupo
-      groupLeafIds.value.forEach((id) => {
-        const shouldBeVisible = newIds.includes(id)
-        const isVisible = store.layers[id]?.visible
+      groupLeafNodes.value.forEach((node) => {
+        if (!isMatchingLayerState(node.id, node.parentLayer)) return
+
+        const shouldBeVisible = newIds.includes(node.id)
+        const isVisible = store.layers[node.id]?.visible
 
         if (shouldBeVisible !== isVisible) {
-          store.toggleLayer(id)
+          store.setLayerVisibility(node.id, shouldBeVisible)
         }
       })
     },
   })
+
+  function isMatchingLayerState(id: string, parentLayer?: string): boolean {
+    const layerState = store.layers[id]
+    if (!layerState) return false
+    if (!parentLayer) return true
+    return layerState.parentLayer === parentLayer
+  }
 
   function getLeafIds(node: LayerNode): string[] {
     if (!node.children) return [node.id]
@@ -213,6 +223,10 @@
 
   function getAllLeafIds(nodes: LayerNode[]): string[] {
     return nodes.flatMap((node) => (node.children ? getAllLeafIds(node.children) : node.id))
+  }
+
+  function getAllLeafNodes(nodes: LayerNode[]): LayerNode[] {
+    return nodes.flatMap((node) => (node.children ? getAllLeafNodes(node.children) : node))
   }
 </script>
 
