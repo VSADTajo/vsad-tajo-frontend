@@ -15,8 +15,9 @@
     <v-divider />
     <v-card-text>
       <div class="chart-container">
+        <div v-if="loading" class="chart-empty-state">Cargando datos de resguardos...</div>
         <apexchart
-          v-if="hasSeries"
+          v-else-if="hasSeries"
           type="line"
           :height="200"
           :options="chartOptions"
@@ -31,58 +32,94 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import type { ApexOptions } from 'apexcharts'
-  import type { SeriesItem, StationPrediction } from '@/types/Predictions'
+  import type { SeriesItem } from '@/types/Predictions'
+  import type { ResguardosStationResponse } from '@/types/Resguardos'
 
   const props = defineProps<{
-    resguardoPrediction?: StationPrediction
-    volumenMinimoPrediction?: StationPrediction
+    resguardosData?: ResguardosStationResponse
+    loading?: boolean
   }>()
 
   const selectedHydrologicalYear = ref('2025-2026')
   const hydrologicalYearOptions = ['2025-2026', '2024-2025']
 
-  function normalizeResults(
-    prediction?: StationPrediction
-  ): Array<{ date: string; value: number }> {
-    const items = prediction?.results ?? []
-    return items
-      .map((item) => {
-        const value = Number(item.value)
-        const timestamp = new Date(item.date).getTime()
-        if (!Number.isFinite(value) || !Number.isFinite(timestamp)) return null
-        return { date: item.date, value }
-      })
-      .filter((item): item is { date: string; value: number } => item !== null)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  function getHydrologicalYear(date: Date): string {
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    if (month >= 9) {
+      return `${year}-${year + 1}`
+    }
+    return `${year - 1}-${year}`
   }
 
-  const resguardoData = computed(() => normalizeResults(props.resguardoPrediction))
-  const minimoData = computed(() => normalizeResults(props.volumenMinimoPrediction))
+  const resguardosEntries = computed(() => {
+    const entries = props.resguardosData?.entries ?? {}
+
+    return Object.entries(entries)
+      .map(([date, value]) => {
+        const timestamp = new Date(date).getTime()
+        if (!Number.isFinite(timestamp)) return null
+        return {
+          date,
+          timestamp,
+          year: getHydrologicalYear(new Date(timestamp)),
+          reserveVolume: value.reserveVolume,
+          minimumVolume: value.minimumVolume,
+        }
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          date: string
+          timestamp: number
+          year: string
+          reserveVolume: number | null
+          minimumVolume: number | null
+        } => item !== null
+      )
+      .sort((a, b) => a.timestamp - b.timestamp)
+  })
+
+  const selectedEntries = computed(() => {
+    const filtered = resguardosEntries.value.filter(
+      (entry) => entry.year === selectedHydrologicalYear.value
+    )
+    return filtered.length ? filtered : resguardosEntries.value
+  })
 
   const series = computed<SeriesItem[]>(() => {
+    if (selectedEntries.value.length) {
+      const resguardoSeries = selectedEntries.value
+        .filter((item) => Number.isFinite(Number(item.reserveVolume)))
+        .map((item) => ({ x: item.date, y: Number(item.reserveVolume) }))
+
+      const minimoSeries = selectedEntries.value
+        .filter((item) => Number.isFinite(Number(item.minimumVolume)))
+        .map((item) => ({ x: item.date, y: Number(item.minimumVolume) }))
+
+      const apiSeries: SeriesItem[] = []
+
+      if (resguardoSeries.length) {
+        apiSeries.push({
+          name: 'Resguardo',
+          type: 'line',
+          data: resguardoSeries,
+        })
+      }
+
+      if (minimoSeries.length) {
+        apiSeries.push({
+          name: 'Volumen mínimo',
+          type: 'line',
+          data: minimoSeries,
+        })
+      }
+
+      return apiSeries
+    }
+
     const result: SeriesItem[] = []
-
-    if (resguardoData.value.length) {
-      result.push({
-        name: 'Resguardo',
-        type: 'line',
-        data: resguardoData.value.map((item) => ({
-          x: item.date,
-          y: item.value,
-        })),
-      })
-    }
-
-    if (minimoData.value.length) {
-      result.push({
-        name: 'Volumen mínimo',
-        type: 'line',
-        data: minimoData.value.map((item) => ({
-          x: item.date,
-          y: item.value,
-        })),
-      })
-    }
 
     return result
   })

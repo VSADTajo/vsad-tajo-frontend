@@ -217,8 +217,8 @@
       >
         <ContentSaihResguardosChart
           class="flex-grow-1"
-          :resguardo-prediction="effectiveResguardoPrediction"
-          :volumen-minimo-prediction="effectiveMinimoPrediction"
+          :resguardos-data="resguardosApiData"
+          :loading="loadingResguardos"
         />
       </v-card>
     </v-col>
@@ -233,7 +233,9 @@
     PredictionTypeName,
     StationPrediction,
   } from '@/types/Predictions'
+  import type { ResguardosStationResponse } from '@/types/Resguardos'
   import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import { getResguardosByStationService } from '@/services/resguardos'
   import {
     applyForecastData,
     clearForecasts,
@@ -403,6 +405,9 @@
   const loadingCaudales = ref(false)
   const loadingHarmoniePredict = ref(false)
   const loadingEpsPredict = ref(false)
+  const loadingResguardos = ref(false)
+
+  const resguardosApiData = ref<ResguardosStationResponse>()
 
   // ── Caudal data ───────────────────────────────────────────────────────────
   const caudalHistorical = ref<StationPrediction>()
@@ -433,75 +438,77 @@
     return typeof val === 'string' ? val : undefined
   })
 
-  // ── Mocks ─────────────────────────────────────────────────────────────────
-  function currentHydrologicalYearBounds(now: Date): { start: Date; end: Date } {
-    const month = now.getMonth()
-    const year = now.getFullYear()
-    if (month >= 8) {
-      return { start: new Date(year, 8, 1, 0, 0, 0), end: new Date(year + 1, 8, 1, 0, 0, 0) }
+  function toStationPredictionFromResguardos(
+    kind: 'reserveVolume' | 'minimumVolume',
+    predictionTypeName: string
+  ): StationPrediction | undefined {
+    const payload = resguardosApiData.value
+    if (!payload) return undefined
+
+    const entries = Object.entries(payload.entries)
+      .map(([date, entry]) => {
+        const parsedTime = Date.parse(`${date}T00:00:00`)
+        if (!Number.isFinite(parsedTime)) return null
+        return {
+          date,
+          time: parsedTime,
+          value: kind === 'reserveVolume' ? entry.reserveVolume : entry.minimumVolume,
+        }
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          date: string
+          time: number
+          value: number | null
+        } => item !== null
+      )
+      .sort((a, b) => a.time - b.time)
+
+    const results = entries.flatMap((entry, index) => {
+      const numericValue = Number(entry.value)
+      if (!Number.isFinite(numericValue)) return []
+
+      const startIso = new Date(`${entry.date}T00:00:00`).toISOString()
+      const endIso = new Date(`${entry.date}T23:59:59`).toISOString()
+
+      return [
+        { id: index * 2 + 1, date: startIso, value: numericValue, flag: 0 },
+        { id: index * 2 + 2, date: endIso, value: numericValue, flag: 0 },
+      ]
+    })
+
+    if (!results.length) return undefined
+
+    return {
+      id: `${predictionTypeName}-${payload.stationCode}`,
+      stationId: payload.stationCode,
+      stationName: payload.stationName,
+      predictionTypeName,
+      simulationDate: results[0].date,
+      predictionDate: new Date().toISOString(),
+      predictionProvider: 'resguardos-api',
+      predictedBy: 'api',
+      results,
     }
-    return { start: new Date(year - 1, 8, 1, 0, 0, 0), end: new Date(year, 8, 1, 0, 0, 0) }
   }
 
-  function hashCode(text: string): number {
-    let hash = 0
-    for (let i = 0; i < text.length; i++) {
-      hash = (hash * 31 + text.charCodeAt(i)) >>> 0
-    }
-    return hash
-  }
+  const resguardoFromApi = computed<StationPrediction | undefined>(() =>
+    toStationPredictionFromResguardos('reserveVolume', 'resguardo.hydrologicalYear')
+  )
 
-  const resguardoVolumeMock = computed<StationPrediction | undefined>(() => {
-    if (!props.isEmbalse || !props.normalizedStationCode) return undefined
-    const stationId = props.normalizedStationCode
-    const bounds = currentHydrologicalYearBounds(new Date())
-    const seed = hashCode(stationId)
-    const hm3Value = 35 + (seed % 1200) / 10
-    return {
-      id: `resguardo-${stationId}-${bounds.start.getFullYear()}`,
-      stationId,
-      stationName: stationId,
-      predictionTypeName: 'resguardo.hydrologicalYear.mock',
-      simulationDate: bounds.start.toISOString(),
-      predictionDate: new Date().toISOString(),
-      predictionProvider: 'mock',
-      predictedBy: 'ui-mock',
-      results: [
-        { id: 1, date: bounds.start.toISOString(), value: hm3Value, flag: 0 },
-        { id: 2, date: bounds.end.toISOString(), value: hm3Value, flag: 0 },
-      ],
-    }
-  })
-
-  const volumenMinimoMock = computed<StationPrediction | undefined>(() => {
-    if (!props.isEmbalse || !props.normalizedStationCode) return undefined
-    const stationId = props.normalizedStationCode
-    const bounds = currentHydrologicalYearBounds(new Date())
-    const seed = hashCode(`${stationId}-min`)
-    const hm3Value = 10 + (seed % 500) / 10
-    return {
-      id: `minimo-${stationId}-${bounds.start.getFullYear()}`,
-      stationId,
-      stationName: stationId,
-      predictionTypeName: 'volumen.minimo.hydrologicalYear.mock',
-      simulationDate: bounds.start.toISOString(),
-      predictionDate: new Date().toISOString(),
-      predictionProvider: 'mock',
-      predictedBy: 'ui-mock',
-      results: [
-        { id: 1, date: bounds.start.toISOString(), value: hm3Value, flag: 0 },
-        { id: 2, date: bounds.end.toISOString(), value: hm3Value, flag: 0 },
-      ],
-    }
-  })
+  const minimoFromApi = computed<StationPrediction | undefined>(() =>
+    toStationPredictionFromResguardos('minimumVolume', 'volumen.minimo.hydrologicalYear')
+  )
 
   const editedResguardoPrediction = ref<StationPrediction>()
   const editedMinimoPrediction = ref<StationPrediction>()
   const effectiveResguardoPrediction = computed(
-    () => editedResguardoPrediction.value ?? resguardoVolumeMock.value
+    () => editedResguardoPrediction.value ?? resguardoFromApi.value
   )
   const effectiveMinimoPrediction = computed(
-    () => editedMinimoPrediction.value ?? volumenMinimoMock.value
+    () => editedMinimoPrediction.value ?? minimoFromApi.value
   )
 
   // ── Refs map & chart data ─────────────────────────────────────────────────
@@ -789,6 +796,35 @@
         loadingEpsPredict.value = false
       }
     }
+  )
+
+  let resguardosRequestId = 0
+
+  watch(
+    [() => props.isEmbalse, () => props.normalizedStationCode],
+    async ([isEmbalseStation, stationCode]) => {
+      resguardosApiData.value = undefined
+
+      if (!isEmbalseStation || !stationCode) return
+
+      const requestId = ++resguardosRequestId
+      loadingResguardos.value = true
+
+      try {
+        const response = await getResguardosByStationService(stationCode)
+        if (requestId !== resguardosRequestId) return
+        resguardosApiData.value = response
+      } catch (error) {
+        if (requestId !== resguardosRequestId) return
+        resguardosApiData.value = undefined
+        console.error('Error loading resguardos data:', error)
+      } finally {
+        if (requestId === resguardosRequestId) {
+          loadingResguardos.value = false
+        }
+      }
+    },
+    { immediate: true }
   )
 
   watch(
