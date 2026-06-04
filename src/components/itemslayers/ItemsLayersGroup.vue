@@ -127,6 +127,7 @@
   import { ref } from 'vue'
   import { computed } from 'vue'
   import { useLayersStore } from '@/stores/layersStore'
+  import { useAvisosStore } from '@/stores/avisosStore'
   import { zonasLayers, meteoMaps, efasLayers } from '@/constants/itemsLayers'
 
   const componentProps = defineProps<{
@@ -137,24 +138,55 @@
   }>()
 
   const store = useLayersStore()
+  const avisosStore = useAvisosStore()
 
   const isOpen = ref(componentProps.defaultOpen ?? true)
 
   const groupLeafNodes = computed(() => getAllLeafNodes(componentProps.layers))
+  const isAvisosGroup = computed(
+    () =>
+      groupLeafNodes.value.length > 0 &&
+      groupLeafNodes.value.every((node) => node.parentLayer === 'avisos_aemet')
+  )
   const exclusiveSingleGroupLeafIds = getAllLeafIds([...zonasLayers, ...meteoMaps, ...efasLayers])
 
   const selectedLayers = computed<string[]>({
-    get: () =>
-      groupLeafNodes.value
+    get: () => {
+      if (isAvisosGroup.value) {
+        return avisosStore.selectedTipo ? [avisosStore.selectedTipo] : []
+      }
+
+      return groupLeafNodes.value
         .filter(
           (node) =>
             isMatchingLayerState(node.id, node.parentLayer) && store.layers[node.id]?.visible
         )
-        .map((node) => node.id),
+        .map((node) => node.id)
+    },
 
     set: (newIds: string[]) => {
       // En grupos de selección única, aplicar exclusividad también entre grupos simples
       if (!componentProps.multiple) {
+        if (isAvisosGroup.value) {
+          const selectedAvisoTipo = newIds[0]
+
+          // Toggle explícito: segundo click sobre el mismo item deselecciona
+          if (selectedAvisoTipo && selectedAvisoTipo !== avisosStore.selectedTipo) {
+            // Si se activa un aviso, apagar cualquier capa visible de Zonas/Meteo/EFAS
+            exclusiveSingleGroupLeafIds.forEach((id) => {
+              if (store.layers[id]?.visible) {
+                store.setLayerVisibility(id, false)
+              }
+            })
+
+            void avisosStore.selectAviso(selectedAvisoTipo)
+          } else {
+            avisosStore.clearSelectedAviso()
+          }
+
+          return
+        }
+
         exclusiveSingleGroupLeafIds.forEach((id) => {
           const shouldBeVisible = newIds.includes(id)
           const isVisible = store.layers[id]?.visible
@@ -163,6 +195,11 @@
             store.setLayerVisibility(id, shouldBeVisible)
           }
         })
+
+        // Si se activa una capa de Zonas/Meteo/EFAS, desactivar selección de avisos
+        if (newIds.length > 0 && avisosStore.selectedTipo) {
+          avisosStore.clearSelectedAviso()
+        }
 
         return
       }

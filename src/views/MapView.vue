@@ -2,6 +2,7 @@
   <div class="map-wrapper">
     <div ref="mapContainer" class="map-container"></div>
 
+    <MapAvisosTimeControls v-if="hasSelectedAviso && mdAndUp" :stacked="hasBottomTimeControls" />
     <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
     <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
   </div>
@@ -16,16 +17,20 @@
   import { watch } from 'vue'
   import { useBaseLayers } from '@/composables/useBaseLayers'
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
+  import { useAvisosLayers } from '@/composables/useAvisosLayers'
   import { center, defaultZoom, defaultZoomForMobile, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
+  import MapAvisosTimeControls from '@/components/map/MapAvisosTimeControls.vue'
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import MapTimeRangeControls from '@/components/map/MapTimeRangeControls.vue'
   import { dynamicLayersConfig } from '@/config/layers.config'
+  import { useAvisosStore } from '@/stores/avisosStore'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
   import { useDisplay } from 'vuetify'
 
   const layersStore = useLayersStore()
+  const avisosStore = useAvisosStore()
   const mapStore = useMapStore()
   const { mdAndUp } = useDisplay()
 
@@ -51,6 +56,11 @@
     Object.values(layersStore.layers).some(
       (layer) => layer.visible && layer.temporal && temporalRangeLayerIds.has(layer.id)
     )
+  )
+
+  const hasSelectedAviso = computed(() => Boolean(avisosStore.selectedTipo))
+  const hasBottomTimeControls = computed(
+    () => hasTemporalRangeLayers.value || hasTemporalLayers.value
   )
 
   let currentTileLayer: L.TileLayer
@@ -107,6 +117,7 @@
     const { initBaseLayers } = useBaseLayers(map)
 
     useDynamicLayers(map)
+    useAvisosLayers(map)
     await initBaseLayers()
 
     // Resize map
