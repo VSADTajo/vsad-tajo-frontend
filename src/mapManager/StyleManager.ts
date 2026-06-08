@@ -17,6 +17,27 @@ export class StyleManager {
   private lastClickTimestamp: number = 0
   private buildPopupContent: ((feature: GeoJSON.Feature) => string) | null = null
 
+  private getTooltipAccentColor(): string {
+    if (this.layerId === 'subcuencas') return '#8d5d26'
+    if (this.layerId === 'sistemas10') return '#33a02c'
+    if (this.layerId === 'zonasexpl') return '#1f78b4'
+    if (this.layerId === 'comarcasagrarias') return '#aa3c3c'
+    return '#ffffff'
+  }
+
+  private buildTooltipWrapper(content: string): string {
+    const notchColor = this.getTooltipAccentColor()
+
+    return `
+      <div style="position:relative;display:inline-block;width:max-content;max-width:calc(100vw - 48px);padding-bottom:10px;font-family:Montserrat,sans-serif;white-space:normal;">
+        <div style="border-radius:12px;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.16)">
+          ${content}
+        </div>
+        <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:10px solid ${notchColor};filter:drop-shadow(0 2px 2px rgba(0,0,0,0.12));"></div>
+      </div>
+    `
+  }
+
   constructor(
     layerId: string,
     style: LayerStyle | undefined,
@@ -60,7 +81,7 @@ export class StyleManager {
       if (isPath) {
         // Bind tooltip una sola vez durante setup para evitar flicker del popup sobre el poligono.
         if (this.buildPopupContent) {
-          const popupContent = this.buildPopupContent(feature)
+          const popupContent = this.buildTooltipWrapper(this.buildPopupContent(feature))
           layer.bindTooltip(popupContent, {
             permanent: false,
             sticky: true,

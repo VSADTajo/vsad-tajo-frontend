@@ -103,9 +103,11 @@
   }
 
   const caudalThresholdAnnotations = computed(() => {
-    const t1 = readNumber(['umbral_caudal_1', 'umbral_cauda_1'], props.thresholds)
-    const t2 = readNumber(['umbral_caudal_2', 'umbral_cauda_2'], props.thresholds)
-    const t3 = readNumber(['umbral_caudal_3', 'umbral_cauda_3'], props.thresholds)
+    console.log('props.thresholds', props.thresholds)
+
+    const t1 = readNumber(['umbral_caudal_1', 'umbral_cauda_1', 'umbralCaudal1'], props.thresholds)
+    const t2 = readNumber(['umbral_caudal_2', 'umbral_cauda_2', 'umbralCaudal2'], props.thresholds)
+    const t3 = readNumber(['umbral_caudal_3', 'umbral_cauda_3', 'umbralCaudal3'], props.thresholds)
 
     const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
@@ -146,9 +148,9 @@
   })
 
   const volumeThresholdAnnotations = computed(() => {
-    const t1 = readNumber(['umbral_1_volumen'], props.thresholds)
-    const t2 = readNumber(['umbral_2_volumen'], props.thresholds)
-    const t3 = readNumber(['umbral_3_volumen'], props.thresholds)
+    const t1 = readNumber(['umbral_1_volumen', 'umbralVolumen1'], props.thresholds)
+    const t2 = readNumber(['umbral_2_volumen', 'umbralVolumen2'], props.thresholds)
+    const t3 = readNumber(['umbral_3_volumen', 'umbralVolumen3'], props.thresholds)
 
     const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
@@ -763,6 +765,7 @@
       enabled: true,
       shared: true,
       intersect: false,
+      followCursor: true,
       // hide the small x-axis tooltip and auxiliary fixed tooltip
       x: { show: false },
       fixed: { enabled: false },
@@ -850,14 +853,16 @@
 
   function getThresholdValue(kind: 'caudal' | 'volumen', level: 1 | 2 | 3): number | null {
     if (kind === 'caudal') {
-      if (level === 1) return readNumber(['umbral_caudal_1', 'umbral_cauda_1'], props.thresholds)
-      if (level === 2) return readNumber(['umbral_caudal_2', 'umbral_cauda_2'], props.thresholds)
-      return readNumber(['umbral_caudal_3', 'umbral_cauda_3'], props.thresholds)
+      if (level === 1)
+        return readNumber(['umbral_caudal_1', 'umbral_cauda_1', 'umbralCaudal1'], props.thresholds)
+      if (level === 2)
+        return readNumber(['umbral_caudal_2', 'umbral_cauda_2', 'umbralCaudal2'], props.thresholds)
+      return readNumber(['umbral_caudal_3', 'umbral_cauda_3', 'umbralCaudal3'], props.thresholds)
     }
 
-    if (level === 1) return readNumber(['umbral_1_volumen'], props.thresholds)
-    if (level === 2) return readNumber(['umbral_2_volumen'], props.thresholds)
-    return readNumber(['umbral_3_volumen'], props.thresholds)
+    if (level === 1) return readNumber(['umbral_1_volumen', 'umbralVolumen1'], props.thresholds)
+    if (level === 2) return readNumber(['umbral_2_volumen', 'umbralVolumen2'], props.thresholds)
+    return readNumber(['umbral_3_volumen', 'umbralVolumen3'], props.thresholds)
   }
 
   function getFocusedRange(value: number): { min: number; max: number } {

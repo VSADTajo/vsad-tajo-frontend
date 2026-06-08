@@ -28,6 +28,7 @@
 
     <apexchart
       v-else-if="hasData"
+      :key="`precip-bars-${selectedProvider}`"
       type="bar"
       :height="chartHeight"
       :options="chartOptions"
@@ -141,8 +142,16 @@
     )
   )
 
-  const displayHorizons = computed(() => PRECIP_HORIZON_META.filter((item) => item.hours > 0))
-  const categories = computed(() => displayHorizons.value.map((item) => item.label))
+  const displayHorizons = computed(() => {
+    const horizons = PRECIP_HORIZON_META.filter((item) => item.hours > 0)
+    return selectedProvider.value === 'observed' ? [...horizons].reverse() : horizons
+  })
+
+  const categories = computed(() =>
+    displayHorizons.value.map((item) =>
+      selectedProvider.value === 'observed' ? `-${Math.abs(item.hours)}hs` : item.label
+    )
+  )
   const values = computed(() =>
     displayHorizons.value.map((item) => horizonValues.value[item.key] ?? 0)
   )
@@ -229,9 +238,10 @@
         text: 'mm acumulados',
       },
       min: 0,
+      decimalsInFloat: 1,
       forceNiceScale: true,
       labels: {
-        formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(2) : '--'),
+        formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(1) : '--'),
       },
     },
     colors: [
@@ -253,8 +263,9 @@
       '#ef5350',
     ],
     tooltip: {
+      followCursor: true,
       y: {
-        formatter: (value: number) => `${value.toFixed(2)} mm`,
+        formatter: (value: number) => (Number.isFinite(value) ? `${value.toFixed(1)} mm` : '--'),
       },
     },
     grid: {

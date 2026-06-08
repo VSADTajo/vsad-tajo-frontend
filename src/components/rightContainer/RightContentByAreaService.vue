@@ -110,12 +110,35 @@
                     :toolbar="false"
                     :thresholds="currentStationThresholds"
                   />
-                  <PrecipitationsChart
-                    v-else
-                    :data="selectedChartData ?? {}"
-                    :loading="loadingChart"
-                    :height="500"
-                  />
+
+                  <div v-else>
+                    <v-tabs v-model="selectedPrecipChartTab" class="bg-surface px-2">
+                      <v-tab value="precipitaciones">Precipitaciones</v-tab>
+                      <v-tab value="acumuladas">Acumuladas</v-tab>
+                    </v-tabs>
+
+                    <v-window v-model="selectedPrecipChartTab" class="flex-grow-1">
+                      <v-window-item value="precipitaciones" class="h-100">
+                        <v-sheet class="pa-2 h-100 d-flex flex-column">
+                          <PrecipitationsChart
+                            :data="selectedChartData ?? {}"
+                            :loading="loadingChart"
+                            mode="precipitations"
+                          />
+                        </v-sheet>
+                      </v-window-item>
+
+                      <v-window-item value="acumuladas" class="h-100">
+                        <v-sheet class="pa-2 h-100 d-flex flex-column">
+                          <PrecipitationsChart
+                            :data="selectedChartData ?? {}"
+                            :loading="loadingChart"
+                            mode="accumulated"
+                          />
+                        </v-sheet>
+                      </v-window-item>
+                    </v-window>
+                  </div>
                 </v-card-text>
               </template>
 
@@ -180,6 +203,7 @@
   const selectedStationCode = ref<string | null>(null)
   const selectedChartData = ref<DataStationPrediction | null>(null)
   const selectedSeries = ref<SubcuencaSeriesMode>('caudal')
+  const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
   const selectedStationName = ref('')
   let stationsRequestId = 0
   let chartFetchId = 0
@@ -269,6 +293,7 @@
   const currentStationThresholds = computed<Record<string, unknown> | undefined>(() => {
     if (!selectedStationCode.value) return undefined
     const station = stations.value.find((s) => s.stationCode === selectedStationCode.value)
+
     return (station?.threshold ?? null) as Record<string, unknown> | undefined
   })
 

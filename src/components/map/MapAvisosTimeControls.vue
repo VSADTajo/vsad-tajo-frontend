@@ -9,13 +9,14 @@
           </div>
         </div>
 
-        <div class="avisos-time-current">Intervalo actual: {{ selectedIntervalLabel }}</div>
+        <div class="avisos-time-current">
+          Intervalo seleccionado: {{ selectedDayLabel }} {{ selectedIntervalLabel }} hs
+        </div>
       </div>
 
       <div class="days-grid">
         <div v-for="day in days" :key="day.key" class="day-column">
-          <div class="day-title">{{ day.title }}</div>
-          <div class="day-date">{{ day.dateLabel }}</div>
+          <div class="day-title">{{ day.title }} {{ day.dateLabel }}</div>
 
           <div class="intervals-row">
             <button
@@ -159,6 +160,14 @@
     const start = new Date(avisosStore.selectedIntervalStart)
     const end = addHours(start, 6)
     return formatIntervalLabel(start, end)
+  })
+
+  const selectedDayLabel = computed(() => {
+    const date = new Date(avisosStore.selectedIntervalStart)
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+    }).format(date)
   })
 
   const days = computed<DayView[]>(() => {

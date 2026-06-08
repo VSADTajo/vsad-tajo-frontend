@@ -6,7 +6,7 @@
 
     <v-divider class="mb-2" />
 
-    <v-card-text class="pa-0 justify-center d-flex align-center">
+    <v-card-text class="pa-0 pb-1 justify-center d-flex align-center">
       <v-btn-toggle
         v-model="selectedProvider"
         mandatory
@@ -39,29 +39,30 @@
       </template>
 
       <template #item.valor="{ item }">
-        <span class="text-caption">{{ formatValue(item.valor) }}</span>
+        <v-chip
+          size="x-small"
+          :color="getValueChipColor(item.valor, item.leve, item.medio, item.grave)"
+          class="font-weight-bold"
+        >
+          {{ formatValue(item.valor) }}
+        </v-chip>
       </template>
 
       <template #item.leve="{ item }">
-        <span class="text-caption">{{ formatValue(item.leve) }}</span>
+        <v-chip size="x-small" color="#fdd835" class="font-weight-bold">
+          {{ formatValue(item.leve) }}
+        </v-chip>
       </template>
 
       <template #item.medio="{ item }">
-        <span class="text-caption">{{ formatValue(item.medio) }}</span>
+        <v-chip size="x-small" color="#fb923c" class="font-weight-bold">
+          {{ formatValue(item.medio) }}
+        </v-chip>
       </template>
 
       <template #item.grave="{ item }">
-        <span class="text-caption">{{ formatValue(item.grave) }}</span>
-      </template>
-
-      <template #item.estado="{ item }">
-        <v-chip
-          :color="getStatusColor(item.estado)"
-          :text-color="getStatusTextColor(item.estado)"
-          size="small"
-          class="font-weight-bold"
-        >
-          {{ item.estado }}
+        <v-chip size="x-small" color="#ef5350" class="font-weight-bold">
+          {{ formatValue(item.grave) }}
         </v-chip>
       </template>
     </v-data-table>
@@ -97,7 +98,6 @@
     leve: number | null
     medio: number | null
     grave: number | null
-    estado: 'NORMAL' | 'LEVE' | 'MEDIO' | 'GRAVE'
   }
 
   const props = withDefaults(
@@ -141,7 +141,6 @@
     { title: 'Leve', key: 'leve', align: 'end' as const, sortable: false, width: 70 },
     { title: 'Medio', key: 'medio', align: 'end' as const, sortable: false, width: 70 },
     { title: 'Grave', key: 'grave', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Estado', key: 'estado', align: 'center' as const, sortable: false, width: 100 },
   ]
 
   const harmoniePrediction = computed<StationPrediction | undefined>(
@@ -167,7 +166,10 @@
     )
   )
 
-  const displayHorizons = computed(() => PRECIP_HORIZON_META.filter((item) => item.hours > 0))
+  const displayHorizons = computed(() => {
+    const horizons = PRECIP_HORIZON_META.filter((item) => item.hours > 0)
+    return selectedProvider.value === 'observed' ? [...horizons].reverse() : horizons
+  })
 
   function getStatus(
     valor: number | null,
@@ -191,33 +193,34 @@
     if (estado === 'GRAVE') return '#ef5350'
     if (estado === 'MEDIO') return '#fb923c'
     if (estado === 'LEVE') return '#fdd835'
-    return 'transparent'
+    return 'primary'
   }
 
-  function getStatusTextColor(estado: 'NORMAL' | 'LEVE' | 'MEDIO' | 'GRAVE'): string {
-    if (estado === 'GRAVE') return 'white'
-    if (estado === 'MEDIO') return '#5b2a00'
-    if (estado === 'LEVE') return '#333'
-    return '#333'
+  function getValueChipColor(
+    valor: number | null,
+    leve: number | null | undefined,
+    medio: number | null | undefined,
+    grave: number | null | undefined
+  ): string {
+    return getStatusColor(getStatus(valor, leve, medio, grave))
   }
 
   const tableRows = computed<TableRow[]>(() => {
     const rows: TableRow[] = []
 
-    for (const { key, label } of displayHorizons.value) {
+    for (const { key, label, hours } of displayHorizons.value) {
       const valor = horizonValues.value[key]
       const leve = props.thresholdsLeve?.[key] ?? null
       const medio = props.thresholdsMedio?.[key] ?? null
       const grave = props.thresholdsGrave?.[key] ?? null
-      const estado = getStatus(valor, leve, medio, grave)
+      const periodo = selectedProvider.value === 'observed' ? `-${Math.abs(hours)}hs` : label
 
       rows.push({
-        periodo: label,
+        periodo,
         valor,
         leve,
         medio,
         grave,
-        estado,
       })
     }
 

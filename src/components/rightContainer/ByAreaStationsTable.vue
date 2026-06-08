@@ -95,8 +95,7 @@
       </template>
 
       <template #bottom>
-        <div class="d-flex justify-space-between px-4 py-2 text-caption text-medium-emphasis">
-          <span>{{ selectedRowCode ? 1 : 0 }} estaciones seleccionadas</span>
+        <div class="d-flex justify-end px-4 py-2 text-caption text-medium-emphasis">
           <span>{{ rows.length }} estaciones en total</span>
         </div>
       </template>
@@ -400,9 +399,13 @@
 
   function extractHorizonValues(prediction?: StationPrediction): HorizonValues {
     const result = emptyHorizons()
-    if (!prediction?.results?.length) return result
 
-    const now = Date.now()
+    if (!prediction?.results?.length) {
+      return result
+    }
+
+    const startMs = new Date(prediction.results[0].date).getTime()
+
     const keyMap: Record<number, keyof HorizonValues> = {
       1: 'h1',
       2: 'h2',
@@ -413,22 +416,23 @@
     }
 
     for (const hours of HORIZON_HOURS) {
-      const targetMs = now + hours * 60 * 60 * 1000
+      const targetMs = startMs + hours * 60 * 60 * 1000
+
       let closest: { value: number } | null = null
       let minDiff = Infinity
 
       for (const r of prediction.results) {
         const rMs = new Date(r.date).getTime()
         const diff = Math.abs(rMs - targetMs)
+
         if (diff < minDiff) {
           minDiff = diff
           closest = r
         }
       }
 
-      if (closest && minDiff < TWO_HOURS_MS) {
-        const num = Number(closest.value)
-        result[keyMap[hours]] = Number.isFinite(num) ? num : null
+      if (closest) {
+        result[keyMap[hours]] = Number(closest.value)
       }
     }
 
@@ -465,6 +469,7 @@
         dates[0],
         request.percentile
       )
+
       if (selectedSeries.value === 'precipitacion') {
         return extractPrecipAccumulatedHorizonValues(prediction)
       }

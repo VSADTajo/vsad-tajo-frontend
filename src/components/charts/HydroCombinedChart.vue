@@ -166,6 +166,7 @@
   const sharedTooltip: ApexOptions['tooltip'] = {
     shared: true,
     intersect: false,
+    followCursor: true,
     x: {
       show: true,
     },
