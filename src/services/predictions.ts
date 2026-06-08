@@ -85,8 +85,8 @@ export async function getHistoricalPredictionService(
   predictionType: HistoricalPredictionTypeName,
   startDate: string,
   endDate: string
-): Promise<HistoricalTimelineResponse> {
-  return api
+): Promise<StationPrediction | undefined> {
+  const response = await api
     .get('predictions/historical', {
       searchParams: {
         stationId,
@@ -99,6 +99,25 @@ export async function getHistoricalPredictionService(
       },
     })
     .json<HistoricalTimelineResponse>()
+
+  if (!response.results.length) return undefined
+
+  return {
+    id: `historical-${response.stationId}-${response.predictionType}`,
+    stationId: response.stationId,
+    stationName: '',
+    predictionTypeName: response.predictionType,
+    simulationDate: '',
+    predictionDate: '',
+    predictionProvider: '',
+    predictedBy: '',
+    results: response.results.map((point, index) => ({
+      id: index,
+      date: point.date,
+      value: point.value,
+      flag: point.flag,
+    })),
+  }
 }
 
 export async function getMaxAndLatestValuesService(
