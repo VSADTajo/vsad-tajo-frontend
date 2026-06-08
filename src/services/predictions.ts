@@ -3,6 +3,7 @@ import type {
   AvailableDateItem,
   DatesAvailableResponse,
   HistoricalPredictionTypeName,
+  HistoricalTimelineResponse,
   MaxLatestValuesResponse,
   PredictionsResponse,
   PredictionTypeName,
@@ -82,11 +83,11 @@ export async function getAvailablePredictionsService(
 export async function getHistoricalPredictionService(
   stationId: string,
   predictionType: HistoricalPredictionTypeName,
-  startDate?: string,
-  endDate?: string
-): Promise<StationPrediction | undefined> {
-  const res = await api
-    .get(`predictions/historical`, {
+  startDate: string,
+  endDate: string
+): Promise<HistoricalTimelineResponse> {
+  return api
+    .get('predictions/historical', {
       searchParams: {
         stationId,
         predictionType,
@@ -97,9 +98,7 @@ export async function getHistoricalPredictionService(
         Accept: 'application/json',
       },
     })
-    .json<PredictionsResponse>()
-
-  return res.predictions[0]
+    .json<HistoricalTimelineResponse>()
 }
 
 export async function getMaxAndLatestValuesService(
