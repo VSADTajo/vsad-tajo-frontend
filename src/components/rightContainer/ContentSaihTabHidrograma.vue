@@ -234,7 +234,12 @@
     StationPrediction,
   } from '@/types/Predictions'
   import type { ResguardosStationResponse } from '@/types/Resguardos'
-  import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import {
+    getAvailablePredictionsService,
+    getHistoricalPredictionService,
+  } from '@/services/predictions'
+
+  const HISTORICAL_RANGE_DAYS = 30
   import { getResguardosByStationService } from '@/services/resguardos'
   import {
     applyForecastData,
@@ -570,11 +575,6 @@
   const caudalRequestsByType = computed<Record<'default' | 'E', ForecastRequestDef[]>>(() => ({
     default: [
       {
-        key: 'historical',
-        predictionType: 'FICT98.historical',
-        simulationDate: selectedObservedCaudalDate.value,
-      },
-      {
         key: 'forecastHarmonie',
         predictionType: 'Q.NAM.harmonie',
         simulationDate: selectedHarmonieCaudalDate.value,
@@ -610,11 +610,6 @@
       },
     ],
     E: [
-      {
-        key: 'historical',
-        predictionType: 'FICT99.historical',
-        simulationDate: selectedObservedCaudalDate.value,
-      },
       {
         key: 'forecastHarmonie',
         predictionType: 'I.NAM.harmonie',
@@ -700,18 +695,40 @@
     const code = props.normalizedStationCode
     if (!code) return
 
+    const historicalCaudalType: PredictionTypeName =
+      codeType.value === 'E' ? 'FICT99.historical' : 'FICT98.historical'
+
+    const historicalEnd = new Date().toISOString()
+    const historicalStart = new Date(
+      Date.now() - HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString()
+
     try {
       const requests =
         codeType.value === 'E' ? caudalRequestsByType.value.E : caudalRequestsByType.value.default
 
-      const caudalData = await fetchPredictionBatch(code, requests)
+      const [caudalData, caudalHistorical] = await Promise.all([
+        fetchPredictionBatch(code, requests),
+        getHistoricalPredictionService(code, historicalCaudalType, historicalStart, historicalEnd),
+      ])
       if (requestId !== fetchRequestId) return
       applyForecastData(caudalRefs, caudalData)
+      caudalRefs.historical.value = caudalHistorical
 
-      if (props.isEmbalse && selectedObservedCaudalDate.value) {
+      if (props.isEmbalse) {
         const [outflow, volume] = await Promise.all([
-          getPredictionsService(code, 'FICT95.historical', selectedObservedCaudalDate.value),
-          getPredictionsService(code, 'VICT01.historical', selectedObservedCaudalDate.value),
+          getHistoricalPredictionService(
+            code,
+            'FICT95.historical',
+            historicalStart,
+            historicalEnd
+          ),
+          getHistoricalPredictionService(
+            code,
+            'VICT01.historical',
+            historicalStart,
+            historicalEnd
+          ),
         ])
         if (requestId !== fetchRequestId) return
         caudalOutflowHistorical.value = outflow

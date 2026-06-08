@@ -166,7 +166,12 @@
     PredictionTypeName,
     StationPrediction,
   } from '@/types/Predictions'
-  import { getAvailablePredictionsService } from '@/services/predictions'
+  import {
+    getAvailablePredictionsService,
+    getHistoricalPredictionService,
+  } from '@/services/predictions'
+
+  const HISTORICAL_RANGE_DAYS = 30
 
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import ContentSaihAlertStatusPrecipObserved from './ContentSaih/ContentSaihAlertStatusPrecipObserved.vue'
@@ -238,11 +243,6 @@
 
   const precipitationRequests = computed<ForecastRequestDef<ForecastKey>[]>(() => [
     {
-      key: 'historical',
-      predictionType: 'WI__01.historical',
-      simulationDate: selectedObservedPrecipDate.value,
-    },
-    {
       key: 'forecastHarmonie',
       predictionType: 'P.harmonie.forecast',
       simulationDate: selectedHarmoniePrecipDate.value,
@@ -307,10 +307,24 @@
     const code = props.normalizedStationCode
     if (!code) return
 
+    const historicalEnd = new Date().toISOString()
+    const historicalStart = new Date(
+      Date.now() - HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString()
+
     try {
-      const precipitationData = await fetchPredictionBatch(code, precipitationRequests.value)
+      const [precipitationData, historical] = await Promise.all([
+        fetchPredictionBatch(code, precipitationRequests.value),
+        getHistoricalPredictionService(
+          code,
+          'WI__01.historical',
+          historicalStart,
+          historicalEnd
+        ),
+      ])
       if (requestId !== fetchRequestId) return
       applyForecastData(precipitationRefs, precipitationData)
+      precipitationsHistorical.value = historical
     } catch (err) {
       console.error('Error loading precipitation predictions:', err)
       if (requestId !== fetchRequestId) return
