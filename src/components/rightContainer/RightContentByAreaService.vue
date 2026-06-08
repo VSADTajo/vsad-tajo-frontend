@@ -173,7 +173,11 @@
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
   import type { StationData } from '@/utils/stationsToGeoJSON'
-  import { getAvailablePredictionsService, getPredictionsService } from '@/services/predictions'
+  import {
+    getAvailablePredictionsService,
+    getHistoricalPredictionService,
+    getPredictionsService,
+  } from '@/services/predictions'
   import { getStationsByAreaService } from '@/services/general'
   import {
     subcuencasStyle,
@@ -434,18 +438,22 @@
         .sort((a, b) => b.localeCompare(a))[0]
     }
 
+    const HISTORICAL_RANGE_DAYS = 30
+    const historicalEndDate = new Date().toISOString()
+    const historicalStartDate = new Date(
+      Date.now() - HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString()
+
     try {
-      const [harmonieDates, epsDates, historicalDates] = await Promise.all([
+      const [harmonieDates, epsDates] = await Promise.all([
         getAvailablePredictionsService(stationCode, harmonieType),
         getAvailablePredictionsService(stationCode, epsType),
-        getAvailablePredictionsService(stationCode, historicalType),
       ])
 
       if (requestId !== chartFetchId) return
 
       const harmonieDateStr = latestDate(harmonieDates)
       const epsDateStr = latestDate(epsDates)
-      const historicalDateStr = latestDate(historicalDates)
 
       const [harmoniePred, epsPred, historicalPred, p10Pred, p25Pred, p75Pred, p90Pred] =
         await Promise.all([
@@ -455,9 +463,12 @@
           epsDateStr
             ? getPredictionsService(stationCode, epsType, epsDateStr)
             : Promise.resolve(undefined),
-          historicalDateStr
-            ? getPredictionsService(stationCode, historicalType, historicalDateStr)
-            : Promise.resolve(undefined),
+          getHistoricalPredictionService(
+            stationCode,
+            historicalType,
+            historicalStartDate,
+            historicalEndDate
+          ),
           epsDateStr && series === 'caudal'
             ? getPredictionsService(stationCode, epsType, epsDateStr, '10')
             : epsDateStr
