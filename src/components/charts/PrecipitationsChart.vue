@@ -25,6 +25,7 @@
     data: DataStationPrediction
     height?: number
     loading?: boolean
+    mode?: 'all' | 'precipitations' | 'accumulated'
   }>()
 
   const chartHeight = computed(() => props.height ?? 550)
@@ -207,7 +208,21 @@
     })
   }
 
-  const series = computed<SeriesItem[]>(() => {
+  function computeForecastCumulativeRange(
+    lowSource: Array<{ date: string; value: number | null }> | null | undefined,
+    highSource: Array<{ date: string; value: number | null }> | null | undefined
+  ): Array<[number | null, number | null] | null> {
+    const lowValues = computeForecastCumulativeValues(lowSource)
+    const highValues = computeForecastCumulativeValues(highSource)
+
+    return allDates.value.map((_, index) => {
+      const low = lowValues[index] ?? null
+      const high = highValues[index] ?? null
+      return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
+    })
+  }
+
+  const allSeries = computed<SeriesItem[]>(() => {
     if (allDates.value.length === 0) return []
 
     const result: SeriesItem[] = []
@@ -309,8 +324,8 @@
       if (hasFiniteValue(values)) {
         result.push({
           name: 'Acumulado Observado',
-          type: 'line',
-          yAxisIndex: 1,
+          type: 'bar',
+          yAxisIndex: props.mode === 'accumulated' ? 0 : 1,
           data: allDates.value.map((date, i) => ({
             x: labels[i],
             y: values[i],
@@ -326,10 +341,6 @@
     }> = [
       { name: 'Acumulado Det. Harmonie', source: HarmonieData.value },
       { name: 'Acumulado EPS Medio', source: epsatData.value },
-      { name: 'Acumulado EPS P10', source: p10Data.value },
-      { name: 'Acumulado EPS P25', source: p25Data.value },
-      { name: 'Acumulado EPS P75', source: p75Data.value },
-      { name: 'Acumulado EPS P90', source: p90Data.value },
     ]
 
     cumulativeForecastSeries.forEach((serie) => {
@@ -338,8 +349,8 @@
 
       result.push({
         name: serie.name,
-        type: 'line',
-        yAxisIndex: 1,
+        type: 'bar',
+        yAxisIndex: props.mode === 'accumulated' ? 0 : 1,
         data: allDates.value.map((date, i) => ({
           x: labels[i],
           y: values[i],
@@ -347,7 +358,48 @@
       })
     })
 
+    if (p10Data.value && p90Data.value) {
+      const ranges = computeForecastCumulativeRange(p10Data.value, p90Data.value)
+      if (hasFiniteRange(ranges)) {
+        result.push({
+          name: 'Acumulado Percentiles P10-P90',
+          type: 'rangeArea',
+          yAxisIndex: props.mode === 'accumulated' ? 0 : 1,
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: ranges[i],
+          })),
+        })
+      }
+    }
+
+    if (p25Data.value && p75Data.value) {
+      const ranges = computeForecastCumulativeRange(p25Data.value, p75Data.value)
+      if (hasFiniteRange(ranges)) {
+        result.push({
+          name: 'Acumulado Percentiles P25-P75',
+          type: 'rangeArea',
+          yAxisIndex: props.mode === 'accumulated' ? 0 : 1,
+          data: allDates.value.map((date, i) => ({
+            x: labels[i],
+            y: ranges[i],
+          })),
+        })
+      }
+    }
+
     return result
+  })
+
+  const series = computed<SeriesItem[]>(() => {
+    const mode = props.mode ?? 'all'
+    if (mode === 'all') return allSeries.value
+
+    if (mode === 'accumulated') {
+      return allSeries.value.filter((serie) => serie.name.startsWith('Acumulado '))
+    }
+
+    return allSeries.value.filter((serie) => !serie.name.startsWith('Acumulado '))
   })
 
   const hasRenderableSeries = computed(() => series.value.length > 0)
@@ -377,10 +429,8 @@
       'Acumulado Observado': 'Precipitación Observada',
       'Acumulado Det. Harmonie': 'Predicción Det. Harmonie',
       'Acumulado EPS Medio': 'Predicción Prob. EPS',
-      'Acumulado EPS P10': 'Percentiles P10-P90',
-      'Acumulado EPS P25': 'Percentiles P25-P75',
-      'Acumulado EPS P75': 'Percentiles P25-P75',
-      'Acumulado EPS P90': 'Percentiles P10-P90',
+      'Acumulado Percentiles P10-P90': 'Percentiles P10-P90',
+      'Acumulado Percentiles P25-P75': 'Percentiles P25-P75',
     }
 
     if (cumulativePairs[name]) {
@@ -399,7 +449,12 @@
   }
 
   function getSeriesFillOpacity(name: string): number {
-    if (name === 'Percentiles P10-P90' || name === 'Percentiles P25-P75') {
+    if (
+      name === 'Percentiles P10-P90' ||
+      name === 'Percentiles P25-P75' ||
+      name === 'Acumulado Percentiles P10-P90' ||
+      name === 'Acumulado Percentiles P25-P75'
+    ) {
       return 0.35
     }
     return 1
@@ -407,7 +462,14 @@
 
   function getSeriesStrokeWidth(name: string): number {
     if (name === 'Precipitación Observada') return 2
-    if (name === 'Percentiles P10-P90' || name === 'Percentiles P25-P75') return 1
+    if (
+      name === 'Percentiles P10-P90' ||
+      name === 'Percentiles P25-P75' ||
+      name === 'Acumulado Percentiles P10-P90' ||
+      name === 'Acumulado Percentiles P25-P75'
+    ) {
+      return 1
+    }
     if (name.startsWith('Acumulado ')) return 2
     return 0
   }
@@ -536,27 +598,52 @@
         hideOverlappingLabels: true,
       },
     },
-    yaxis: [
-      {
-        min: 0,
-        title: {
-          text: 'mm',
-        },
-        labels: {
-          formatter: (value: number) => Number(value).toFixed(1),
-        },
-      },
-      {
-        min: 0,
-        opposite: true,
-        title: {
-          text: 'mm acumulado',
-        },
-        labels: {
-          formatter: (value: number) => Number(value).toFixed(1),
-        },
-      },
-    ],
+    yaxis:
+      props.mode === 'accumulated'
+        ? [
+            {
+              min: 0,
+              title: {
+                text: 'mm acumulado',
+              },
+              labels: {
+                formatter: (value: number) => Number(value).toFixed(1),
+              },
+            },
+          ]
+        : props.mode === 'precipitations'
+          ? [
+              {
+                min: 0,
+                title: {
+                  text: 'mm',
+                },
+                labels: {
+                  formatter: (value: number) => Number(value).toFixed(1),
+                },
+              },
+            ]
+          : [
+              {
+                min: 0,
+                title: {
+                  text: 'mm',
+                },
+                labels: {
+                  formatter: (value: number) => Number(value).toFixed(1),
+                },
+              },
+              {
+                min: 0,
+                opposite: true,
+                title: {
+                  text: 'mm acumulado',
+                },
+                labels: {
+                  formatter: (value: number) => Number(value).toFixed(1),
+                },
+              },
+            ],
     annotations: {
       xaxis: observedEndXAnnotation.value,
     },
@@ -564,6 +651,7 @@
       enabled: true,
       shared: true,
       intersect: false,
+      followCursor: true,
       // hide the small x-axis tooltip and auxiliary fixed tooltip
       x: { show: false },
       fixed: { enabled: false },
@@ -631,7 +719,7 @@
         })
 
         return `
-          <div style="min-width:280px;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;">
+          <div style="min-width:280px;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;pointer-events:none;">
             <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px 14px;font-weight:600;">
               ${dateFormatted}
             </div>
@@ -704,5 +792,13 @@
   .precipitations-chart .apexcharts-legend-text {
     white-space: nowrap !important;
     line-height: 1.2;
+  }
+
+  .precipitations-chart .apexcharts-tooltip {
+    pointer-events: none !important;
+  }
+
+  .precipitations-chart .apexcharts-tooltip * {
+    pointer-events: none !important;
   }
 </style>

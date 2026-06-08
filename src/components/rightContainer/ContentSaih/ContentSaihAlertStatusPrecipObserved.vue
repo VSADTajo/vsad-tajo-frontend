@@ -19,33 +19,18 @@
   import { computed } from 'vue'
   import type { StationPrediction } from '@/types/Predictions'
   import { PRECIP_HORIZON_META, type PrecipHorizonKey } from '../utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+    type PrecipThresholdLevel,
+    type PrecipThresholdMap,
+  } from '../utils/precipThresholds'
 
-  type AlertLevel = 'NORMAL' | 'LEVE' | 'GRAVE'
-
-  type ThresholdMap = Record<PrecipHorizonKey, number | null>
+  type AlertLevel = 'NORMAL' | 'LEVE' | 'MEDIO' | 'GRAVE'
   type TriggeredState = {
     level: AlertLevel
     horizonLabel: string | null
-  }
-
-  const DEFAULT_THRESHOLDS_LEVE: ThresholdMap = {
-    h0: 0,
-    h1: 10,
-    h2: 12,
-    h4: 13,
-    h8: 15,
-    h12: 20,
-    h24: 30,
-  }
-
-  const DEFAULT_THRESHOLDS_GRAVE: ThresholdMap = {
-    h0: 0,
-    h1: 15,
-    h2: 18,
-    h4: 19.5,
-    h8: 22.5,
-    h12: 30,
-    h24: 45,
   }
 
   const props = withDefaults(
@@ -82,7 +67,7 @@
   function readThresholdMapFromNested(
     source: Record<string, unknown> | undefined,
     keys: string[]
-  ): Partial<ThresholdMap> {
+  ): Partial<PrecipThresholdMap> {
     if (!source) return {}
 
     for (const key of keys) {
@@ -90,7 +75,7 @@
       if (!nested || typeof nested !== 'object') continue
 
       const asRecord = nested as Record<string, unknown>
-      const out: Partial<ThresholdMap> = {}
+      const out: Partial<PrecipThresholdMap> = {}
 
       for (const { key: horizonKey } of PRECIP_HORIZON_META) {
         const value = readNumber([horizonKey], asRecord)
@@ -105,23 +90,38 @@
 
   function thresholdKeysFor(
     horizon: { key: PrecipHorizonKey; hours: number },
-    level: 'leve' | 'grave'
+    level: PrecipThresholdLevel
   ) {
-    const suffix = level === 'leve' ? ['leve', '1'] : ['grave', '2']
+    const suffixByLevel: Record<PrecipThresholdLevel, string[]> = {
+      leve: ['leve', 'amarillo', '1'],
+      medio: ['medio', 'naranja', '2'],
+      grave: ['grave', 'rojo', '3', '2'],
+    }
+
+    const suffix = suffixByLevel[level]
 
     return [
       `umbral_precip_${horizon.key}_${suffix[0]}`,
+      `umbral_precip_${horizon.key}_${suffix[1]}`,
       `umbral_precip_${horizon.hours}h_${suffix[0]}`,
-      `umbral_lluvia_${horizon.hours}h_${suffix[0]}`,
-      `precip_${horizon.key}_${suffix[0]}`,
-      `${horizon.key}_${suffix[0]}`,
       `umbral_precip_${horizon.hours}h_${suffix[1]}`,
+      `umbral_lluvia_${horizon.hours}h_${suffix[0]}`,
       `umbral_lluvia_${horizon.hours}h_${suffix[1]}`,
+      `precip_${horizon.key}_${suffix[0]}`,
+      `precip_${horizon.key}_${suffix[1]}`,
+      `${horizon.key}_${suffix[0]}`,
       `${horizon.key}_${suffix[1]}`,
+      ...suffix
+        .slice(2)
+        .flatMap((legacy) => [
+          `umbral_precip_${horizon.hours}h_${legacy}`,
+          `umbral_lluvia_${horizon.hours}h_${legacy}`,
+          `${horizon.key}_${legacy}`,
+        ]),
     ]
   }
 
-  const thresholdsLeve = computed<ThresholdMap>(() => {
+  const thresholdsLeve = computed<PrecipThresholdMap>(() => {
     const nested = readThresholdMapFromNested(props.thresholds, [
       'thresholdsLeve',
       'thresholds_leve',
@@ -129,7 +129,7 @@
       'umbralLeve',
     ])
 
-    const result: ThresholdMap = { ...DEFAULT_THRESHOLDS_LEVE, ...nested }
+    const result: PrecipThresholdMap = { ...DEFAULT_PRECIP_THRESHOLDS_LEVE, ...nested }
 
     for (const horizon of PRECIP_HORIZON_META) {
       if (horizon.hours === 0) continue
@@ -140,7 +140,26 @@
     return result
   })
 
-  const thresholdsGrave = computed<ThresholdMap>(() => {
+  const thresholdsMedio = computed<PrecipThresholdMap>(() => {
+    const nested = readThresholdMapFromNested(props.thresholds, [
+      'thresholdsMedio',
+      'thresholds_medio',
+      'umbralesMedio',
+      'umbralMedio',
+    ])
+
+    const result: PrecipThresholdMap = { ...DEFAULT_PRECIP_THRESHOLDS_MEDIO, ...nested }
+
+    for (const horizon of PRECIP_HORIZON_META) {
+      if (horizon.hours === 0) continue
+      const value = readNumber(thresholdKeysFor(horizon, 'medio'), props.thresholds)
+      if (value != null) result[horizon.key] = value
+    }
+
+    return result
+  })
+
+  const thresholdsGrave = computed<PrecipThresholdMap>(() => {
     const nested = readThresholdMapFromNested(props.thresholds, [
       'thresholdsGrave',
       'thresholds_grave',
@@ -148,7 +167,7 @@
       'umbralGrave',
     ])
 
-    const result: ThresholdMap = { ...DEFAULT_THRESHOLDS_GRAVE, ...nested }
+    const result: PrecipThresholdMap = { ...DEFAULT_PRECIP_THRESHOLDS_GRAVE, ...nested }
 
     for (const horizon of PRECIP_HORIZON_META) {
       if (horizon.hours === 0) continue
@@ -203,8 +222,8 @@
     return maxAccumulated
   }
 
-  const maxAccumulations = computed<ThresholdMap>(() => {
-    const result: ThresholdMap = {
+  const maxAccumulations = computed<PrecipThresholdMap>(() => {
+    const result: PrecipThresholdMap = {
       h0: 0,
       h1: null,
       h2: null,
@@ -232,6 +251,7 @@
 
   const triggeredState = computed<TriggeredState>(() => {
     let bestLeve: { exceedance: number; horizonLabel: string } | null = null
+    let bestMedio: { exceedance: number; horizonLabel: string } | null = null
     let bestGrave: { exceedance: number; horizonLabel: string } | null = null
 
     for (const horizon of PRECIP_HORIZON_META) {
@@ -255,9 +275,18 @@
           bestLeve = { exceedance, horizonLabel: `${horizon.hours}h` }
         }
       }
+
+      const medio = thresholdsMedio.value[horizon.key]
+      if (medio != null && value >= medio) {
+        const exceedance = value - medio
+        if (!bestMedio || exceedance > bestMedio.exceedance) {
+          bestMedio = { exceedance, horizonLabel: `${horizon.hours}h` }
+        }
+      }
     }
 
     if (bestGrave) return { level: 'GRAVE', horizonLabel: bestGrave.horizonLabel }
+    if (bestMedio) return { level: 'MEDIO', horizonLabel: bestMedio.horizonLabel }
     if (bestLeve) return { level: 'LEVE', horizonLabel: bestLeve.horizonLabel }
     return { level: 'NORMAL', horizonLabel: null }
   })
@@ -273,6 +302,8 @@
     switch (alertLevel.value) {
       case 'GRAVE':
         return 'red-lighten-3'
+      case 'MEDIO':
+        return 'orange-lighten-3'
       case 'LEVE':
         return 'amber-lighten-3'
       default:

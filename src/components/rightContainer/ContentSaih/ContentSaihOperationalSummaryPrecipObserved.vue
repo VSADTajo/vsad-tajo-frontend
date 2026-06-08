@@ -43,6 +43,13 @@
   import { formatDate } from '@/utils/dates'
   import type { StationPrediction } from '@/types/Predictions'
   import { PRECIP_HORIZON_META, type PrecipHorizonKey } from '../utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+    type PrecipThresholdLevel,
+    type PrecipThresholdMap,
+  } from '../utils/precipThresholds'
 
   type SummaryLevel = 'info' | 'yellow' | 'orange' | 'red'
 
@@ -52,35 +59,13 @@
     text: string
   }
 
-  type ThresholdMap = Record<PrecipHorizonKey, number | null>
-
-  type HorizonExceededLevel = 0 | 1 | 2
+  type HorizonExceededLevel = 0 | 1 | 2 | 3
 
   type Segment = {
     level: Exclude<HorizonExceededLevel, 0>
     startDate: string
     endDate: string
     count: number
-  }
-
-  const DEFAULT_THRESHOLDS_LEVE: ThresholdMap = {
-    h0: 0,
-    h1: 10,
-    h2: 12,
-    h4: 13,
-    h8: 15,
-    h12: 20,
-    h24: 30,
-  }
-
-  const DEFAULT_THRESHOLDS_GRAVE: ThresholdMap = {
-    h0: 0,
-    h1: 15,
-    h2: 18,
-    h4: 19.5,
-    h8: 22.5,
-    h12: 30,
-    h24: 45,
   }
 
   const props = withDefaults(
@@ -119,7 +104,7 @@
   function readThresholdMapFromNested(
     source: Record<string, unknown> | undefined,
     keys: string[]
-  ): Partial<ThresholdMap> {
+  ): Partial<PrecipThresholdMap> {
     if (!source) return {}
 
     for (const key of keys) {
@@ -127,7 +112,7 @@
       if (!nested || typeof nested !== 'object') continue
 
       const asRecord = nested as Record<string, unknown>
-      const out: Partial<ThresholdMap> = {}
+      const out: Partial<PrecipThresholdMap> = {}
 
       for (const { key: horizonKey } of PRECIP_HORIZON_META) {
         const value = readNumber([horizonKey], asRecord)
@@ -142,23 +127,38 @@
 
   function thresholdKeysFor(
     horizon: { key: PrecipHorizonKey; hours: number },
-    level: 'leve' | 'grave'
+    level: PrecipThresholdLevel
   ): string[] {
-    const suffix = level === 'leve' ? ['leve', '1'] : ['grave', '2']
+    const suffixByLevel: Record<PrecipThresholdLevel, string[]> = {
+      leve: ['leve', 'amarillo', '1'],
+      medio: ['medio', 'naranja', '2'],
+      grave: ['grave', 'rojo', '3', '2'],
+    }
+
+    const suffix = suffixByLevel[level]
 
     return [
       `umbral_precip_${horizon.key}_${suffix[0]}`,
+      `umbral_precip_${horizon.key}_${suffix[1]}`,
       `umbral_precip_${horizon.hours}h_${suffix[0]}`,
-      `umbral_lluvia_${horizon.hours}h_${suffix[0]}`,
-      `precip_${horizon.key}_${suffix[0]}`,
-      `${horizon.key}_${suffix[0]}`,
       `umbral_precip_${horizon.hours}h_${suffix[1]}`,
+      `umbral_lluvia_${horizon.hours}h_${suffix[0]}`,
       `umbral_lluvia_${horizon.hours}h_${suffix[1]}`,
+      `precip_${horizon.key}_${suffix[0]}`,
+      `precip_${horizon.key}_${suffix[1]}`,
+      `${horizon.key}_${suffix[0]}`,
       `${horizon.key}_${suffix[1]}`,
+      ...suffix
+        .slice(2)
+        .flatMap((legacy) => [
+          `umbral_precip_${horizon.hours}h_${legacy}`,
+          `umbral_lluvia_${horizon.hours}h_${legacy}`,
+          `${horizon.key}_${legacy}`,
+        ]),
     ]
   }
 
-  const thresholdsLeve = computed<ThresholdMap>(() => {
+  const thresholdsLeve = computed<PrecipThresholdMap>(() => {
     const nested = readThresholdMapFromNested(props.thresholds, [
       'thresholdsLeve',
       'thresholds_leve',
@@ -166,7 +166,7 @@
       'umbralLeve',
     ])
 
-    const result: ThresholdMap = { ...DEFAULT_THRESHOLDS_LEVE, ...nested }
+    const result: PrecipThresholdMap = { ...DEFAULT_PRECIP_THRESHOLDS_LEVE, ...nested }
 
     for (const horizon of PRECIP_HORIZON_META) {
       if (horizon.hours === 0) continue
@@ -177,7 +177,26 @@
     return result
   })
 
-  const thresholdsGrave = computed<ThresholdMap>(() => {
+  const thresholdsMedio = computed<PrecipThresholdMap>(() => {
+    const nested = readThresholdMapFromNested(props.thresholds, [
+      'thresholdsMedio',
+      'thresholds_medio',
+      'umbralesMedio',
+      'umbralMedio',
+    ])
+
+    const result: PrecipThresholdMap = { ...DEFAULT_PRECIP_THRESHOLDS_MEDIO, ...nested }
+
+    for (const horizon of PRECIP_HORIZON_META) {
+      if (horizon.hours === 0) continue
+      const value = readNumber(thresholdKeysFor(horizon, 'medio'), props.thresholds)
+      if (value != null) result[horizon.key] = value
+    }
+
+    return result
+  })
+
+  const thresholdsGrave = computed<PrecipThresholdMap>(() => {
     const nested = readThresholdMapFromNested(props.thresholds, [
       'thresholdsGrave',
       'thresholds_grave',
@@ -185,7 +204,7 @@
       'umbralGrave',
     ])
 
-    const result: ThresholdMap = { ...DEFAULT_THRESHOLDS_GRAVE, ...nested }
+    const result: PrecipThresholdMap = { ...DEFAULT_PRECIP_THRESHOLDS_GRAVE, ...nested }
 
     for (const horizon of PRECIP_HORIZON_META) {
       if (horizon.hours === 0) continue
@@ -217,9 +236,11 @@
   function getExceededLevel(
     value: number,
     leve: number | null,
+    medio: number | null,
     grave: number | null
   ): HorizonExceededLevel {
-    if (grave != null && value >= grave) return 2
+    if (grave != null && value >= grave) return 3
+    if (medio != null && value >= medio) return 2
     if (leve != null && value >= leve) return 1
     return 0
   }
@@ -233,6 +254,7 @@
     const windowMs = horizonHours * 60 * 60 * 1000
 
     const leve = thresholdsLeve.value[thresholdKey]
+    const medio = thresholdsMedio.value[thresholdKey]
     const grave = thresholdsGrave.value[thresholdKey]
 
     let left = 0
@@ -254,7 +276,7 @@
         continue
       }
 
-      const exceeded = getExceededLevel(running, leve, grave)
+      const exceeded = getExceededLevel(running, leve, medio, grave)
 
       if (!exceeded) {
         current = null
@@ -284,12 +306,14 @@
 
     const levelColor: Record<Exclude<HorizonExceededLevel, 0>, SummaryLevel> = {
       1: 'yellow',
-      2: 'red',
+      2: 'orange',
+      3: 'red',
     }
 
     const levelLabel: Record<Exclude<HorizonExceededLevel, 0>, string> = {
-      1: 'LEVE',
-      2: 'GRAVE',
+      1: 'AMARILLO',
+      2: 'NARANJA',
+      3: 'ROJO',
     }
 
     const horizons = [...PRECIP_HORIZON_META]
@@ -300,7 +324,7 @@
       const segments = buildRollingSegments(horizon.hours, horizon.key)
       if (!segments.length) continue
 
-      for (const level of [2, 1] as const) {
+      for (const level of [3, 2, 1] as const) {
         const levelSegments = segments.filter((segment) => segment.level === level)
         if (!levelSegments.length) continue
 

@@ -28,6 +28,7 @@
 
     <apexchart
       v-else-if="hasData"
+      :key="`precip-bars-${selectedProvider}`"
       type="bar"
       :height="chartHeight"
       :options="chartOptions"
@@ -48,15 +49,20 @@
     extractAccumulatedHorizonValuesWithMode,
     PRECIP_HORIZON_META,
   } from '../utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+  } from '../utils/precipThresholds'
 
   type ThresholdValues = {
-    h0?: number
-    h1?: number
-    h2?: number
-    h4?: number
-    h8?: number
-    h12?: number
-    h24?: number
+    h0?: number | null
+    h1?: number | null
+    h2?: number | null
+    h4?: number | null
+    h8?: number | null
+    h12?: number | null
+    h24?: number | null
   }
 
   const props = withDefaults(
@@ -71,6 +77,7 @@
       forecastHarmonie?: StationPrediction
       forecastEpsat?: StationPrediction
       thresholdsLeve?: ThresholdValues
+      thresholdsMedio?: ThresholdValues
       thresholdsGrave?: ThresholdValues
       loading?: boolean
       height?: number
@@ -85,24 +92,9 @@
       precipitationsForecastEnsP90: undefined,
       forecastHarmonie: undefined,
       forecastEpsat: undefined,
-      thresholdsLeve: () => ({
-        h0: 0,
-        h1: 10,
-        h2: 12,
-        h4: 13,
-        h8: 15,
-        h12: 20,
-        h24: 30,
-      }),
-      thresholdsGrave: () => ({
-        h0: 0,
-        h1: 15,
-        h2: 18,
-        h4: 19.5,
-        h8: 22.5,
-        h12: 30,
-        h24: 45,
-      }),
+      thresholdsLeve: () => ({ ...DEFAULT_PRECIP_THRESHOLDS_LEVE }),
+      thresholdsMedio: () => ({ ...DEFAULT_PRECIP_THRESHOLDS_MEDIO }),
+      thresholdsGrave: () => ({ ...DEFAULT_PRECIP_THRESHOLDS_GRAVE }),
       loading: false,
       height: 320,
     }
@@ -150,15 +142,27 @@
     )
   )
 
-  const categories = computed(() => PRECIP_HORIZON_META.map((item) => item.label))
+  const displayHorizons = computed(() => {
+    const horizons = PRECIP_HORIZON_META.filter((item) => item.hours > 0)
+    return selectedProvider.value === 'observed' ? [...horizons].reverse() : horizons
+  })
+
+  const categories = computed(() =>
+    displayHorizons.value.map((item) =>
+      selectedProvider.value === 'observed' ? `-${Math.abs(item.hours)}hs` : item.label
+    )
+  )
   const values = computed(() =>
-    PRECIP_HORIZON_META.map((item) => horizonValues.value[item.key] ?? 0)
+    displayHorizons.value.map((item) => horizonValues.value[item.key] ?? 0)
   )
   const leveValues = computed(() =>
-    PRECIP_HORIZON_META.map((item) => props.thresholdsLeve?.[item.key] ?? null)
+    displayHorizons.value.map((item) => props.thresholdsLeve?.[item.key] ?? null)
+  )
+  const medioValues = computed(() =>
+    displayHorizons.value.map((item) => props.thresholdsMedio?.[item.key] ?? null)
   )
   const graveValues = computed(() =>
-    PRECIP_HORIZON_META.map((item) => props.thresholdsGrave?.[item.key] ?? null)
+    displayHorizons.value.map((item) => props.thresholdsGrave?.[item.key] ?? null)
   )
 
   const hasData = computed(() => Boolean(selectedPrediction.value?.results?.length))
@@ -183,6 +187,11 @@
     },
     {
       type: 'line',
+      name: 'Medio',
+      data: medioValues.value,
+    },
+    {
+      type: 'line',
       name: 'Grave',
       data: graveValues.value,
     },
@@ -196,7 +205,7 @@
       animations: { enabled: true },
     },
     stroke: {
-      width: [0, 2, 2],
+      width: [0, 2, 2, 2],
       curve: 'straight',
     },
     plotOptions: {
@@ -206,7 +215,7 @@
       },
     },
     markers: {
-      size: [0, 7, 7],
+      size: [0, 7, 7, 7],
       strokeWidth: 0,
       hover: { sizeOffset: 1 },
     },
@@ -229,9 +238,10 @@
         text: 'mm acumulados',
       },
       min: 0,
+      decimalsInFloat: 1,
       forceNiceScale: true,
       labels: {
-        formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(2) : '--'),
+        formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(1) : '--'),
       },
     },
     colors: [
@@ -249,11 +259,13 @@
                   ? '#616161'
                   : '#90a4ae',
       '#fdd835',
+      '#fb923c',
       '#ef5350',
     ],
     tooltip: {
+      followCursor: true,
       y: {
-        formatter: (value: number) => `${value.toFixed(2)} mm`,
+        formatter: (value: number) => (Number.isFinite(value) ? `${value.toFixed(1)} mm` : '--'),
       },
     },
     grid: {

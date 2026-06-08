@@ -16,6 +16,7 @@
     <RightContentByAreaService v-if="zona" kind="zona" />
     <RightContentByAreaService v-if="comarca" kind="comarca" />
     <RightContentPrecipitacion v-if="precipitacion" />
+    <RightContentAviso v-if="aviso" />
   </v-navigation-drawer>
 </template>
 
@@ -27,6 +28,7 @@
   import RightContentReporting from './RightContentReporting.vue'
   import RightContentByAreaService from './RightContentByAreaService.vue'
   import RightContentPrecipitacion from './RightContentPrecipitacion.vue'
+  import RightContentAviso from './RightContentAviso.vue'
 
   const route = useRoute()
   const router = useRouter()
@@ -46,6 +48,8 @@
 
   const precipitacion = computed(() => route.query.precipitacion as string | undefined)
 
+  const aviso = computed(() => route.query.aviso as string | undefined)
+
   // drawer abierto si hay station
   const drawerOpen = computed(
     () =>
@@ -55,7 +59,8 @@
       !!sistema.value ||
       !!zona.value ||
       !!comarca.value ||
-      !!precipitacion.value
+      !!precipitacion.value ||
+      !!aviso.value
   )
 
   // ignorar cierre inmediato por scrim
@@ -68,10 +73,18 @@
     }
   })
 
+  watch(aviso, (val, oldVal) => {
+    if (val && !oldVal) {
+      ignoreNextClose = true
+      setTimeout(() => (ignoreNextClose = false), 150)
+    }
+  })
+
   function onDrawerChange(val: boolean) {
-    if (!val && station.value && !ignoreNextClose) {
+    if (!val && !ignoreNextClose) {
       const queryObj = { ...route.query }
       delete queryObj.station
+      delete queryObj.aviso
       router.replace({ query: queryObj })
     }
   }

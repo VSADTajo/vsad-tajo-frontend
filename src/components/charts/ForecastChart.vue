@@ -67,6 +67,7 @@
     tooltip: {
       shared: true,
       intersect: false,
+      followCursor: true,
 
       custom({ seriesIndex, dataPointIndex, w }: ApexTooltipContext) {
         const x = w.globals.seriesX[seriesIndex][dataPointIndex]

@@ -6,7 +6,7 @@
 
     <v-divider class="mb-2" />
 
-    <v-card-text class="pa-0 justify-center d-flex align-center">
+    <v-card-text class="pa-0 pb-1 justify-center d-flex align-center">
       <v-btn-toggle
         v-model="selectedProvider"
         mandatory
@@ -39,25 +39,30 @@
       </template>
 
       <template #item.valor="{ item }">
-        <span class="text-caption">{{ formatValue(item.valor) }}</span>
+        <v-chip
+          size="x-small"
+          :color="getValueChipColor(item.valor, item.leve, item.medio, item.grave)"
+          class="font-weight-bold"
+        >
+          {{ formatValue(item.valor) }}
+        </v-chip>
       </template>
 
       <template #item.leve="{ item }">
-        <span class="text-caption">{{ formatValue(item.leve) }}</span>
+        <v-chip size="x-small" color="#fdd835" class="font-weight-bold">
+          {{ formatValue(item.leve) }}
+        </v-chip>
+      </template>
+
+      <template #item.medio="{ item }">
+        <v-chip size="x-small" color="#fb923c" class="font-weight-bold">
+          {{ formatValue(item.medio) }}
+        </v-chip>
       </template>
 
       <template #item.grave="{ item }">
-        <span class="text-caption">{{ formatValue(item.grave) }}</span>
-      </template>
-
-      <template #item.estado="{ item }">
-        <v-chip
-          :color="getStatusColor(item.estado)"
-          :text-color="getStatusTextColor(item.estado)"
-          size="small"
-          class="font-weight-bold"
-        >
-          {{ item.estado }}
+        <v-chip size="x-small" color="#ef5350" class="font-weight-bold">
+          {{ formatValue(item.grave) }}
         </v-chip>
       </template>
     </v-data-table>
@@ -71,23 +76,28 @@
     extractAccumulatedHorizonValuesWithMode,
     PRECIP_HORIZON_META,
   } from '../utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+  } from '../utils/precipThresholds'
 
   type ThresholdValues = {
-    h0?: number
-    h1?: number
-    h2?: number
-    h4?: number
-    h8?: number
-    h12?: number
-    h24?: number
+    h0?: number | null
+    h1?: number | null
+    h2?: number | null
+    h4?: number | null
+    h8?: number | null
+    h12?: number | null
+    h24?: number | null
   }
 
   type TableRow = {
     periodo: string
     valor: number | null
     leve: number | null
+    medio: number | null
     grave: number | null
-    estado: 'NORMAL' | 'LEVE' | 'GRAVE'
   }
 
   const props = withDefaults(
@@ -103,6 +113,7 @@
       forecastEpsat?: StationPrediction
       loading?: boolean
       thresholdsLeve?: ThresholdValues
+      thresholdsMedio?: ThresholdValues
       thresholdsGrave?: ThresholdValues
     }>(),
     {
@@ -116,22 +127,9 @@
       forecastHarmonie: undefined,
       forecastEpsat: undefined,
       loading: false,
-      thresholdsLeve: () => ({
-        h1: 10,
-        h2: 12,
-        h4: 13,
-        h8: 15,
-        h12: 20,
-        h24: 30,
-      }),
-      thresholdsGrave: () => ({
-        h1: 15,
-        h2: 18,
-        h4: 19.5,
-        h8: 22.5,
-        h12: 30,
-        h24: 45,
-      }),
+      thresholdsLeve: () => ({ ...DEFAULT_PRECIP_THRESHOLDS_LEVE }),
+      thresholdsMedio: () => ({ ...DEFAULT_PRECIP_THRESHOLDS_MEDIO }),
+      thresholdsGrave: () => ({ ...DEFAULT_PRECIP_THRESHOLDS_GRAVE }),
     }
   )
 
@@ -141,8 +139,8 @@
     { title: 'Periodo', key: 'periodo', sortable: false, width: 80 },
     { title: 'Valor', key: 'valor', align: 'end' as const, sortable: false, width: 70 },
     { title: 'Leve', key: 'leve', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Medio', key: 'medio', align: 'end' as const, sortable: false, width: 70 },
     { title: 'Grave', key: 'grave', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Estado', key: 'estado', align: 'center' as const, sortable: false, width: 100 },
   ]
 
   const harmoniePrediction = computed<StationPrediction | undefined>(
@@ -168,13 +166,20 @@
     )
   )
 
+  const displayHorizons = computed(() => {
+    const horizons = PRECIP_HORIZON_META.filter((item) => item.hours > 0)
+    return selectedProvider.value === 'observed' ? [...horizons].reverse() : horizons
+  })
+
   function getStatus(
     valor: number | null,
     leve: number | null | undefined,
+    medio: number | null | undefined,
     grave: number | null | undefined
-  ): 'NORMAL' | 'LEVE' | 'GRAVE' {
+  ): 'NORMAL' | 'LEVE' | 'MEDIO' | 'GRAVE' {
     if (valor == null) return 'NORMAL'
     if (grave != null && valor >= grave) return 'GRAVE'
+    if (medio != null && valor >= medio) return 'MEDIO'
     if (leve != null && valor >= leve) return 'LEVE'
     return 'NORMAL'
   }
@@ -184,33 +189,38 @@
     return value.toFixed(1)
   }
 
-  function getStatusColor(estado: 'NORMAL' | 'LEVE' | 'GRAVE'): string {
+  function getStatusColor(estado: 'NORMAL' | 'LEVE' | 'MEDIO' | 'GRAVE'): string {
     if (estado === 'GRAVE') return '#ef5350'
+    if (estado === 'MEDIO') return '#fb923c'
     if (estado === 'LEVE') return '#fdd835'
-    return 'transparent'
+    return 'primary'
   }
 
-  function getStatusTextColor(estado: 'NORMAL' | 'LEVE' | 'GRAVE'): string {
-    if (estado === 'GRAVE') return 'white'
-    if (estado === 'LEVE') return '#333'
-    return '#333'
+  function getValueChipColor(
+    valor: number | null,
+    leve: number | null | undefined,
+    medio: number | null | undefined,
+    grave: number | null | undefined
+  ): string {
+    return getStatusColor(getStatus(valor, leve, medio, grave))
   }
 
   const tableRows = computed<TableRow[]>(() => {
     const rows: TableRow[] = []
 
-    for (const { key, label } of PRECIP_HORIZON_META) {
+    for (const { key, label, hours } of displayHorizons.value) {
       const valor = horizonValues.value[key]
       const leve = props.thresholdsLeve?.[key] ?? null
+      const medio = props.thresholdsMedio?.[key] ?? null
       const grave = props.thresholdsGrave?.[key] ?? null
-      const estado = getStatus(valor, leve, grave)
+      const periodo = selectedProvider.value === 'observed' ? `-${Math.abs(hours)}hs` : label
 
       rows.push({
-        periodo: label,
+        periodo,
         valor,
         leve,
+        medio,
         grave,
-        estado,
       })
     }
 

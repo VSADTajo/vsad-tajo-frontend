@@ -10,6 +10,7 @@ export const MAP_PANES = {
   SELECTION: 'selectionPane',
   SAIH: 'saihPane',
   REPORTING: 'reportingPane',
+  AVISOS: 'avisosPane',
   HIGHLIGHT: 'highlightPane',
 } as const
 
@@ -25,6 +26,7 @@ export function createMapPanes(map: L.Map) {
     { name: MAP_PANES.HIGHLIGHT, zIndex: 620 },
     { name: MAP_PANES.SAIH, zIndex: 650 },
     { name: MAP_PANES.REPORTING, zIndex: 650 },
+    { name: MAP_PANES.AVISOS, zIndex: 300 },
   ]
 
   panes.forEach(({ name, zIndex }) => {
