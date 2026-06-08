@@ -42,7 +42,19 @@ export type PredictionTypeName =
   | 'FICT95.historical'
   | 'VICT01.historical'
 
-export type HistoricalPredictionTypeName = 'Q.historical' | 'Precip.historical'
+export type HistoricalPredictionTypeName = string
+
+export interface HistoricalTimelinePoint {
+  date: string
+  value: number
+  flag: number
+}
+
+export interface HistoricalTimelineResponse {
+  stationId: string
+  predictionType: string
+  results: HistoricalTimelinePoint[]
+}
 
 export type PredictionsResponse = {
   predictions: StationPrediction[]
