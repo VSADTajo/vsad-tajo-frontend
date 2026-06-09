@@ -18,9 +18,9 @@
         />
       </v-card-title>
 
-      <v-card-text>
+      <v-card-text class="bg-surface">
         <!-- Chip severidad -->
-        <div class="d-flex align-center ga-2 mb-4">
+        <div class="d-flex align-center ga-2 mb-4 pt-4">
           <span class="text-body-2 font-weight-medium">Severidad:</span>
           <v-chip :color="severityChipColor" variant="tonal" size="small" class="font-weight-bold">
             {{ severityLabel }}
@@ -30,7 +30,7 @@
         <!-- Gráfica de barras -->
         <v-card variant="outlined" class="pa-2">
           <div class="text-subtitle-2 font-weight-bold px-2 pb-1">Nivel por intervalo (72h)</div>
-          <apexchart type="bar" height="260" :options="chartOptions" :series="chartSeries" />
+          <apexchart type="bar" height="500" :options="chartOptions" :series="chartSeries" />
         </v-card>
       </v-card-text>
     </template>
@@ -72,12 +72,13 @@
   }
 
   function formatSlotLabel(start: Date): string {
-    return new Intl.DateTimeFormat('es-ES', {
+    const base = new Intl.DateTimeFormat('es-ES', {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
       hour12: false,
     }).format(start)
+    return base.replace(/(\d{2})$/, '$1hs')
   }
 
   /** Genera los 12 slots de 6h: hoy, mañana, pasado mañana (4 slots × 3 días) */
@@ -100,14 +101,12 @@
   // ── nivel → valor numérico para el eje Y ─────────────────────────────────
 
   const levelToValue: Record<string, number> = {
-    verde: 1,
-    amarillo: 2,
-    naranja: 3,
-    rojo: 4,
+    amarillo: 1,
+    naranja: 2,
+    rojo: 3,
   }
 
   const levelToColor: Record<string, string> = {
-    verde: '#22c55e',
     amarillo: '#facc15',
     naranja: '#f97316',
     rojo: '#ef4444',
@@ -115,10 +114,9 @@
 
   const levelLabels: Record<number, string> = {
     0: 'Sin aviso',
-    1: 'Verde',
-    2: 'Amarillo',
-    3: 'Naranja',
-    4: 'Rojo',
+    1: 'Amarillo',
+    2: 'Naranja',
+    3: 'Rojo',
   }
 
   // ── aviso seleccionado ────────────────────────────────────────────────────
@@ -143,12 +141,19 @@
   // ── severity chip ─────────────────────────────────────────────────────────
 
   const severityLabel = computed(() => {
-    const s = selectedAviso.value?.properties?.severity
-    return s ? String(s) : 'N/A'
+    const s = String(selectedAviso.value?.properties?.severity ?? '').toLowerCase()
+    const translations: Record<string, string> = {
+      extreme: 'Extremo',
+      severe: 'Severo',
+      moderate: 'Moderado',
+      minor: 'Menor',
+    }
+    return translations[s] ?? (s ? String(selectedAviso.value?.properties?.severity) : 'N/A')
   })
 
   const severityChipColor = computed(() => {
-    switch (severityLabel.value.toLowerCase()) {
+    const s = String(selectedAviso.value?.properties?.severity ?? '').toLowerCase()
+    switch (s) {
       case 'extreme':
         return 'error'
       case 'severe':
@@ -227,8 +232,8 @@
     },
     yaxis: {
       min: 0,
-      max: 4,
-      tickAmount: 4,
+      max: 3,
+      tickAmount: 3,
       labels: {
         formatter: (val: number) => levelLabels[Math.round(val)] ?? '',
         style: { fontSize: '11px' },

@@ -3,6 +3,7 @@ import type {
   AvailableDateItem,
   DatesAvailableResponse,
   HistoricalPredictionTypeName,
+  HistoricalTimelineResponse,
   MaxLatestValuesResponse,
   PredictionsResponse,
   PredictionTypeName,
@@ -82,11 +83,11 @@ export async function getAvailablePredictionsService(
 export async function getHistoricalPredictionService(
   stationId: string,
   predictionType: HistoricalPredictionTypeName,
-  startDate?: string,
-  endDate?: string
+  startDate: string,
+  endDate: string
 ): Promise<StationPrediction | undefined> {
-  const res = await api
-    .get(`predictions/historical`, {
+  const response = await api
+    .get('predictions/historical', {
       searchParams: {
         stationId,
         predictionType,
@@ -97,13 +98,35 @@ export async function getHistoricalPredictionService(
         Accept: 'application/json',
       },
     })
-    .json<PredictionsResponse>()
+    .json<HistoricalTimelineResponse>()
 
-  return res.predictions[0]
+  if (!response.results.length) return undefined
+
+  return {
+    id: `historical-${response.stationId}-${response.predictionType}`,
+    stationId: response.stationId,
+    stationName: '',
+    predictionTypeName: response.predictionType,
+    simulationDate: '',
+    predictionDate: '',
+    predictionProvider: '',
+    predictedBy: '',
+    results: response.results.map((point, index) => ({
+      id: index,
+      date: point.date,
+      value: point.value,
+      flag: point.flag,
+    })),
+  }
 }
 
 export async function getMaxAndLatestValuesService(
-  typeName: 'Q.NAM.harmonie' | 'I.NAM.harmonie' | 'P.harmonie.forecast'
+  typeName:
+    | 'Q.NAM.harmonie'
+    | 'Q.NAM.ens'
+    | 'I.NAM.harmonie'
+    | 'P.harmonie.forecast'
+    | 'P.ens.forecast'
 ): Promise<StationMaxLatestValue[]> {
   const response = await api
     .get('predictions/max-and-latest-values', {

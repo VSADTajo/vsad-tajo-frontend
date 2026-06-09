@@ -48,7 +48,16 @@ export function useAvisosLayers(map: L.Map) {
   function buildAvisoTooltipContent(props: Record<string, unknown>): string {
     const areaDesc = escapeHtml(props.areaDesc ?? '-')
     const level = String(props.level ?? 'N/A')
-    const severity = escapeHtml(props.severity ?? '-')
+    const severityTranslations: Record<string, string> = {
+      extreme: 'Extremo',
+      severe: 'Severo',
+      moderate: 'Moderado',
+      minor: 'Menor',
+    }
+    const rawSeverity = String(props.severity ?? '')
+    const severity = escapeHtml(
+      (severityTranslations[rawSeverity.toLowerCase()] ?? rawSeverity) || '-'
+    )
     const effective = String(props.effective ?? '')
     const expires = String(props.expires ?? '')
 

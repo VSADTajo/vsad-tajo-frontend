@@ -5,6 +5,7 @@ export interface LayerNode {
   parentLayer?: string
   opacityEnabled?: boolean
   opacity?: number
+  emptyText?: string
 }
 
 export interface LayerState {
