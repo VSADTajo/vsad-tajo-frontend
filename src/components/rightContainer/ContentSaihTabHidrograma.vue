@@ -421,14 +421,12 @@
   const embalseVolumeHistorical = ref<StationPrediction>()
 
   // ── Available dates ───────────────────────────────────────────────────────
-  const observedCaudalDates = ref<string[]>([])
   const harmonieCaudalDates = ref<string[]>([])
   const harmoniePrecipDates = ref<string[]>([])
   const epsCaudalDates = ref<string[]>([])
   const epsPrecipDates = ref<string[]>([])
 
   // ── Selected dates ────────────────────────────────────────────────────────
-  const selectedObservedCaudalDate = ref('')
   const selectedHarmonieCaudalDate = ref('')
   const selectedEpsCaudalDate = ref('')
 
@@ -572,7 +570,6 @@
       {
         key: 'historical',
         predictionType: 'FICT98.historical',
-        simulationDate: selectedObservedCaudalDate.value,
       },
       {
         key: 'forecastHarmonie',
@@ -613,7 +610,6 @@
       {
         key: 'historical',
         predictionType: 'FICT99.historical',
-        simulationDate: selectedObservedCaudalDate.value,
       },
       {
         key: 'forecastHarmonie',
@@ -655,27 +651,18 @@
   // ── Fetch available dates ─────────────────────────────────────────────────
   async function getAvailableDates(code: string) {
     const selectedCodeType = codeType.value === 'E' ? 'E' : 'default'
-    const observedCaudalType: PredictionTypeName =
-      selectedCodeType === 'E' ? 'FICT99.historical' : 'FICT98.historical'
     const harmonieCaudalType: PredictionTypeName =
       selectedCodeType === 'E' ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
     const epsCaudalTypes: PredictionTypeName[] =
       selectedCodeType === 'E' ? ['I.NAM.ens.medio', 'I.NAM.ens'] : ['Q.NAM.ens']
 
     try {
-      const [
-        observedCaudalResponse,
-        harmonieCaudalResponse,
-        harmoniePrecipResponse,
-        ...epsResponses
-      ] = await Promise.all([
-        getAvailablePredictionsService(code, observedCaudalType),
+      const [harmonieCaudalResponse, harmoniePrecipResponse, ...epsResponses] = await Promise.all([
         getAvailablePredictionsService(code, harmonieCaudalType),
         getAvailablePredictionsService(code, 'P.harmonie.forecast'),
         ...epsCaudalTypes.map((type) => getAvailablePredictionsService(code, type)),
       ])
 
-      observedCaudalDates.value = toDateList(observedCaudalResponse)
       harmonieCaudalDates.value = toDateList(harmonieCaudalResponse)
       harmoniePrecipDates.value = toDateList(harmoniePrecipResponse)
       epsCaudalDates.value = Array.from(new Set(epsResponses.flatMap(toDateList))).sort((a, b) =>
@@ -683,7 +670,6 @@
       )
     } catch (err) {
       console.error('Error loading available dates:', err)
-      observedCaudalDates.value = []
       harmonieCaudalDates.value = []
       harmoniePrecipDates.value = []
       epsCaudalDates.value = []
@@ -708,10 +694,10 @@
       if (requestId !== fetchRequestId) return
       applyForecastData(caudalRefs, caudalData)
 
-      if (props.isEmbalse && selectedObservedCaudalDate.value) {
+      if (props.isEmbalse) {
         const [outflow, volume] = await Promise.all([
-          getPredictionsService(code, 'FICT95.historical', selectedObservedCaudalDate.value),
-          getPredictionsService(code, 'VICT01.historical', selectedObservedCaudalDate.value),
+          getPredictionsService(code, 'FICT95.historical'),
+          getPredictionsService(code, 'VICT01.historical'),
         ])
         if (requestId !== fetchRequestId) return
         caudalOutflowHistorical.value = outflow
@@ -737,12 +723,10 @@
       clearForecasts(caudalRefs)
       caudalOutflowHistorical.value = undefined
       embalseVolumeHistorical.value = undefined
-      observedCaudalDates.value = []
       harmonieCaudalDates.value = []
       harmoniePrecipDates.value = []
       epsCaudalDates.value = []
       epsPrecipDates.value = []
-      selectedObservedCaudalDate.value = ''
       selectedHarmonieCaudalDate.value = ''
       selectedEpsCaudalDate.value = ''
 
@@ -759,7 +743,6 @@
         if (requestId !== fetchRequestId) return
 
         skipNextDateWatch = true
-        selectedObservedCaudalDate.value = pickDefaultDate('', observedCaudalDates.value)
         selectedHarmonieCaudalDate.value = pickDefaultDate('', harmonieCaudalDates.value)
         selectedEpsCaudalDate.value = pickDefaultDate('', epsCaudalDates.value)
 

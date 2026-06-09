@@ -225,6 +225,7 @@ export const avisosLayers: LayerNode[] = [
   {
     id: 'avisos_aemet',
     title: 'AEMET',
+    emptyText: 'No hay avisos de AEMET',
     children: [
       { id: 'AT', title: 'Temperaturas máximas', parentLayer: 'avisos_aemet' },
       { id: 'BT', title: 'Temperaturas mínimas', parentLayer: 'avisos_aemet' },

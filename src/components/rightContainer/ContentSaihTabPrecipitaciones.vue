@@ -207,11 +207,9 @@
   const precipitationsForecastEnsP75 = ref<StationPrediction>()
   const precipitationsForecastEnsP90 = ref<StationPrediction>()
 
-  const observedPrecipDates = ref<string[]>([])
   const harmoniePrecipDates = ref<string[]>([])
   const epsPrecipDates = ref<string[]>([])
 
-  const selectedObservedPrecipDate = ref('')
   const selectedHarmoniePrecipDate = ref('')
   const selectedEpsPrecipDate = ref('')
   const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
@@ -240,7 +238,6 @@
     {
       key: 'historical',
       predictionType: 'WI__01.historical',
-      simulationDate: selectedObservedPrecipDate.value,
     },
     {
       key: 'forecastHarmonie',
@@ -280,20 +277,15 @@
 
   async function getAvailableDates(code: string): Promise<void> {
     try {
-      const [observedPrecipResponse, harmoniePrecipResponse, epsPrecipResponse] = await Promise.all(
-        [
-          getAvailablePredictionsService(code, 'WI__01.historical' as PredictionTypeName),
-          getAvailablePredictionsService(code, 'P.harmonie.forecast' as PredictionTypeName),
-          getAvailablePredictionsService(code, 'P.ens.forecast' as PredictionTypeName),
-        ]
-      )
+      const [harmoniePrecipResponse, epsPrecipResponse] = await Promise.all([
+        getAvailablePredictionsService(code, 'P.harmonie.forecast' as PredictionTypeName),
+        getAvailablePredictionsService(code, 'P.ens.forecast' as PredictionTypeName),
+      ])
 
-      observedPrecipDates.value = toDateList(observedPrecipResponse as DatesAvailableResponse)
       harmoniePrecipDates.value = toDateList(harmoniePrecipResponse as DatesAvailableResponse)
       epsPrecipDates.value = toDateList(epsPrecipResponse as DatesAvailableResponse)
     } catch (err) {
       console.error('Error loading available precipitation dates:', err)
-      observedPrecipDates.value = []
       harmoniePrecipDates.value = []
       epsPrecipDates.value = []
     }
@@ -323,10 +315,8 @@
     async (code) => {
       isFullReloading = true
       clearForecasts(precipitationRefs)
-      observedPrecipDates.value = []
       harmoniePrecipDates.value = []
       epsPrecipDates.value = []
-      selectedObservedPrecipDate.value = ''
       selectedHarmoniePrecipDate.value = ''
       selectedEpsPrecipDate.value = ''
 
@@ -343,7 +333,6 @@
         if (requestId !== fetchRequestId) return
 
         skipNextDateWatch = true
-        selectedObservedPrecipDate.value = pickDefaultDate('', observedPrecipDates.value)
         selectedHarmoniePrecipDate.value = pickDefaultDate('', harmoniePrecipDates.value)
         selectedEpsPrecipDate.value = pickDefaultDate('', epsPrecipDates.value)
 

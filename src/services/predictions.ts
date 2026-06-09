@@ -103,7 +103,12 @@ export async function getHistoricalPredictionService(
 }
 
 export async function getMaxAndLatestValuesService(
-  typeName: 'Q.NAM.harmonie' | 'I.NAM.harmonie' | 'P.harmonie.forecast'
+  typeName:
+    | 'Q.NAM.harmonie'
+    | 'Q.NAM.ens'
+    | 'I.NAM.harmonie'
+    | 'P.harmonie.forecast'
+    | 'P.ens.forecast'
 ): Promise<StationMaxLatestValue[]> {
   const response = await api
     .get('predictions/max-and-latest-values', {

@@ -40,7 +40,11 @@ export async function fetchPredictionBatch<K extends string>(
 ): Promise<Partial<Record<K, StationPrediction | undefined>>> {
   const entries = await Promise.all(
     requests.map(async (request) => {
-      if (!request.simulationDate) return [request.key, undefined] as const
+      const isHistorical = request.predictionType.endsWith('.historical')
+
+      if (!isHistorical && !request.simulationDate) {
+        return [request.key, undefined] as const
+      }
 
       const prediction = await getPredictionsService(
         stationId,

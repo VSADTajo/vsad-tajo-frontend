@@ -46,6 +46,13 @@
                 </v-list-item>
               </template>
 
+              <v-list-item
+                v-if="group.children?.length === 0 && group.emptyText"
+                :title="group.emptyText"
+                disabled
+                class="text-caption text-medium-emphasis"
+              />
+
               <template v-for="child in group.children" :key="child.id">
                 <!-- Subgrupo -->
                 <v-list-group v-if="child.children" :value="child.id">

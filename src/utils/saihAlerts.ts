@@ -9,8 +9,10 @@ const ALERT_CACHE_TTL_MS = 5 * 60 * 1000
 const ALERT_FAILURE_COOLDOWN_MS = 60 * 1000
 
 const bestQByStation = new Map<string, StationMaxLatestValue>()
+const bestQEnsByStation = new Map<string, StationMaxLatestValue>()
 const bestIByStation = new Map<string, StationMaxLatestValue>()
 const bestPByStation = new Map<string, StationMaxLatestValue>()
+const bestPEnsByStation = new Map<string, StationMaxLatestValue>()
 let alertsLastLoadedAt = 0
 let alertsLastFailedAt = 0
 let alertsInFlight: Promise<void> | null = null
@@ -99,15 +101,19 @@ export async function ensureSaihAlertsLoaded(force = false): Promise<void> {
 
   alertsInFlight = (async () => {
     try {
-      const [qValues, iValues, pValues] = await Promise.all([
+      const [qValues, qEnsValues, iValues, pValues, pEnsValues] = await Promise.all([
         getMaxAndLatestValuesService('Q.NAM.harmonie'),
+        getMaxAndLatestValuesService('Q.NAM.ens'),
         getMaxAndLatestValuesService('I.NAM.harmonie'),
         getMaxAndLatestValuesService('P.harmonie.forecast'),
+        getMaxAndLatestValuesService('P.ens.forecast'),
       ])
 
       setBestByStation(bestQByStation, qValues)
+      setBestByStation(bestQEnsByStation, qEnsValues)
       setBestByStation(bestIByStation, iValues)
       setBestByStation(bestPByStation, pValues)
+      setBestByStation(bestPEnsByStation, pEnsValues)
       alertsLastLoadedAt = Date.now()
       alertsLastFailedAt = 0
     } catch (error) {
@@ -139,8 +145,19 @@ export function getSaihAlertInfo(feature: Feature): {
     }
   }
 
-  const sourceMap = getCaudalType(feature) === 'I.NAM.harmonie' ? bestIByStation : bestQByStation
-  const bestEntry = sourceMap.get(stationCode)
+  const caudalType = getCaudalType(feature)
+  let bestEntry: StationMaxLatestValue | undefined
+  if (caudalType === 'I.NAM.harmonie') {
+    bestEntry = bestIByStation.get(stationCode)
+  } else {
+    const harmonieEntry = bestQByStation.get(stationCode)
+    const ensEntry = bestQEnsByStation.get(stationCode)
+    if (harmonieEntry && ensEntry) {
+      bestEntry = pickBestEntry(harmonieEntry, ensEntry)
+    } else {
+      bestEntry = harmonieEntry ?? ensEntry
+    }
+  }
 
   if (!bestEntry) {
     return {
@@ -179,7 +196,14 @@ export function getSaihPrecipMaxInfo(feature: Feature): {
   const stationCode = getStationCode(feature)
   if (!stationCode) return { maxValue: null, maxDate: null }
 
-  const bestEntry = bestPByStation.get(stationCode)
+  const harmonieEntry = bestPByStation.get(stationCode)
+  const ensEntry = bestPEnsByStation.get(stationCode)
+  let bestEntry: StationMaxLatestValue | undefined
+  if (harmonieEntry && ensEntry) {
+    bestEntry = pickBestEntry(harmonieEntry, ensEntry)
+  } else {
+    bestEntry = harmonieEntry ?? ensEntry
+  }
   if (!bestEntry) return { maxValue: null, maxDate: null }
 
   return {

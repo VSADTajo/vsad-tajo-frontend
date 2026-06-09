@@ -53,7 +53,7 @@
 
         <v-col cols="12" class="pt-1 px-4">
           <ItemsLayersGroup
-            :layers="avisosLayers"
+            :layers="filteredAvisosLayers"
             title="Avisos"
             :multiple="false"
             :default-open="false"
@@ -65,6 +65,7 @@
 </template>
 
 <script lang="ts" setup>
+  import { computed, onMounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import ItemsLayersGroup from '../itemslayers/ItemsLayersGroup.vue'
 
@@ -75,6 +76,7 @@
     efasLayers,
     avisosLayers,
   } from '@/constants/itemsLayers'
+  import { getAvisosResumenService } from '@/services/avisos'
   import { useDisplay } from 'vuetify'
 
   const { mdAndUp } = useDisplay()
@@ -84,6 +86,27 @@
   const goBack = () => {
     router.push('/')
   }
+
+  const activeCodes = ref<Set<string>>(new Set())
+
+  onMounted(async () => {
+    try {
+      const resumen = await getAvisosResumenService()
+      activeCodes.value = new Set(resumen.categoriasActivas.map((c) => c.code))
+    } catch {
+      activeCodes.value = new Set()
+    }
+  })
+
+  const filteredAvisosLayers = computed(() => {
+    const base = avisosLayers[0]
+    return [
+      {
+        ...base,
+        children: (base.children ?? []).filter((child) => activeCodes.value.has(child.id)),
+      },
+    ]
+  })
 </script>
 
 <style lang="scss" scoped>
