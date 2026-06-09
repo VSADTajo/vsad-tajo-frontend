@@ -10,21 +10,9 @@
         />
 
         <v-list-item
-          prepend-icon="mdi-alert-outline"
-          :active="activeSection === 'avisos'"
-          @click="toggleSection('avisos')"
-        />
-
-        <v-list-item
           prepend-icon="mdi-tune-variant"
           :active="activeSection === 'simulaciones'"
           @click="toggleSection('simulaciones')"
-        />
-
-        <v-list-item
-          prepend-icon="mdi-file-chart-outline"
-          :active="activeSection === 'informes'"
-          @click="toggleSection('informes')"
         />
       </v-list>
 

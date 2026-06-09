@@ -237,6 +237,7 @@
   import {
     getAvailablePredictionsService,
     getHistoricalPredictionService,
+    getPredictionsService,
   } from '@/services/predictions'
 
   const HISTORICAL_RANGE_DAYS = 30

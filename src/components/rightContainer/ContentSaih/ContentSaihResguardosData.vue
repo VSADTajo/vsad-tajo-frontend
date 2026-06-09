@@ -19,25 +19,6 @@
         </v-btn-toggle>
       </div>
 
-      <div class="d-flex align-center justify-space-between mb-1 mt-2">
-        <div class="text-caption text-medium-emphasis font-weight-bold">{{ selectedTitle }}</div>
-        <div class="d-flex ga-1">
-          <v-btn
-            icon="mdi-pencil"
-            size="x-small"
-            variant="text"
-            :disabled="!selectedPeriod"
-            @click="openEditDialog(selectedKind)"
-          />
-          <v-btn
-            icon="mdi-plus"
-            size="x-small"
-            variant="text"
-            @click="openAddDialog(selectedKind)"
-          />
-        </div>
-      </div>
-
       <v-row>
         <v-col cols="7" class="text-caption text-medium-emphasis align-center">
           {{ selectedCurrentValueLabel }}
