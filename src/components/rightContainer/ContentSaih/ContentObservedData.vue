@@ -22,9 +22,9 @@
           variant="outlined"
           class="mb-3 observed-mode-toggle"
         >
-          <v-btn value="entrada" size="small" class="observed-mode-btn">Entrada</v-btn>
-          <v-btn value="salida" size="small" class="observed-mode-btn">Salida</v-btn>
-          <v-btn value="volumen" size="small" class="observed-mode-btn">Volumen</v-btn>
+          <v-btn value="entrada" size="small" class="observed-mode-btn" :disabled="!hasEntradaData">Entrada</v-btn>
+          <v-btn value="salida" size="small" class="observed-mode-btn" :disabled="!hasSalidaData">Salida</v-btn>
+          <v-btn value="volumen" size="small" class="observed-mode-btn" :disabled="!hasVolumenData">Volumen</v-btn>
         </v-btn-toggle>
 
         <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
@@ -115,7 +115,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, ref } from 'vue'
+  import { computed, ref, watchEffect } from 'vue'
   import { formatDate, toTimestamp } from '@/utils/dates'
   import type { StationPrediction } from '@/types/Predictions'
 
@@ -202,7 +202,30 @@
   const outflowSummary = computed(() => summarizePrediction(props.caudalOutflowHistorical, 'm3/s'))
   const volumeSummary = computed(() => summarizePrediction(props.embalseVolumeHistorical, 'hm3'))
 
+  function hasResults(prediction: StationPrediction | undefined): boolean {
+    return Boolean(prediction?.results?.length)
+  }
+
+  const hasEntradaData = computed(() => hasResults(props.caudalHistorical))
+  const hasSalidaData = computed(() => hasResults(props.caudalOutflowHistorical))
+  const hasVolumenData = computed(() => hasResults(props.embalseVolumeHistorical))
+
   const embalseObservedMode = ref<EmbalseObservedMode>('entrada')
+
+  watchEffect(() => {
+    if (!props.isEmbalse || props.activeTab !== 'caudal') return
+    const currentHasData =
+      embalseObservedMode.value === 'entrada'
+        ? hasEntradaData.value
+        : embalseObservedMode.value === 'salida'
+          ? hasSalidaData.value
+          : hasVolumenData.value
+    if (!currentHasData) {
+      if (hasEntradaData.value) embalseObservedMode.value = 'entrada'
+      else if (hasSalidaData.value) embalseObservedMode.value = 'salida'
+      else if (hasVolumenData.value) embalseObservedMode.value = 'volumen'
+    }
+  })
 
   const observedSectionTitle = computed(() => {
     if (props.activeTab !== 'caudal') return 'Precipitacion observada'
@@ -222,10 +245,6 @@
     return baseSummary.value
   })
 
-  function hasResults(prediction: StationPrediction | undefined): boolean {
-    return Boolean(prediction?.results?.length)
-  }
-
   const hasObservedData = computed(() => {
     if (props.activeTab !== 'caudal') {
       return hasResults(props.precipitationsHistorical)
@@ -235,15 +254,11 @@
       return hasResults(props.caudalHistorical)
     }
 
-    if (embalseObservedMode.value === 'salida') {
-      return hasResults(props.caudalOutflowHistorical)
-    }
-
-    if (embalseObservedMode.value === 'volumen') {
-      return hasResults(props.embalseVolumeHistorical)
-    }
-
-    return hasResults(props.caudalHistorical)
+    return (
+      hasResults(props.caudalHistorical) ||
+      hasResults(props.caudalOutflowHistorical) ||
+      hasResults(props.embalseVolumeHistorical)
+    )
   })
 
   const lastObservedValueLabel = computed(() => baseSummary.value.lastValueLabel)
