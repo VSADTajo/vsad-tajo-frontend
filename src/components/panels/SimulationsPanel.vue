@@ -43,6 +43,8 @@
             :selected-code="selectedCode ?? undefined"
             class="simulations-list"
             @select="selectedCode = $event ?? null"
+            @open="openDetail"
+            @fly-to="flyToEmbalse"
           />
         </v-col>
       </v-row>
@@ -51,15 +53,20 @@
 </template>
 
 <script lang="ts" setup>
-  import { onMounted, ref, computed } from 'vue'
-  import { useRouter } from 'vue-router'
+  import { onMounted, onUnmounted, ref, computed } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
   import { embalsesWithCaudalPredictions } from '@/constants/predictionsAvailableData'
+  import { useLayersStore } from '@/stores/layersStore'
+  import { useMapStore } from '@/stores/mapStore'
   import SimulationsEmbalseList from './SimulationsEmbalseList.vue'
 
   const { mdAndUp } = useDisplay()
+  const route = useRoute()
   const router = useRouter()
+  const layersStore = useLayersStore()
+  const mapStore = useMapStore()
 
   const loading = ref(true)
   const embalses = ref<StationByCodeResponse[]>([])
@@ -71,6 +78,7 @@
   )
 
   onMounted(async () => {
+    layersStore.applySimulationsPreset()
     try {
       const results = await Promise.all(
         embalsesWithCaudalPredictions.map((code) => getStationByCodeService(code))
@@ -80,6 +88,21 @@
       loading.value = false
     }
   })
+
+  onUnmounted(() => {
+    layersStore.resetStationLayers()
+  })
+
+  function openDetail(code: string) {
+    router.replace({ query: { ...route.query, station: code } })
+  }
+
+  function flyToEmbalse(code: string) {
+    const embalse = embalses.value.find((e) => e.stationCode === code)
+    if (embalse?.latitude != null && embalse?.longitude != null) {
+      mapStore.requestFlyTo(embalse.latitude, embalse.longitude, { zoom: 13 })
+    }
+  }
 
   function goBack() {
     router.push('/')

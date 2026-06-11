@@ -12,6 +12,8 @@ import { api } from './api'
 import { boundaryStore } from '@/stores/boundaryStore'
 import { applyPolygonMaskToWMS } from '@/utils/mask'
 import { buildSaihPopupContent } from '@/utils/saihStations'
+import { registerSaihMarker } from '@/utils/saihMarkersRegistry'
+import { useMapStore } from '@/stores/mapStore'
 import {
   buildComarcaPopupContent,
   buildSubcuencaPopupContent,
@@ -164,8 +166,13 @@ export async function createAPIStationsLayer(
       interactive: config.interactive ?? true,
 
       onEachFeature: (feature, layer) => {
-        // Add popup for SAIH stations
-        if ('bindPopup' in layer) {
+        if (layer instanceof L.Marker) {
+          const stationCode = String(
+            (feature.properties as Record<string, unknown>)?.stationCode ?? ''
+          )
+
+          registerSaihMarker(stationCode, layer)
+
           layer.bindPopup(buildSaihPopupContent(feature), {
             closeButton: false,
             autoClose: false,
@@ -174,22 +181,23 @@ export async function createAPIStationsLayer(
             offset: L.point(0, -14),
           })
 
-          if (layer instanceof L.Marker) {
-            layer.on({
-              click: () => {
-                layer.openPopup()
-              },
-              mouseover: () => {
-                layer.openPopup()
-              },
-              mouseout: () => {
-                layer.closePopup()
-              },
-            })
-          }
+          layer.on({
+            click: () => {
+              layer.openPopup()
+            },
+            mouseover: () => {
+              layer.getElement()?.firstElementChild?.classList.add('is-highlight')
+              layer.openPopup()
+              useMapStore().setHoveredStation(stationCode)
+            },
+            mouseout: () => {
+              layer.getElement()?.firstElementChild?.classList.remove('is-highlight')
+              layer.closePopup()
+              useMapStore().setHoveredStation(null)
+            },
+          })
         }
 
-        // Handle double click
         if (onDblClick) {
           layer.on('dblclick', () => {
             onDblClick(feature)
@@ -312,29 +320,7 @@ export async function createWFSLayer(
       pane: config.pane,
       interactive: config.interactive ?? true,
 
-      onEachFeature: (feature, layer) => {
-        // Especial para SAIH: popups
-        if (config.id === 'saih' && layer instanceof L.Marker) {
-          layer.bindPopup(buildSaihPopupContent(feature), {
-            closeButton: false,
-            autoClose: false,
-            closeOnClick: false,
-            className: 'feature-hover-popup',
-            offset: L.point(0, -14),
-          })
-
-          layer.on({
-            mouseover: () => {
-              layer.getElement()?.firstElementChild?.classList.add('is-highlight')
-              layer.openPopup()
-            },
-            mouseout: () => {
-              layer.getElement()?.firstElementChild?.classList.remove('is-highlight')
-              layer.closePopup()
-            },
-          })
-        }
-      },
+      onEachFeature: () => {},
     })
 
     // Guardar StyleManager en el layer para acceso desde MapLayerManager

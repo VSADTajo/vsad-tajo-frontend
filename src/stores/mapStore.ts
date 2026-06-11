@@ -19,6 +19,7 @@ export const useMapStore = defineStore('map', {
   state: () => ({
     flyToTarget: null as FlyToTarget | null,
     pendingFeatureSelection: null as PendingFeatureSelection | null,
+    hoveredStationCode: null as string | null,
   }),
 
   actions: {
@@ -51,6 +52,10 @@ export const useMapStore = defineStore('map', {
 
     clearPendingFeatureSelection() {
       this.pendingFeatureSelection = null
+    },
+
+    setHoveredStation(code: string | null) {
+      this.hoveredStationCode = code
     },
   },
 })

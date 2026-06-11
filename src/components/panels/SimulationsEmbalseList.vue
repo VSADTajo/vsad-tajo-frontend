@@ -10,9 +10,17 @@
           v-for="embalse in filteredEmbalses"
           :key="embalse.stationCode"
           :active="selectedCode === embalse.stationCode"
-          active-color="primary"
-          class="border"
+          :class="[
+            'border',
+            {
+              'item-map-hover':
+                mapStore.hoveredStationCode?.toUpperCase() === embalse.stationCode.toUpperCase(),
+            },
+          ]"
+          color="primary"
           @click="toggle(embalse.stationCode)"
+          @mouseenter="onItemEnter(embalse.stationCode)"
+          @mouseleave="onItemLeave"
         >
           <template #prepend>
             <div class="saih-marker mr-3" style="--saih-color: #101c44; flex-shrink: 0">E</div>
@@ -34,10 +42,17 @@
                 density="compact"
                 color="primary"
                 class="mr-2"
+                @click="emit('flyTo', embalse.stationCode)"
               >
                 <v-icon size="16">mdi-map-marker</v-icon>
               </v-btn>
-              <v-btn icon variant="text" density="compact" title="Abrir detalle">
+              <v-btn
+                icon
+                variant="text"
+                density="compact"
+                title="Abrir detalle"
+                @click="emit('open', embalse.stationCode)"
+              >
                 <v-icon size="16">mdi-open-in-new</v-icon>
               </v-btn>
             </div>
@@ -55,6 +70,10 @@
 <script lang="ts" setup>
   import { computed } from 'vue'
   import type { StationByCodeResponse } from '@/services/general'
+  import { useMapStore } from '@/stores/mapStore'
+  import { setSaihMarkerHighlight } from '@/utils/saihMarkersRegistry'
+
+  const mapStore = useMapStore()
 
   const props = defineProps<{
     embalses: StationByCodeResponse[]
@@ -65,6 +84,8 @@
 
   const emit = defineEmits<{
     select: [code: string | null]
+    open: [code: string]
+    flyTo: [code: string]
   }>()
 
   const filteredEmbalses = computed(() => {
@@ -77,6 +98,16 @@
 
   function toggle(code: string) {
     emit('select', props.selectedCode === code ? null : code)
+  }
+
+  function onItemEnter(code: string) {
+    setSaihMarkerHighlight(code)
+    mapStore.setHoveredStation(code)
+  }
+
+  function onItemLeave() {
+    setSaihMarkerHighlight(null)
+    mapStore.setHoveredStation(null)
   }
 </script>
 
@@ -96,6 +127,10 @@
   .embalse-list-wrapper::-webkit-scrollbar-thumb {
     background: rgba(110, 118, 129, 0.5);
     border-radius: 999px;
+  }
+
+  .item-map-hover {
+    background: rgb(var(--v-theme-primary), 0.08) !important;
   }
 
   .embalse-actions {
