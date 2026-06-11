@@ -22,9 +22,15 @@
           variant="outlined"
           class="mb-3 observed-mode-toggle"
         >
-          <v-btn value="entrada" size="small" class="observed-mode-btn" :disabled="!hasEntradaData">Entrada</v-btn>
-          <v-btn value="salida" size="small" class="observed-mode-btn" :disabled="!hasSalidaData">Salida</v-btn>
-          <v-btn value="volumen" size="small" class="observed-mode-btn" :disabled="!hasVolumenData">Volumen</v-btn>
+          <v-btn value="entrada" size="small" class="observed-mode-btn" :disabled="!hasEntradaData">
+            Entrada
+          </v-btn>
+          <v-btn value="salida" size="small" class="observed-mode-btn" :disabled="!hasSalidaData">
+            Salida
+          </v-btn>
+          <v-btn value="volumen" size="small" class="observed-mode-btn" :disabled="!hasVolumenData">
+            Volumen
+          </v-btn>
         </v-btn-toggle>
 
         <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
