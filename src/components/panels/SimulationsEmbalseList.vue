@@ -5,7 +5,7 @@
     </template>
 
     <template v-else-if="filteredEmbalses.length">
-      <v-list density="compact" bg-color="surface_variant" class="py-0">
+      <v-list density="compact" bg-color="surface_variant border" class="py-0">
         <v-list-item
           v-for="embalse in filteredEmbalses"
           :key="embalse.stationCode"
@@ -113,7 +113,7 @@
 
 <style scoped>
   .embalse-list-wrapper {
-    max-height: 50vh;
+    max-height: 30vh;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;

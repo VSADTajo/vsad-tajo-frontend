@@ -19,7 +19,6 @@
       <v-row>
         <v-col cols="12" class="pb-1 px-4">
           <ItemsLayersGroup
-            v-col
             :layers="stationLayers"
             title="Estaciones"
             :multiple="true"

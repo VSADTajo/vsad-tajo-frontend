@@ -23,7 +23,8 @@
             clearable
             label="Buscar Embalse"
             variant="outlined"
-            bg-color="variant"
+            color="primary"
+            bg-color="surface"
             hide-details
             class="px-3"
             density="compact"
@@ -35,7 +36,7 @@
         <v-col cols="12">
           <p class="pl-4 font-weight-medium">Embalses</p>
         </v-col>
-        <v-col cols="12">
+        <v-col cols="12" class="pt-0 pb-0">
           <SimulationsEmbalseList
             :embalses="embalses"
             :filter="searchText"
@@ -47,6 +48,14 @@
             @fly-to="flyToEmbalse"
           />
         </v-col>
+        <template v-if="selectedEmbalse">
+          <v-col cols="12">
+            <p class="pl-4 font-weight-medium">Nueva Operación</p>
+          </v-col>
+          <v-col cols="12" class="pt-0">
+            <SimulationsSimulateForm :embalse="selectedEmbalse" @simulate="onSimulate" />
+          </v-col>
+        </template>
       </v-row>
     </div>
   </div>
@@ -61,6 +70,7 @@
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
   import SimulationsEmbalseList from './SimulationsEmbalseList.vue'
+  import SimulationsSimulateForm from './SimulationsSimulateForm.vue'
 
   const { mdAndUp } = useDisplay()
   const route = useRoute()
@@ -76,6 +86,19 @@
   const autocompleteItems = computed(() =>
     embalses.value.map((e) => ({ title: e.name, value: e.stationCode }))
   )
+
+  const selectedEmbalse = computed(
+    () => embalses.value.find((e) => e.stationCode === selectedCode.value) ?? null
+  )
+
+  function onSimulate(payload: {
+    code: string
+    caudalSalida: number | null
+    fechaInicio: string
+    fechaFin: string
+  }) {
+    console.log('[SimulationsPanel] simulate', payload)
+  }
 
   onMounted(async () => {
     layersStore.applySimulationsPreset()
