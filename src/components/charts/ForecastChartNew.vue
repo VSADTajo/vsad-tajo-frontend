@@ -931,7 +931,6 @@
     inset: 0;
     z-index: 5;
     pointer-events: all;
-    background: rgba(255, 255, 255, 0.18);
   }
 
   .chart-loading-state {
