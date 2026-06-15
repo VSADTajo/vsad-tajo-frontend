@@ -108,7 +108,7 @@
 
         <v-card class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            active-tab="caudal"
+            :active-tab="selectedEmbalseChartTab"
             :is-embalse="isEmbalse"
             :thresholds="thresholds"
             :selected-threshold="selectedThreshold"

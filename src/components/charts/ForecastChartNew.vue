@@ -103,8 +103,6 @@
   }
 
   const caudalThresholdAnnotations = computed(() => {
-    console.log('props.thresholds', props.thresholds)
-
     const t1 = readNumber(['umbral_caudal_1', 'umbral_cauda_1', 'umbralCaudal1'], props.thresholds)
     const t2 = readNumber(['umbral_caudal_2', 'umbral_cauda_2', 'umbralCaudal2'], props.thresholds)
     const t3 = readNumber(['umbral_caudal_3', 'umbral_cauda_3', 'umbralCaudal3'], props.thresholds)
@@ -115,10 +113,7 @@
       annotations.push({
         y: t1,
         borderColor: '#fde68a',
-        label: {
-          text: `Nivel 1: ${t1.toFixed(2)} m3/s`,
-          style: { background: '#fde68a', color: '#7c2d12' },
-        },
+        label: { text: `Nivel 1: ${t1.toFixed(2)} m3/s`, style: { background: '#fde68a', color: '#7c2d12' } },
       })
     }
 
@@ -126,10 +121,7 @@
       annotations.push({
         y: t2,
         borderColor: '#fdba74',
-        label: {
-          text: `Nivel 2: ${t2.toFixed(2)} m3/s`,
-          style: { background: '#fdba74', color: '#7c2d12' },
-        },
+        label: { text: `Nivel 2: ${t2.toFixed(2)} m3/s`, style: { background: '#fdba74', color: '#7c2d12' } },
       })
     }
 
@@ -137,10 +129,7 @@
       annotations.push({
         y: t3,
         borderColor: '#fca5a5',
-        label: {
-          text: `Nivel 3: ${t3.toFixed(2)} m3/s`,
-          style: { background: '#fca5a5', color: '#7c2d12' },
-        },
+        label: { text: `Nivel 3: ${t3.toFixed(2)} m3/s`, style: { background: '#fca5a5', color: '#7c2d12' } },
       })
     }
 
@@ -148,9 +137,11 @@
   })
 
   const volumeThresholdAnnotations = computed(() => {
-    const t1 = readNumber(['umbral_1_volumen', 'umbralVolumen1'], props.thresholds)
-    const t2 = readNumber(['umbral_2_volumen', 'umbralVolumen2'], props.thresholds)
-    const t3 = readNumber(['umbral_3_volumen', 'umbralVolumen3'], props.thresholds)
+    const nested = props.thresholds?.threshold as Record<string, unknown> | undefined
+    const volSource = nested ?? props.thresholds
+    const t1 = readNumber(['umbralVolumen1', 'umbral_1_volumen'], volSource)
+    const t2 = readNumber(['umbralVolumen2', 'umbral_2_volumen'], volSource)
+    const t3 = readNumber(['umbralVolumen3', 'umbral_3_volumen'], volSource)
 
     const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
@@ -159,10 +150,7 @@
         y: t1,
         yAxisIndex: 1,
         borderColor: '#fde68a',
-        label: {
-          text: `Nivel Vol 1: ${t1.toFixed(2)} hm3`,
-          style: { background: '#fde68a', color: '#7c2d12' },
-        },
+        label: { text: `Nivel 1: ${t1.toFixed(2)} hm³`, style: { background: '#fde68a', color: '#7c2d12' } },
       })
     }
 
@@ -171,10 +159,7 @@
         y: t2,
         yAxisIndex: 1,
         borderColor: '#fdba74',
-        label: {
-          text: `Nivel Vol 2: ${t2.toFixed(2)} hm3`,
-          style: { background: '#fdba74', color: '#7c2d12' },
-        },
+        label: { text: `Nivel 2: ${t2.toFixed(2)} hm³`, style: { background: '#fdba74', color: '#7c2d12' } },
       })
     }
 
@@ -183,10 +168,7 @@
         y: t3,
         yAxisIndex: 1,
         borderColor: '#fca5a5',
-        label: {
-          text: `Nivel Vol 3: ${t3.toFixed(2)} hm3`,
-          style: { background: '#fca5a5', color: '#7c2d12' },
-        },
+        label: { text: `Nivel 3: ${t3.toFixed(2)} hm³`, style: { background: '#fca5a5', color: '#7c2d12' } },
       })
     }
 
@@ -860,9 +842,11 @@
       return readNumber(['umbral_caudal_3', 'umbral_cauda_3', 'umbralCaudal3'], props.thresholds)
     }
 
-    if (level === 1) return readNumber(['umbral_1_volumen', 'umbralVolumen1'], props.thresholds)
-    if (level === 2) return readNumber(['umbral_2_volumen', 'umbralVolumen2'], props.thresholds)
-    return readNumber(['umbral_3_volumen', 'umbralVolumen3'], props.thresholds)
+    const nested = props.thresholds?.threshold as Record<string, unknown> | undefined
+    const volSource = nested ?? props.thresholds
+    if (level === 1) return readNumber(['umbralVolumen1', 'umbral_1_volumen'], volSource)
+    if (level === 2) return readNumber(['umbralVolumen2', 'umbral_2_volumen'], volSource)
+    return readNumber(['umbralVolumen3', 'umbral_3_volumen'], volSource)
   }
 
   function getFocusedRange(value: number): { min: number; max: number } {
@@ -914,8 +898,11 @@
           nextYaxis = { ...currentYaxis, ...focusedRange }
         }
       } else {
-        if (!Array.isArray(currentYaxis)) return
-        nextYaxis = [currentYaxis[0], { ...currentYaxis[1], ...focusedRange }]
+        if (Array.isArray(currentYaxis)) {
+          nextYaxis = [currentYaxis[0], { ...currentYaxis[1], ...focusedRange }]
+        } else {
+          nextYaxis = { ...currentYaxis, ...focusedRange }
+        }
       }
 
       await ApexCharts.exec(chartId, 'updateOptions', { yaxis: nextYaxis }, false, true)

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div
     v-if="loading || station"
     class="d-flex justify-space-between align-start pa-4 saih-sticky-header"
@@ -37,7 +37,13 @@
 
   function shadeHex(hex: string, factor: number): string {
     const value = hex.replace('#', '')
-    const full = value.length === 3 ? value.split('').map((c) => c + c).join('') : value
+    const full =
+      value.length === 3
+        ? value
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : value
     const num = Number.parseInt(full, 16)
     const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)))
     const r = clamp(((num >> 16) & 255) * factor)
