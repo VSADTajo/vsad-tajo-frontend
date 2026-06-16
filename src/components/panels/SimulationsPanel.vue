@@ -53,7 +53,19 @@
             <p class="pl-4 font-weight-medium">Nueva Operación</p>
           </v-col>
           <v-col cols="12" class="pt-0">
-            <SimulationsSimulateForm :embalse="selectedEmbalse" @simulate="onSimulate" />
+            <SimulationsSimulateForm
+              :embalse="selectedEmbalse"
+              :initial-value="editingOperation"
+              @simulate="onSimulate"
+            />
+          </v-col>
+          <v-col cols="12" class="pt-2 pb-4">
+            <SimulationsOperationsList
+              :operations="operations"
+              @edit="onEditOperation"
+              @delete="onDeleteOperation"
+              @create-simulation="onCreateSimulation"
+            />
           </v-col>
         </template>
       </v-row>
@@ -69,8 +81,10 @@
   import { embalsesWithCaudalPredictions } from '@/constants/predictionsAvailableData'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
+  import type { SimulationOperation } from '@/types/Simulations'
   import SimulationsEmbalseList from './SimulationsEmbalseList.vue'
   import SimulationsSimulateForm from './SimulationsSimulateForm.vue'
+  import SimulationsOperationsList from './SimulationsOperationsList.vue'
 
   const { mdAndUp } = useDisplay()
   const route = useRoute()
@@ -82,6 +96,8 @@
   const embalses = ref<StationByCodeResponse[]>([])
   const selectedCode = ref<string | null>(null)
   const searchText = ref('')
+  const operations = ref<SimulationOperation[]>([])
+  const editingIndex = ref<number | null>(null)
 
   const autocompleteItems = computed(() =>
     embalses.value.map((e) => ({ title: e.name, value: e.stationCode }))
@@ -91,13 +107,37 @@
     () => embalses.value.find((e) => e.stationCode === selectedCode.value) ?? null
   )
 
-  function onSimulate(payload: {
-    code: string
-    caudalSalida: number | null
-    fechaInicio: string
-    fechaFin: string
-  }) {
-    console.log('[SimulationsPanel] simulate', payload)
+  const editingOperation = computed(() =>
+    editingIndex.value != null ? (operations.value[editingIndex.value] ?? null) : null
+  )
+
+  function onSimulate(op: SimulationOperation) {
+    if (editingIndex.value != null) {
+      operations.value[editingIndex.value] = op
+      editingIndex.value = null
+    } else {
+      operations.value.push(op)
+    }
+  }
+
+  function onEditOperation(i: number) {
+    editingIndex.value = i
+  }
+
+  function onDeleteOperation(i: number) {
+    operations.value.splice(i, 1)
+    if (editingIndex.value === i) {
+      editingIndex.value = null
+    } else if (editingIndex.value != null && editingIndex.value > i) {
+      editingIndex.value--
+    }
+  }
+
+  async function onCreateSimulation() {
+    // TODO: replace with real API call when endpoint is ready
+    console.log('[SimulationsPanel] create simulation', operations.value)
+    operations.value = []
+    editingIndex.value = null
   }
 
   onMounted(async () => {

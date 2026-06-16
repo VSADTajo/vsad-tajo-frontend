@@ -84,6 +84,18 @@ export function toTimestamp(dateValue: string): number {
   return parsedDate?.getTime() ?? Number.NEGATIVE_INFINITY
 }
 
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+export function formatDateDDMMYYYY(date: Date): string {
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+export function formatDateDDMM(date: Date): string {
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 export function formatDate(dateValue?: string): string {
   if (!dateValue) return '--'
 
