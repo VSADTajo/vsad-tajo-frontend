@@ -4,9 +4,25 @@
       <v-row>
         <v-col cols="12" class="d-flex align-center justify-space-between">
           <h2 class="pl-4 pt-4">Simulaciones</h2>
-          <v-btn icon class="mr-4 mt-4" color="primary" density="comfortable" @click="goBack">
-            <v-icon>{{ mdAndUp ? 'mdi-arrow-left' : 'mdi-arrow-down' }}</v-icon>
-          </v-btn>
+          <div class="d-flex align-center mr-4 mt-4 gap-2">
+            <v-tooltip text="Lista de simulaciones" location="bottom">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon
+                  color="primary"
+                  density="comfortable"
+                  :variant="simulationsStore.historyOpen ? 'flat' : 'tonal'"
+                  @click="simulationsStore.toggleHistory()"
+                >
+                  <v-icon>mdi-history</v-icon>
+                </v-btn>
+              </template>
+            </v-tooltip>
+            <v-btn icon color="primary" density="comfortable" class="ml-2" @click="goBack">
+              <v-icon>{{ mdAndUp ? 'mdi-arrow-left' : 'mdi-arrow-down' }}</v-icon>
+            </v-btn>
+          </div>
         </v-col>
       </v-row>
       <v-row>
@@ -81,6 +97,7 @@
   import { embalsesWithCaudalPredictions } from '@/constants/predictionsAvailableData'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
+  import { useSimulationsStore } from '@/stores/simulationsStore'
   import type { SimulationOperation } from '@/types/Simulations'
   import SimulationsEmbalseList from './SimulationsEmbalseList.vue'
   import SimulationsSimulateForm from './SimulationsSimulateForm.vue'
@@ -91,6 +108,7 @@
   const router = useRouter()
   const layersStore = useLayersStore()
   const mapStore = useMapStore()
+  const simulationsStore = useSimulationsStore()
 
   const loading = ref(true)
   const embalses = ref<StationByCodeResponse[]>([])
