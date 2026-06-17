@@ -85,6 +85,12 @@ export const useLayersStore = defineStore('layers', {
       }
     },
 
+    applySimulationsWithAforoPreset() {
+      for (const id of Object.keys(this.layers)) {
+        this.layers[id].visible = id === 'E' || id === 'AR'
+      }
+    },
+
     resetStationLayers() {
       const defaultState = buildInitialState()
       for (const [id, state] of Object.entries(defaultState)) {

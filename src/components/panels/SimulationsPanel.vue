@@ -1,6 +1,6 @@
 ﻿<template>
   <div class="simulations-container">
-    <div class="simulations-header">
+    <div class="simulations-title">
       <v-row>
         <v-col cols="12" class="d-flex align-center justify-space-between">
           <h2 class="pl-4 pt-4">Simulaciones</h2>
@@ -12,6 +12,7 @@
                   icon
                   color="primary"
                   density="comfortable"
+                  class="mr-2"
                   :variant="simulationsStore.historyOpen ? 'flat' : 'tonal'"
                   @click="simulationsStore.toggleHistory()"
                 >
@@ -19,16 +20,17 @@
                 </v-btn>
               </template>
             </v-tooltip>
-            <v-btn icon color="primary" density="comfortable" class="ml-2" @click="goBack">
+            <v-btn icon color="primary" density="comfortable" @click="goBack">
               <v-icon>{{ mdAndUp ? 'mdi-arrow-left' : 'mdi-arrow-down' }}</v-icon>
             </v-btn>
           </div>
         </v-col>
+        <v-divider />
       </v-row>
-      <v-row>
-        <v-col cols="12">
-          <v-divider></v-divider>
-        </v-col>
+    </div>
+
+    <div class="simulations-body mt-4">
+      <v-row class="mt-1">
         <v-col cols="12" class="pt-2 pb-2">
           <v-autocomplete
             v-model="selectedCode"
@@ -90,7 +92,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { onMounted, onUnmounted, ref, computed } from 'vue'
+  import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
@@ -158,6 +160,17 @@
     editingIndex.value = null
   }
 
+  watch(
+    () => simulationsStore.isSimulationActive,
+    (active) => {
+      if (active) {
+        layersStore.applySimulationsWithAforoPreset()
+      } else {
+        layersStore.applySimulationsPreset()
+      }
+    }
+  )
+
   onMounted(async () => {
     layersStore.applySimulationsPreset()
     try {
@@ -197,8 +210,11 @@
     flex-direction: column;
   }
 
-  .simulations-header {
-    flex-shrink: 0;
+  .simulations-body {
+    flex-grow: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .simulations-list {
