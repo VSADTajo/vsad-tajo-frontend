@@ -20,6 +20,7 @@ import { getCustomLegendInfo } from '@/config/styles/customLegends'
 import { ensureSaihAlertsLoaded } from '@/utils/saihAlerts'
 import { isPrecipitacionLayerId } from './layerConstants'
 import { useLayersStore } from '@/stores/layersStore'
+import { useSimulationsStore } from '@/stores/simulationsStore'
 
 export class MapLayerManager {
   private map: L.Map
@@ -397,6 +398,13 @@ export class MapLayerManager {
       case 'saih': {
         const props = (feature.properties ?? {}) as Record<string, unknown>
         const stationCode = String(props.stationCode ?? props.codigo ?? feature.id ?? '')
+        const simulationsStore = useSimulationsStore()
+
+        if (simulationsStore.panelActive && !simulationsStore.isSimulationActive) {
+          simulationsStore.notifyMapStationClick(stationCode)
+          break
+        }
+
         const query = {
           ...router.currentRoute.value.query,
           station: stationCode,

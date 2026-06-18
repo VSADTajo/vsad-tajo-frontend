@@ -4,6 +4,8 @@ export const useSimulationsStore = defineStore('simulations', {
   state: () => ({
     activeSimulationId: null as string | null,
     historyOpen: false,
+    panelActive: false,
+    mapClickedStationCode: null as string | null,
   }),
   getters: {
     isSimulationActive(): boolean {
@@ -19,6 +21,15 @@ export const useSimulationsStore = defineStore('simulations', {
     },
     closeHistory() {
       this.historyOpen = false
+    },
+    setPanelActive(active: boolean) {
+      this.panelActive = active
+    },
+    notifyMapStationClick(code: string) {
+      this.mapClickedStationCode = code
+    },
+    consumeMapStationClick() {
+      this.mapClickedStationCode = null
     },
   },
 })

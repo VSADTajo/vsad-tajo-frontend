@@ -68,10 +68,10 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed } from 'vue'
+  import { computed, watch, onUnmounted } from 'vue'
   import type { StationByCodeResponse } from '@/services/general'
   import { useMapStore } from '@/stores/mapStore'
-  import { setSaihMarkerHighlight } from '@/utils/saihMarkersRegistry'
+  import { setSaihMarkerHighlight, setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
 
   const mapStore = useMapStore()
 
@@ -95,6 +95,13 @@
       (e) => e.name.toLowerCase().includes(q) || e.stationCode.toLowerCase().includes(q)
     )
   })
+
+  watch(
+    () => props.selectedCode,
+    (code) => setSaihMarkerSelected(code ?? null)
+  )
+
+  onUnmounted(() => setSaihMarkerSelected(null))
 
   function toggle(code: string) {
     emit('select', props.selectedCode === code ? null : code)

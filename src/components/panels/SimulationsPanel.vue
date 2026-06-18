@@ -95,8 +95,7 @@
   import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
-  import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
-  import { embalsesWithCaudalPredictions } from '@/constants/predictionsAvailableData'
+  import { getEmbalseStationsService, type StationByCodeResponse } from '@/services/general'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
   import { useSimulationsStore } from '@/stores/simulationsStore'
@@ -161,6 +160,15 @@
   }
 
   watch(
+    () => simulationsStore.mapClickedStationCode,
+    (code) => {
+      if (code === null) return
+      selectedCode.value = selectedCode.value === code ? null : code
+      simulationsStore.consumeMapStationClick()
+    }
+  )
+
+  watch(
     () => simulationsStore.isSimulationActive,
     (active) => {
       if (active) {
@@ -172,18 +180,17 @@
   )
 
   onMounted(async () => {
+    simulationsStore.setPanelActive(true)
     layersStore.applySimulationsPreset()
     try {
-      const results = await Promise.all(
-        embalsesWithCaudalPredictions.map((code) => getStationByCodeService(code))
-      )
-      embalses.value = results
+      embalses.value = await getEmbalseStationsService()
     } finally {
       loading.value = false
     }
   })
 
   onUnmounted(() => {
+    simulationsStore.setPanelActive(false)
     layersStore.resetStationLayers()
   })
 

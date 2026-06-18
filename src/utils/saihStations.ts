@@ -106,6 +106,28 @@ function buildAlertChip(
   return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">${formatValue} m3/s</span>`
 }
 
+export function buildSaihMinimalPopupContent(feature: GeoJSON.Feature): string {
+  const props = (feature.properties ?? {}) as Record<string, unknown>
+  const tipo = String(props.tipoCod ?? props.tipo_cod ?? props.tipo ?? '')
+  const headerColor = getSaihTypeColor(tipo)
+  const headerColorDark = darkenHex(headerColor, 0.72)
+  const codigo = escapeHtml(props.stationCode ?? props.codigo ?? '')
+  const nombre = escapeHtml(props.name ?? props.nombre ?? '')
+  const municipio = escapeHtml(props.municipio ?? '-')
+
+  return `
+    <div style="min-width:180px;border-radius:12px;overflow:hidden;font-family:Montserrat,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,0.16)">
+      <div style="padding:10px 12px;background:linear-gradient(135deg, ${headerColor} 0%, ${headerColorDark} 100%);color:#fff">
+        <div style="font-size:15px;font-weight:700;line-height:1.2">${codigo}</div>
+        <div style="font-size:12px;opacity:.92;margin-top:2px;line-height:1.2">${nombre}</div>
+      </div>
+      <div style="padding:10px 12px;background:#fff;color:#1f2937;font-size:12px;line-height:1.5">
+        <div><strong>Municipio:</strong> ${municipio}</div>
+      </div>
+    </div>
+  `
+}
+
 export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
 

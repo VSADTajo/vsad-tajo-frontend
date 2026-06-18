@@ -8,6 +8,34 @@ export type StationsSearchParams =
   | { comarcaName: string }
   | { zonaExplOgcFid: string }
 
+type PaginatedStationsResponse = {
+  items: StationData[]
+  total?: number
+  page?: number
+  limit?: number
+}
+
+export async function getEmbalseStationsService(): Promise<StationByCodeResponse[]> {
+  const PAGE_SIZE = 200
+  const all: StationData[] = []
+  let page = 1
+
+  while (true) {
+    const res = await api
+      .get('stations', {
+        searchParams: { stationType: 'EMBALSE_SAIH', limit: PAGE_SIZE, page },
+      })
+      .json<PaginatedStationsResponse>()
+
+    all.push(...res.items)
+
+    if (res.items.length < PAGE_SIZE) break
+    page++
+  }
+
+  return all as StationByCodeResponse[]
+}
+
 export type StationByCodeResponse = {
   id: string
   name: string

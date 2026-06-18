@@ -11,9 +11,10 @@ import ky from 'ky'
 import { api } from './api'
 import { boundaryStore } from '@/stores/boundaryStore'
 import { applyPolygonMaskToWMS } from '@/utils/mask'
-import { buildSaihPopupContent } from '@/utils/saihStations'
+import { buildSaihPopupContent, buildSaihMinimalPopupContent } from '@/utils/saihStations'
 import { registerSaihMarker } from '@/utils/saihMarkersRegistry'
 import { useMapStore } from '@/stores/mapStore'
+import { useSimulationsStore } from '@/stores/simulationsStore'
 import {
   buildComarcaPopupContent,
   buildSubcuencaPopupContent,
@@ -181,11 +182,20 @@ export async function createAPIStationsLayer(
             offset: L.point(0, -14),
           })
 
+          const getPopupContent = () =>
+            useSimulationsStore().panelActive
+              ? buildSaihMinimalPopupContent(feature)
+              : buildSaihPopupContent(feature)
+
           layer.on({
             click: () => {
+              const simStore = useSimulationsStore()
+              if (simStore.panelActive && !simStore.isSimulationActive) return
+              layer.setPopupContent(getPopupContent())
               layer.openPopup()
             },
             mouseover: () => {
+              layer.setPopupContent(getPopupContent())
               layer.getElement()?.firstElementChild?.classList.add('is-highlight')
               layer.openPopup()
               useMapStore().setHoveredStation(stationCode)
