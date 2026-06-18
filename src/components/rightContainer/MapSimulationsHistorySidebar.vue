@@ -417,7 +417,8 @@
 
   .sim-card--active {
     border-color: rgb(var(--v-theme-primary)) !important;
-    background: rgba(var(--v-theme-primary), 0.08) !important;
+    background: rgba(var(--v-theme-primary), 0.7) !important;
+    color: rgb(var(--v-theme-on-primary)) !important;
   }
 
   .ops-toggle {

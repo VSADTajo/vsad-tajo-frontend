@@ -100,9 +100,9 @@
   import { useMapStore } from '@/stores/mapStore'
   import { useSimulationsStore } from '@/stores/simulationsStore'
   import type { SimulationOperation } from '@/types/Simulations'
-  import SimulationsEmbalseList from './SimulationsEmbalseList.vue'
-  import SimulationsSimulateForm from './SimulationsSimulateForm.vue'
-  import SimulationsOperationsList from './SimulationsOperationsList.vue'
+  import SimulationsEmbalseList from './simulationsPanel/SimulationsEmbalseList.vue'
+  import SimulationsSimulateForm from './simulationsPanel/SimulationsSimulateForm.vue'
+  import SimulationsOperationsList from './simulationsPanel/SimulationsOperationsList.vue'
 
   const { mdAndUp } = useDisplay()
   const route = useRoute()

@@ -58,7 +58,7 @@
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import MapTimeRangeControls from '@/components/map/MapTimeRangeControls.vue'
   import MapSimulationButton from '@/components/map/MapSimulationButton.vue'
-  import MapSimulationsHistorySidebar from '@/components/map/MapSimulationsHistorySidebar.vue'
+  import MapSimulationsHistorySidebar from '@/components/rightContainer/MapSimulationsHistorySidebar.vue'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import { useAvisosStore } from '@/stores/avisosStore'
   import { useLayersStore } from '@/stores/layersStore'
