@@ -31,10 +31,10 @@
             <template v-if="disponibles.length">
               <div v-for="sim in disponibles" :key="sim.id" class="sim-list-item">
                 <v-card
-                  :color="isActive(sim.id) ? 'primary' : undefined"
                   variant="outlined"
-                  class="sim-card bg-surface"
+                  class="sim-card bg-surface sim-card--clickable"
                   :class="{ 'sim-card--active': isActive(sim.id) }"
+                  @click="toggleActivate(sim.id)"
                 >
                   <v-card-item class="pb-1 pt-2 px-3">
                     <template #prepend>
@@ -46,6 +46,9 @@
                       {{ sim.id }}
                     </v-card-title>
                     <template #append>
+                      <v-chip v-if="isActive(sim.id)" color="surface" size="x-small" class="mr-1">
+                        Activa
+                      </v-chip>
                       <v-chip
                         :color="statusConfig[sim.status].color"
                         size="x-small"
@@ -58,31 +61,13 @@
 
                   <v-card-text class="pt-1 pb-2 px-3">
                     <div class="d-flex align-center justify-space-between mb-1">
-                      <span class="text-caption text-medium-emphasis">
+                      <span
+                        class="text-caption"
+                        :class="isActive(sim.id) ? 'text-surface' : 'text-medium-emphasis'"
+                      >
                         {{ formatDateDDMMYYYY(sim.createdAt) }}
                       </span>
                       <div class="d-flex align-center gap-1">
-                        <v-tooltip
-                          :text="isActive(sim.id) ? 'Desactivar' : 'Activar'"
-                          location="bottom"
-                        >
-                          <template #activator="{ props }">
-                            <v-btn
-                              v-bind="props"
-                              icon
-                              size="x-small"
-                              elevation="0"
-                              :color="isActive(sim.id) ? 'primary' : undefined"
-                              @click="toggleActivate(sim.id)"
-                            >
-                              <v-icon size="16">
-                                {{
-                                  isActive(sim.id) ? 'mdi-stop-circle' : 'mdi-play-circle-outline'
-                                }}
-                              </v-icon>
-                            </v-btn>
-                          </template>
-                        </v-tooltip>
                         <v-tooltip text="Recargar" location="bottom">
                           <template #activator="{ props }">
                             <v-btn
@@ -90,7 +75,8 @@
                               icon
                               size="x-small"
                               elevation="0"
-                              @click="reloadSimulation(sim.id)"
+                              class="mr-2"
+                              @click.stop="reloadSimulation(sim.id)"
                             >
                               <v-icon size="16">mdi-refresh</v-icon>
                             </v-btn>
@@ -104,7 +90,7 @@
                               size="x-small"
                               elevation="0"
                               color="error"
-                              @click="deleteSimulation(sim.id)"
+                              @click.stop="deleteSimulation(sim.id)"
                             >
                               <v-icon size="16">mdi-trash-can-outline</v-icon>
                             </v-btn>
@@ -112,7 +98,7 @@
                         </v-tooltip>
                       </div>
                     </div>
-                    <button class="ops-toggle text-caption" @click="toggleExpand(sim.id)">
+                    <button class="ops-toggle text-caption" @click.stop="toggleExpand(sim.id)">
                       <v-icon size="12" class="mr-1">
                         {{ expandedSim === sim.id ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
                       </v-icon>
@@ -127,7 +113,7 @@
                           class="op-item text-caption mb-1 pa-2 rounded"
                         >
                           <div class="font-weight-medium text-truncate">{{ op.stationName }}</div>
-                          <div class="text-medium-emphasis">
+                          <div :class="isActive(sim.id) ? 'text-surface' : 'text-medium-emphasis'">
                             {{ formatDateDDMM(op.fechaInicio) }} →
                             {{ formatDateDDMM(op.fechaFin) }}
                           </div>
@@ -192,6 +178,7 @@
                               icon
                               size="x-small"
                               elevation="0"
+                              class="mr-2"
                               @click="reloadSimulation(sim.id)"
                             >
                               <v-icon size="16">mdi-refresh</v-icon>
@@ -413,6 +400,10 @@
 
   .sim-list-item {
     margin-bottom: 8px;
+  }
+
+  .sim-card--clickable {
+    cursor: pointer;
   }
 
   .sim-card--active {
