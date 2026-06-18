@@ -77,6 +77,9 @@
               @simulate="onSimulate"
             />
           </v-col>
+          <v-col cols="12">
+            <p class="pl-4 font-weight-medium">Nueva Simulación</p>
+          </v-col>
           <v-col cols="12" class="pt-2 pb-4">
             <SimulationsOperationsList
               :operations="operations"

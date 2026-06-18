@@ -48,6 +48,7 @@
         hide-details
         min="0"
         class="mt-4"
+        :loading="loadingDefault"
       />
     </v-card-text>
 
@@ -68,6 +69,7 @@
   import type { StationByCodeResponse } from '@/services/general'
   import type { SimulationOperation } from '@/types/Simulations'
   import { formatDateDDMMYYYY } from '@/utils/dates'
+  import { getPredictionsService } from '@/services/predictions'
 
   const props = defineProps<{
     embalse: StationByCodeResponse
@@ -100,8 +102,30 @@
   const caudalSalida = ref<number | null>(null)
   const fechaInicio = ref<Date | null>(defaultStart)
   const fechaFin = ref<Date | null>(null)
+  const loadingDefault = ref(false)
 
   const isEditing = computed(() => props.initialValue != null)
+
+  async function fetchDefaultCaudal(stationCode: string) {
+    if (isEditing.value) return
+    loadingDefault.value = true
+    try {
+      const prediction = await getPredictionsService(stationCode, 'FICT95.historical')
+      if (prediction?.results?.length && !isEditing.value) {
+        caudalSalida.value = prediction.results[prediction.results.length - 1].value
+      }
+    } catch {
+      // leave as null if fetch fails
+    } finally {
+      loadingDefault.value = false
+    }
+  }
+
+  watch(
+    () => props.embalse,
+    (embalse) => fetchDefaultCaudal(embalse.stationCode),
+    { immediate: true }
+  )
 
   const isFormValid = computed(
     () => fechaInicio.value != null && fechaFin.value != null && caudalSalida.value != null
@@ -145,6 +169,7 @@
     caudalSalida.value = null
     fechaInicio.value = nextMultipleOf5(new Date())
     fechaFin.value = null
+    fetchDefaultCaudal(props.embalse.stationCode)
   }
 
   function onSubmit() {
