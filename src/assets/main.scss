@@ -213,6 +213,14 @@ html {
     0 0 10px 4px color-mix(in srgb, var(--saih-color) 35%, transparent);
 }
 
+.saih-marker.is-downstream {
+  transform: scale(1.18);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--saih-color) 50%, transparent),
+    0 0 8px 3px color-mix(in srgb, var(--saih-color) 20%, transparent);
+  opacity: 0.85;
+}
+
 .leaflet-popup.feature-hover-popup,
 .leaflet-tooltip.feature-hover-tooltip {
   pointer-events: none;

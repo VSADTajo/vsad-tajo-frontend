@@ -243,7 +243,8 @@
   import type { SimulationRecord } from '@/types/Simulations'
   import { formatDateDDMMYYYY, formatDateDDMM } from '@/utils/dates'
   import { useSimulationsStore } from '@/stores/simulationsStore'
-  import { setSimulationMarkers } from '@/utils/saihMarkersRegistry'
+  import { setSimulationMarkers, setDownstreamMarkers } from '@/utils/saihMarkersRegistry'
+  import { getDownstreamStationsService } from '@/services/general'
 
   defineProps<{ open: boolean }>()
 
@@ -328,7 +329,8 @@
 
   watch(
     () => simulationsStore.activeSimulationId,
-    (id) => {
+    async (id) => {
+      setDownstreamMarkers(null)
       if (!id) {
         setSimulationMarkers(null)
         return
@@ -340,11 +342,18 @@
       }
       const codes = [...new Set(sim.operations.map((op) => op.stationCode))]
       setSimulationMarkers(codes)
+      try {
+        const downstream = await getDownstreamStationsService(codes)
+        setDownstreamMarkers(downstream)
+      } catch {
+        // downstream is best-effort
+      }
     }
   )
 
   onUnmounted(() => {
     setSimulationMarkers(null)
+    setDownstreamMarkers(null)
     simulationsStore.setActiveSimulation(null)
   })
 

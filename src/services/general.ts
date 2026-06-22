@@ -69,6 +69,22 @@ export async function getStationByCodeService(code: string): Promise<StationByCo
   return api.get(`stations/by-code/${encodeURIComponent(code)}`).json<StationByCodeResponse>()
 }
 
+type DownstreamStation = {
+  codigoDestino: string
+  nombreDestino: string
+  tipoDestino: string
+}
+
+export async function getDownstreamStationsService(codes: string[]): Promise<string[]> {
+  if (!codes.length) return []
+  const params = new URLSearchParams()
+  codes.forEach((code) => params.append('codes', code))
+  const result = await api
+    .get('stations/downstream', { searchParams: params })
+    .json<{ items: DownstreamStation[]; count: number }>()
+  return result.items.map((s) => s.codigoDestino)
+}
+
 export async function searchService(query: string): Promise<SearchResult[]> {
   const result = await api
     .get(`search`, {

@@ -3,19 +3,25 @@ import type L from 'leaflet'
 const registry = new Map<string, L.Marker>()
 let selectedCode: string | null = null
 const simulationCodes = new Set<string>()
+const downstreamCodes = new Set<string>()
 
 export function registerSaihMarker(code: string, marker: L.Marker): void {
   const upper = code.toUpperCase()
   registry.set(upper, marker)
 
-  if (simulationCodes.has(upper)) {
-    if (marker.getElement()) {
-      marker.getElement()!.firstElementChild?.classList.add('is-simulation')
-    } else {
-      marker.once('add', () => {
-        marker.getElement()?.firstElementChild?.classList.add('is-simulation')
-      })
+  const applyPersistentClasses = () => {
+    if (simulationCodes.has(upper)) {
+      marker.getElement()?.firstElementChild?.classList.add('is-simulation')
     }
+    if (downstreamCodes.has(upper)) {
+      marker.getElement()?.firstElementChild?.classList.add('is-downstream')
+    }
+  }
+
+  if (marker.getElement()) {
+    applyPersistentClasses()
+  } else {
+    marker.once('add', applyPersistentClasses)
   }
 }
 
@@ -51,6 +57,20 @@ export function setSimulationMarkers(codes: string[] | null): void {
       const upper = code.toUpperCase()
       simulationCodes.add(upper)
       registry.get(upper)?.getElement()?.firstElementChild?.classList.add('is-simulation')
+    })
+  }
+}
+
+export function setDownstreamMarkers(codes: string[] | null): void {
+  downstreamCodes.forEach((code) => {
+    registry.get(code)?.getElement()?.firstElementChild?.classList.remove('is-downstream')
+  })
+  downstreamCodes.clear()
+  if (codes) {
+    codes.forEach((code) => {
+      const upper = code.toUpperCase()
+      downstreamCodes.add(upper)
+      registry.get(upper)?.getElement()?.firstElementChild?.classList.add('is-downstream')
     })
   }
 }
