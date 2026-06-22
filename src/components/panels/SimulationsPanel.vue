@@ -175,6 +175,7 @@
     () => simulationsStore.isSimulationActive,
     (active) => {
       if (active) {
+        selectedCode.value = null
         layersStore.applySimulationsWithAforoPreset()
       } else {
         layersStore.applySimulationsPreset()

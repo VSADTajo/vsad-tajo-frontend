@@ -239,10 +239,11 @@
 </template>
 
 <script lang="ts" setup>
-  import { ref, computed } from 'vue'
+  import { ref, computed, watch, onUnmounted } from 'vue'
   import type { SimulationRecord } from '@/types/Simulations'
   import { formatDateDDMMYYYY, formatDateDDMM } from '@/utils/dates'
   import { useSimulationsStore } from '@/stores/simulationsStore'
+  import { setSimulationMarkers } from '@/utils/saihMarkersRegistry'
 
   defineProps<{ open: boolean }>()
 
@@ -324,6 +325,28 @@
   function toggleActivate(id: string) {
     simulationsStore.setActiveSimulation(isActive(id) ? null : id)
   }
+
+  watch(
+    () => simulationsStore.activeSimulationId,
+    (id) => {
+      if (!id) {
+        setSimulationMarkers(null)
+        return
+      }
+      const sim = simulations.value.find((s) => s.id === id)
+      if (!sim) {
+        setSimulationMarkers(null)
+        return
+      }
+      const codes = [...new Set(sim.operations.map((op) => op.stationCode))]
+      setSimulationMarkers(codes)
+    }
+  )
+
+  onUnmounted(() => {
+    setSimulationMarkers(null)
+    simulationsStore.setActiveSimulation(null)
+  })
 
   function reloadSimulation(id: string) {
     console.log('[SimulationsHistorySidebar] reload', id)

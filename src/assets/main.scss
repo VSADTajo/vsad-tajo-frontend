@@ -206,6 +206,13 @@ html {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--saih-color) 60%, transparent);
 }
 
+.saih-marker.is-simulation {
+  transform: scale(1.22);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--saih-color) 80%, transparent),
+    0 0 10px 4px color-mix(in srgb, var(--saih-color) 35%, transparent);
+}
+
 .leaflet-popup.feature-hover-popup,
 .leaflet-tooltip.feature-hover-tooltip {
   pointer-events: none;
