@@ -41,6 +41,10 @@ export type PredictionTypeName =
   | 'FICT99.historical'
   | 'FICT95.historical'
   | 'VICT01.historical'
+  | 'Q.mk11.forecast'
+  | 'Q.mk11.EPSforecast'
+  | 'Q.mk11.EPS25forecast'
+  | 'Q.mk11.EPS75forecast'
 
 export type HistoricalPredictionTypeName = string
 
