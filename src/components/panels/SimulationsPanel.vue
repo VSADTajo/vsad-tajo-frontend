@@ -1,5 +1,16 @@
 ﻿<template>
   <div class="simulations-container">
+    <v-snackbar
+      v-model="snackbar.visible"
+      :color="snackbar.color"
+      location="bottom center"
+      :timeout="3500"
+    >
+      <div class="d-flex align-center gap-2">
+        <v-icon>{{ snackbar.icon }}</v-icon>
+        {{ snackbar.message }}
+      </div>
+    </v-snackbar>
     <div class="simulations-title">
       <v-row>
         <v-col cols="12" class="d-flex align-center justify-space-between">
@@ -83,6 +94,7 @@
           <v-col cols="12" class="pt-2 pb-4">
             <SimulationsOperationsList
               :operations="operations"
+              :loading="isCreating"
               @edit="onEditOperation"
               @delete="onDeleteOperation"
               @create-simulation="onCreateSimulation"
@@ -98,7 +110,11 @@
   import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
-  import { getEmbalseStationsService, type StationByCodeResponse } from '@/services/general'
+  import {
+    getEmbalseStationsService,
+    createSimulationService,
+    type StationByCodeResponse,
+  } from '@/services/general'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
   import { useSimulationsStore } from '@/stores/simulationsStore'
@@ -115,6 +131,8 @@
   const simulationsStore = useSimulationsStore()
 
   const loading = ref(true)
+  const isCreating = ref(false)
+  const snackbar = ref({ visible: false, message: '', color: 'success', icon: '' })
   const embalses = ref<StationByCodeResponse[]>([])
   const selectedCode = ref<string | null>(null)
   const searchText = ref('')
@@ -156,10 +174,33 @@
   }
 
   async function onCreateSimulation() {
-    // TODO: replace with real API call when endpoint is ready
-    console.log('[SimulationsPanel] create simulation', operations.value)
-    operations.value = []
-    editingIndex.value = null
+    isCreating.value = true
+    try {
+      await createSimulationService({
+        modmeteo: 'BOTH',
+        maneuvers: operations.value.map((op) => ({
+          reservoirCode: op.stationCode,
+          outputFlowValue: op.caudalSalida,
+        })),
+      })
+      snackbar.value = {
+        visible: true,
+        message: 'Simulación creada correctamente',
+        color: 'success',
+        icon: 'mdi-check-circle-outline',
+      }
+    } catch {
+      snackbar.value = {
+        visible: true,
+        message: 'Error creando simulación',
+        color: 'error',
+        icon: 'mdi-alert-circle-outline',
+      }
+    } finally {
+      operations.value = []
+      editingIndex.value = null
+      isCreating.value = false
+    }
   }
 
   watch(

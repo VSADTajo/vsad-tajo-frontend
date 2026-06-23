@@ -85,6 +85,22 @@ export async function getDownstreamStationsService(codes: string[]): Promise<str
   return result.items.map((s) => s.codigoDestino)
 }
 
+type CreateSimulationPayload = {
+  modmeteo: 'BOTH'
+  maneuvers: { reservoirCode: string; outputFlowValue: number }[]
+}
+
+export type CreateSimulationResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export async function createSimulationService(
+  payload: CreateSimulationPayload
+): Promise<CreateSimulationResponse> {
+  return api.post('simulations/manual', { json: payload }).json<CreateSimulationResponse>()
+}
+
 export async function searchService(query: string): Promise<SearchResult[]> {
   const result = await api
     .get(`search`, {

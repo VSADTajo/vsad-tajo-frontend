@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <v-card variant="outlined" class="mx-3 bg-surface">
     <v-card-item class="pb-1">
       <v-card-title class="text-body-1 font-weight-medium d-flex align-center gap-2">
@@ -33,7 +33,7 @@
               </div>
               <div>
                 <span class="text-medium-emphasis">Caudal salida:</span>
-                {{ op.caudalSalida }} m³/s
+                {{ op.caudalSalida }} m&#xB3;/s
               </div>
             </div>
             <div class="d-flex gap-4 justify-space-between">
@@ -61,6 +61,7 @@
         variant="flat"
         block
         :disabled="!operations.length"
+        :loading="loading"
         @click="emit('create-simulation')"
       >
         <v-icon start>mdi-send-outline</v-icon>
@@ -76,6 +77,7 @@
 
   defineProps<{
     operations: SimulationOperation[]
+    loading?: boolean
   }>()
 
   const emit = defineEmits<{
