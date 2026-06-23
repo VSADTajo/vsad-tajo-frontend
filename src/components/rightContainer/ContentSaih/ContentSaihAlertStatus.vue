@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-card class="bg-surface h-100" elevation="2">
     <v-card-title class="text-subtitle-1 font-weight-bold">{{ cardTitle }}</v-card-title>
     <v-divider />
@@ -23,7 +23,7 @@
 
   const props = withDefaults(
     defineProps<{
-      activeTab?: 'caudal' | 'precipitaciones'
+      activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
       caudalHistorical?: StationPrediction
       precipitationsHistorical?: StationPrediction
       caudalForecastHarmonie?: StationPrediction
@@ -77,6 +77,10 @@
     return Math.max(harmonieMax, epsMax)
   })
 
+  const nestedThreshold = computed(
+    () => props.thresholds?.threshold as Record<string, unknown> | undefined
+  )
+
   const maxObservedValue = computed<number | null>(() => {
     if (props.activeTab === 'caudal') return maxResultValue(props.caudalHistorical)
     return maxResultValue(props.precipitationsHistorical)
@@ -92,6 +96,9 @@
   )
 
   const threshold1 = computed<number | null>(() => {
+    if (props.activeTab === 'volumen') {
+      return readNumber(['umbralVolumen1', 'umbral_1_volumen'], nestedThreshold.value ?? props.thresholds)
+    }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_1', 'umbral_amarillo'], props.thresholds)
     }
@@ -99,6 +106,9 @@
   })
 
   const threshold2 = computed<number | null>(() => {
+    if (props.activeTab === 'volumen') {
+      return readNumber(['umbralVolumen2', 'umbral_2_volumen'], nestedThreshold.value ?? props.thresholds)
+    }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_2', 'umbral_naranja'], props.thresholds)
     }
@@ -106,6 +116,9 @@
   })
 
   const threshold3 = computed<number | null>(() => {
+    if (props.activeTab === 'volumen') {
+      return readNumber(['umbralVolumen3', 'umbral_3_volumen'], nestedThreshold.value ?? props.thresholds)
+    }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_3', 'umbral_rojo'], props.thresholds)
     }

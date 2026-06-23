@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-card class="bg-surface" elevation="2">
     <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-3 px-4">
       <div class="text-subtitle-1 font-weight-bold">
@@ -26,7 +26,11 @@
       </div>
 
       <div v-else-if="!rows.length || !timeColumns.length" class="text-medium-emphasis py-3">
-        No hay datos de caudal para mostrar la tabla.
+        {{
+          noThresholds
+            ? 'No hay datos de volumen para mostrar la tabla.'
+            : 'No hay datos de caudal para mostrar la tabla.'
+        }}
       </div>
 
       <div v-else class="matrix-scroll">

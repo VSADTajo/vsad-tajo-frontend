@@ -47,7 +47,10 @@
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
           mode="observed"
+          :is-embalse="isEmbalse"
           :caudal-historical="caudalHistorical"
+          :caudal-outflow-historical="caudalOutflowHistorical"
+          :embalse-volume-historical="embalseVolumeHistorical"
           :thresholds="thresholds"
           title="Resumen Operativo Observado"
         />
@@ -61,12 +64,19 @@
             <v-sheet class="pa-5">
               <template v-if="isEmbalse">
                 <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
-                  <v-tab value="caudal">Caudal</v-tab>
-                  <v-tab value="volumen">Volumen</v-tab>
+                  <v-tab value="caudalNAM">Caudal NAM</v-tab>
+                  <v-tab value="caudalMIKE">Caudal MIKE</v-tab>
+                  <v-tab value="volumenNAM">Volumen NAM</v-tab>
+                  <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
                 </v-tabs>
 
-                <v-window v-model="selectedEmbalseChartTab">
-                  <v-window-item value="caudal">
+                <div class="chart-tab-root">
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalNAM' },
+                    ]"
+                  >
                     <ForecastChartNew
                       :data="caudalOnlyChartData"
                       :is-embalse="true"
@@ -76,9 +86,31 @@
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
-                  </v-window-item>
-
-                  <v-window-item value="volumen">
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalMIKE' },
+                    ]"
+                  >
+                    <ForecastChartNew
+                      :data="mikeChartData"
+                      :is-embalse="true"
+                      :height="550"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenNAM' },
+                    ]"
+                  >
                     <ForecastChartNew
                       :data="volumenOnlyChartData"
                       :is-embalse="true"
@@ -88,8 +120,25 @@
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
-                  </v-window-item>
-                </v-window>
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenMIKE' },
+                    ]"
+                  >
+                    <ForecastChartNew
+                      :data="mikeVolumenChartData"
+                      :is-embalse="true"
+                      :height="550"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
+                </div>
               </template>
 
               <template v-else>
@@ -149,6 +198,8 @@
             :forecast-epsat="activeEpsatForecast"
             :thresholds="thresholds"
             :loading="loadingCaudales"
+            :title="isVolumeTab ? 'Matriz de volumen (7 dias / 6h)' : undefined"
+            :no-thresholds="isVolumeTab"
           />
         </v-card>
       </div>
@@ -170,6 +221,7 @@
           :loading="loadingCaudales"
           :caudal-forecast-harmonie="activeHarmonieforecast"
           :caudal-forecast-epsat="activeEpsatForecast"
+          :active-tab="activePredictionsTab"
           :mode="'predictions'"
           :thresholds="thresholds"
         />
@@ -181,7 +233,7 @@
       >
         <ContentSaihPredictionsLatest
           class="ma-2"
-          active-tab="caudal"
+          :active-tab="activePredictionsTab"
           :loading="loadingCaudales"
           :loading-harmonie="loadingHarmoniePredict"
           :loading-eps="loadingEpsPredict"
@@ -208,6 +260,7 @@
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
           mode="predictions"
+          :active-tab="activePredictionsTab"
           :caudal-forecast-harmonie="activeHarmonieforecast"
           :caudal-forecast-epstat="activeEpsatForecast"
           :caudal-forecast-ens-p10="activeEnsP10"
@@ -290,7 +343,9 @@
   }>()
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const selectedEmbalseChartTab = ref<'caudal' | 'volumen'>('caudal')
+  const selectedEmbalseChartTab = ref<'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE'>(
+    'caudalNAM'
+  )
   const selectedCaudalTypeChartTab = ref<'nam' | 'mike'>('nam')
   const selectedThreshold = ref<ThresholdSelection>(null)
   const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
@@ -317,6 +372,10 @@
     mikeForecastEnsP25,
     mikeForecastEnsP75,
     mikeChartData,
+    mikeVolumeHarmonie,
+    mikeVolumeEpsat,
+    mikeVolumeEnsP25,
+    mikeVolumeEnsP75,
     harmonieCaudalDates,
     epsCaudalDates,
     mikeDates,
@@ -387,32 +446,114 @@
     forecastEnsP75: undefined,
   }))
 
+  const mikeVolumenChartData = computed(() => ({
+    historical: undefined,
+    historicalOutflow: undefined,
+    historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
+    forecastHarmonie: mikeVolumeHarmonie.value,
+    forecastEpsat: mikeVolumeEpsat.value,
+    forecastEnsP10: undefined,
+    forecastEnsP25: mikeVolumeEnsP25.value,
+    forecastEnsP90: undefined,
+    forecastEnsP75: mikeVolumeEnsP75.value,
+  }))
+
   // ── Tab-aware props for side panels ───────────────────────────────────────
   const isMikeTab = computed(() => !props.isEmbalse && selectedCaudalTypeChartTab.value === 'mike')
 
-  const activeHarmonieforecast = computed(() =>
-    isMikeTab.value ? mikeForecastHarmonie.value : caudalForecastHarmonie.value
+  const isEmbalseOnMikeTab = computed(
+    () =>
+      !!props.isEmbalse &&
+      (selectedEmbalseChartTab.value === 'caudalMIKE' ||
+        selectedEmbalseChartTab.value === 'volumenMIKE')
   )
-  const activeEpsatForecast = computed(() =>
-    isMikeTab.value ? mikeForecastEpsat.value : caudalForecastEpstat.value
-  )
-  const activeEnsP10 = computed(() => (isMikeTab.value ? undefined : caudalForecastEnsP10.value))
-  const activeEnsP25 = computed(() =>
-    isMikeTab.value ? mikeForecastEnsP25.value : caudalForecastEnsP25.value
-  )
-  const activeEnsP75 = computed(() =>
-    isMikeTab.value ? mikeForecastEnsP75.value : caudalForecastEnsP75.value
-  )
-  const activeEnsP90 = computed(() => (isMikeTab.value ? undefined : caudalForecastEnsP90.value))
 
-  const activeHarmonieDates = computed(() =>
-    isMikeTab.value ? mikeDates.value : harmonieCaudalDates.value
+  const isVolumeTab = computed(
+    () =>
+      !!props.isEmbalse &&
+      (selectedEmbalseChartTab.value === 'volumenNAM' ||
+        selectedEmbalseChartTab.value === 'volumenMIKE')
   )
-  const activeEpsDates = computed(() => (isMikeTab.value ? [] : epsCaudalDates.value))
-  const activeSelectedHarmonieDate = computed(() =>
-    isMikeTab.value ? selectedMikeDate.value : selectedHarmonieCaudalDate.value
+
+  const activePredictionsTab = computed((): 'caudal' | 'volumen' =>
+    isVolumeTab.value ? 'volumen' : 'caudal'
   )
-  const activeSelectedEpsDate = computed(() => (isMikeTab.value ? '' : selectedEpsCaudalDate.value))
+
+  const activeHarmonieforecast = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastHarmonie.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeHarmonie.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastHarmonie.value
+    }
+    return isMikeTab.value ? mikeForecastHarmonie.value : caudalForecastHarmonie.value
+  })
+  const activeEpsatForecast = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastEpsat.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEpsat.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastEpstat.value
+    }
+    return isMikeTab.value ? mikeForecastEpsat.value : caudalForecastEpstat.value
+  })
+  const activeEnsP10 = computed(() => {
+    if (props.isEmbalse) {
+      return selectedEmbalseChartTab.value === 'caudalNAM' ? caudalForecastEnsP10.value : undefined
+    }
+    return isMikeTab.value ? undefined : caudalForecastEnsP10.value
+  })
+  const activeEnsP25 = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastEnsP25.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEnsP25.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastEnsP25.value
+    }
+    return isMikeTab.value ? mikeForecastEnsP25.value : caudalForecastEnsP25.value
+  })
+  const activeEnsP75 = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastEnsP75.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEnsP75.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastEnsP75.value
+    }
+    return isMikeTab.value ? mikeForecastEnsP75.value : caudalForecastEnsP75.value
+  })
+  const activeEnsP90 = computed(() => {
+    if (props.isEmbalse) {
+      return selectedEmbalseChartTab.value === 'caudalNAM' ? caudalForecastEnsP90.value : undefined
+    }
+    return isMikeTab.value ? undefined : caudalForecastEnsP90.value
+  })
+
+  const activeHarmonieDates = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? mikeDates.value : harmonieCaudalDates.value
+    }
+    return isMikeTab.value ? mikeDates.value : harmonieCaudalDates.value
+  })
+  const activeEpsDates = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? [] : epsCaudalDates.value
+    }
+    return isMikeTab.value ? [] : epsCaudalDates.value
+  })
+  const activeSelectedHarmonieDate = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? selectedMikeDate.value : selectedHarmonieCaudalDate.value
+    }
+    return isMikeTab.value ? selectedMikeDate.value : selectedHarmonieCaudalDate.value
+  })
+  const activeSelectedEpsDate = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? '' : selectedEpsCaudalDate.value
+    }
+    return isMikeTab.value ? '' : selectedEpsCaudalDate.value
+  })
 
   // ── Threshold focus ───────────────────────────────────────────────────────
   function handleThresholdFocus(payload: ThresholdSelection): void {

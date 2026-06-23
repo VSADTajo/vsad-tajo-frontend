@@ -1,7 +1,7 @@
 <template>
   <v-card class="bg-surface mb-2" elevation="2">
     <v-card-text class="pt-0">
-      <template v-if="activeTab === 'caudal'">
+      <template v-if="activeTab === 'caudalNAM' || activeTab === 'caudalMIKE'">
         <div class="text-caption text-medium-emphasis font-weight-bold mb-2 mt-1">
           Umbrales de caudal
         </div>
@@ -52,7 +52,9 @@
         <div v-else class="text-caption text-medium-emphasis pt-2">No hay umbrales de caudal.</div>
       </template>
 
-      <template v-else-if="activeTab === 'volumen' && isEmbalse">
+      <template
+        v-else-if="(activeTab === 'volumenNAM' || activeTab === 'volumenMIKE') && isEmbalse"
+      >
         <div class="text-caption text-medium-emphasis font-weight-bold mb-2 mt-1">
           Umbrales de volumen
         </div>
@@ -115,7 +117,7 @@
   type ThresholdLevel = 1 | 2 | 3
 
   const props = defineProps<{
-    activeTab: 'caudal' | 'volumen' | 'precipitaciones'
+    activeTab: 'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE' | 'precipitaciones'
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
     selectedThreshold?: { kind: ThresholdType; level: ThresholdLevel } | null

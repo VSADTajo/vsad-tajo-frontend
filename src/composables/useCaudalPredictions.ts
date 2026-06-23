@@ -45,6 +45,12 @@ export function useCaudalPredictions(
   const mikeForecastEnsP25 = ref<StationPrediction>()
   const mikeForecastEnsP75 = ref<StationPrediction>()
 
+  // ── MIKE volume refs (embalse only) ───────────────────────────────────────
+  const mikeVolumeHarmonie = ref<StationPrediction>()
+  const mikeVolumeEpsat = ref<StationPrediction>()
+  const mikeVolumeEnsP25 = ref<StationPrediction>()
+  const mikeVolumeEnsP75 = ref<StationPrediction>()
+
   // ── Refs maps (for bulk clear / apply) ───────────────────────────────────
   const caudalRefs: ForecastRefsMap = {
     historical: caudalHistorical,
@@ -61,6 +67,13 @@ export function useCaudalPredictions(
     forecastEpsat: mikeForecastEpsat,
     forecastEnsP25: mikeForecastEnsP25,
     forecastEnsP75: mikeForecastEnsP75,
+  }
+
+  const mikeVolumeRefs = {
+    forecastHarmonie: mikeVolumeHarmonie,
+    forecastEpsat: mikeVolumeEpsat,
+    forecastEnsP25: mikeVolumeEnsP25,
+    forecastEnsP75: mikeVolumeEnsP75,
   }
 
   // ── Dates ─────────────────────────────────────────────────────────────────
@@ -187,6 +200,7 @@ export function useCaudalPredictions(
 
   const mikeChartData = computed(() => ({
     historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
     forecastHarmonie: mikeForecastHarmonie.value,
     forecastEpsat: mikeForecastEpsat.value,
     forecastEnsP25: mikeForecastEnsP25.value,
@@ -221,7 +235,14 @@ export function useCaudalPredictions(
       epsPrecipDates.value = []
     }
 
-    if (!isEType) {
+    if (isEType) {
+      try {
+        const mikeResponse = await getAvailablePredictionsService(code, 'I.mk11.forecast')
+        mikeDates.value = toDateList(mikeResponse)
+      } catch {
+        mikeDates.value = []
+      }
+    } else {
       try {
         const mikeResponse = await getAvailablePredictionsService(code, 'Q.mk11.forecast')
         mikeDates.value = toDateList(mikeResponse)
@@ -264,11 +285,77 @@ export function useCaudalPredictions(
       if (isEmbalse.value) {
         const [outflow, volume] = await Promise.all([
           getPredictionsService(code, 'FICT95.historical'),
-          getPredictionsService(code, 'VICT01.historical'),
+          getHistoricalPredictionService(code, 'VICT01.historical', historicalStart, historicalEnd),
         ])
         if (requestId !== fetchRequestId) return
         caudalOutflowHistorical.value = outflow
         embalseVolumeHistorical.value = volume
+
+        const mikeEmbalseRequestDefs: ForecastRequestDef[] = [
+          {
+            key: 'forecastHarmonie',
+            predictionType: 'I.mk11.forecast',
+            simulationDate: selectedMikeDate.value,
+          },
+          {
+            key: 'forecastEpsat',
+            predictionType: 'I.mk11.EPSforecast',
+            simulationDate: selectedMikeDate.value,
+          },
+          {
+            key: 'forecastEnsP25',
+            predictionType: 'I.mk11.EPS25forecast',
+            simulationDate: selectedMikeDate.value,
+          },
+          {
+            key: 'forecastEnsP75',
+            predictionType: 'I.mk11.EPS75forecast',
+            simulationDate: selectedMikeDate.value,
+          },
+        ]
+        try {
+          const mikeData = await fetchPredictionBatch(code, mikeEmbalseRequestDefs)
+          if (requestId !== fetchRequestId) return
+          mikeForecastHarmonie.value = mikeData.forecastHarmonie
+          mikeForecastEpsat.value = mikeData.forecastEpsat
+          mikeForecastEnsP25.value = mikeData.forecastEnsP25
+          mikeForecastEnsP75.value = mikeData.forecastEnsP75
+        } catch {
+          clearForecasts(mikeRefs)
+        }
+
+        const mikeVolumeRequestDefs: ForecastRequestDef[] = [
+          {
+            key: 'forecastHarmonie',
+            predictionType: 'V.MIKE11.harmonie_acum',
+            simulationDate: selectedMikeDate.value,
+          },
+          {
+            key: 'forecastEpsat',
+            predictionType: 'V.MIKE11.ens.medio_acum',
+            simulationDate: selectedMikeDate.value,
+          },
+          {
+            key: 'forecastEnsP25',
+            predictionType: 'V.MIKE11.25.medio_acum',
+            simulationDate: selectedMikeDate.value,
+          },
+          {
+            key: 'forecastEnsP75',
+            predictionType: 'V.MIKE11.75.medio_acum',
+            simulationDate: selectedMikeDate.value,
+          },
+        ]
+        try {
+          const mikeVolumeData = await fetchPredictionBatch(code, mikeVolumeRequestDefs)
+          if (requestId !== fetchRequestId) return
+          mikeVolumeHarmonie.value = mikeVolumeData.forecastHarmonie
+          mikeVolumeEpsat.value = mikeVolumeData.forecastEpsat
+          mikeVolumeEnsP25.value = mikeVolumeData.forecastEnsP25
+          mikeVolumeEnsP75.value = mikeVolumeData.forecastEnsP75
+        } catch {
+          clearForecasts(mikeVolumeRefs)
+        }
       } else {
         caudalOutflowHistorical.value = undefined
         embalseVolumeHistorical.value = undefined
@@ -312,6 +399,7 @@ export function useCaudalPredictions(
       if (requestId !== fetchRequestId) return
       clearForecasts(caudalRefs)
       clearForecasts(mikeRefs)
+      clearForecasts(mikeVolumeRefs)
       caudalOutflowHistorical.value = undefined
       embalseVolumeHistorical.value = undefined
     }
@@ -324,6 +412,7 @@ export function useCaudalPredictions(
       isFullReloading = true
       clearForecasts(caudalRefs)
       clearForecasts(mikeRefs)
+      clearForecasts(mikeVolumeRefs)
       caudalOutflowHistorical.value = undefined
       embalseVolumeHistorical.value = undefined
       harmonieCaudalDates.value = []
@@ -405,6 +494,12 @@ export function useCaudalPredictions(
     mikeForecastEpsat,
     mikeForecastEnsP25,
     mikeForecastEnsP75,
+
+    // MIKE volume refs (embalse only, caller merges resguardos)
+    mikeVolumeHarmonie,
+    mikeVolumeEpsat,
+    mikeVolumeEnsP25,
+    mikeVolumeEnsP75,
 
     // Chart data (without resguardos — caller merges them in)
     caudalBaseChartData,
