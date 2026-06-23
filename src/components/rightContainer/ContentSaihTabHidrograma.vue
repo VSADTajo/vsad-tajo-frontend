@@ -97,26 +97,37 @@
                   <v-tab value="nam">NAM</v-tab>
                   <v-tab value="mike">MIKE</v-tab>
                 </v-tabs>
-                <v-window v-model="selectedCaudalTypeChartTab">
-                  <v-window-item value="nam">
+                <div class="chart-tab-root">
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'nam' },
+                    ]"
+                  >
                     <ForecastChartNew
                       :data="caudalChartData"
-                      :loading="loadingCaudales || isCaudalTabTransitioning"
+                      :loading="loadingCaudales"
                       :thresholds="thresholds"
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
-                  </v-window-item>
-                  <v-window-item value="mike" eager>
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'mike' },
+                    ]"
+                  >
                     <ForecastChartNew
                       :data="mikeChartData"
-                      :loading="loadingCaudales || isCaudalTabTransitioning"
+                      :loading="loadingCaudales"
                       :thresholds="thresholds"
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
-                  </v-window-item>
-                </v-window>
+                  </div>
+                </div>
               </template>
             </v-sheet>
           </v-card-text>
@@ -284,17 +295,6 @@
   const selectedThreshold = ref<ThresholdSelection>(null)
   const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
   const thresholdFocusNonce = ref(0)
-  const isCaudalTabTransitioning = ref(false)
-
-  watch(selectedCaudalTypeChartTab, () => {
-    isCaudalTabTransitioning.value = true
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        isCaudalTabTransitioning.value = false
-      })
-    })
-  })
-
   // ── Composable args ───────────────────────────────────────────────────────
   const codeType = computed(() => {
     const val = props.thresholds?.tipoCod
@@ -547,5 +547,21 @@
   .summary-container-card {
     min-height: 0;
     overflow: hidden;
+  }
+
+  .chart-tab-root {
+    position: relative;
+  }
+
+  /* MIKE chart sits on top of NAM, filling the same space */
+  .chart-tab-overlay {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* visibility keeps layout/dimensions intact — ECharts can always read container size */
+  .chart-tab-panel--hidden {
+    visibility: hidden;
+    pointer-events: none;
   }
 </style>

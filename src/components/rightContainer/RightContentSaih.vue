@@ -59,7 +59,7 @@
 
   <v-sheet elevation="2" class="mt-2">
     <v-tabs v-model="tab" color="primary">
-      <v-tab v-if="hasCaudal" value="caudal">Hidrograma</v-tab>
+      <v-tab v-if="hasCaudal" value="caudal">Hidrogramas</v-tab>
       <v-tab value="precipitaciones">Precipitaciones</v-tab>
     </v-tabs>
   </v-sheet>
