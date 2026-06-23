@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-card class="bg-surface operational-summary-card" elevation="2">
     <v-card-title
       class="text-subtitle-1 font-weight-bold d-flex align-center ga-2"
@@ -62,6 +62,7 @@
     id: string
     label: string
     series: PredictionResult[]
+    useVolumeThresholds?: boolean
   }
 
   type SummaryMode = 'observed' | 'predictions'
@@ -69,7 +70,11 @@
   const props = defineProps<{
     loading?: boolean
     mode?: SummaryMode
+    activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
+    isEmbalse?: boolean
     caudalHistorical?: StationPrediction
+    caudalOutflowHistorical?: StationPrediction
+    embalseVolumeHistorical?: StationPrediction
     caudalForecastHarmonie?: StationPrediction
     caudalForecastEpstat?: StationPrediction
     caudalForecastEnsP10?: StationPrediction
@@ -103,6 +108,20 @@
 
   const threshold3 = computed(() => readNumber(['umbral_caudal_3'], props.thresholds))
 
+  const nestedThreshold = computed(
+    () => props.thresholds?.threshold as Record<string, unknown> | undefined
+  )
+
+  const volumeThreshold1 = computed(() =>
+    readNumber(['umbralVolumen1', 'umbral_1_volumen'], nestedThreshold.value ?? props.thresholds)
+  )
+  const volumeThreshold2 = computed(() =>
+    readNumber(['umbralVolumen2', 'umbral_2_volumen'], nestedThreshold.value ?? props.thresholds)
+  )
+  const volumeThreshold3 = computed(() =>
+    readNumber(['umbralVolumen3', 'umbral_3_volumen'], nestedThreshold.value ?? props.thresholds)
+  )
+
   function normalizeSeries(prediction?: StationPrediction): PredictionResult[] {
     return [...(prediction?.results ?? [])]
       .filter((item) => Number.isFinite(item.value) && Boolean(item.date))
@@ -116,12 +135,22 @@
     return 0
   }
 
-  function buildSegments(series: PredictionResult[]): Segment[] {
+  function getExceededVolumeLevel(value: number): ThresholdLevel {
+    if (volumeThreshold3.value != null && value >= volumeThreshold3.value) return 3
+    if (volumeThreshold2.value != null && value >= volumeThreshold2.value) return 2
+    if (volumeThreshold1.value != null && value >= volumeThreshold1.value) return 1
+    return 0
+  }
+
+  function buildSegments(
+    series: PredictionResult[],
+    getLevel: (value: number) => ThresholdLevel
+  ): Segment[] {
     const segments: Segment[] = []
     let current: Segment | null = null
 
     for (const point of series) {
-      const exceeded = getExceededLevel(point.value)
+      const exceeded = getLevel(point.value)
 
       if (!exceeded) {
         current = null
@@ -183,6 +212,27 @@
       ]
     }
 
+    if (props.isEmbalse) {
+      return [
+        {
+          id: 'entrada',
+          label: 'Entrada observada',
+          series: normalizeSeries(props.caudalHistorical),
+        },
+        {
+          id: 'salida',
+          label: 'Salida observada',
+          series: normalizeSeries(props.caudalOutflowHistorical),
+        },
+        {
+          id: 'volumen',
+          label: 'Volumen observado',
+          series: normalizeSeries(props.embalseVolumeHistorical),
+          useVolumeThresholds: true,
+        },
+      ]
+    }
+
     return [
       {
         id: 'observed',
@@ -218,7 +268,11 @@
     for (const source of sources.value) {
       if (!source.series.length) continue
 
-      const segments = buildSegments(source.series)
+      const useVolume = source.useVolumeThresholds || props.activeTab === 'volumen'
+      const segments = buildSegments(
+        source.series,
+        useVolume ? getExceededVolumeLevel : getExceededLevel
+      )
       if (!segments.length) continue
 
       for (const level of [3, 2, 1] as const) {

@@ -41,6 +41,18 @@ export type PredictionTypeName =
   | 'FICT99.historical'
   | 'FICT95.historical'
   | 'VICT01.historical'
+  | 'Q.mk11.forecast'
+  | 'Q.mk11.EPSforecast'
+  | 'Q.mk11.EPS25forecast'
+  | 'Q.mk11.EPS75forecast'
+  | 'I.mk11.forecast'
+  | 'I.mk11.EPSforecast'
+  | 'I.mk11.EPS25forecast'
+  | 'I.mk11.EPS75forecast'
+  | 'V.MIKE11.harmonie_acum'
+  | 'V.MIKE11.ens.medio_acum'
+  | 'V.MIKE11.25.medio_acum'
+  | 'V.MIKE11.75.medio_acum'
 
 export type HistoricalPredictionTypeName = string
 

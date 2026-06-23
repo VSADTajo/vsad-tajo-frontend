@@ -79,6 +79,27 @@ export const useLayersStore = defineStore('layers', {
       }
     },
 
+    applySimulationsPreset() {
+      for (const id of Object.keys(this.layers)) {
+        this.layers[id].visible = id === 'E'
+      }
+    },
+
+    applySimulationsWithAforoPreset() {
+      for (const id of Object.keys(this.layers)) {
+        this.layers[id].visible = id === 'E' || id === 'AR'
+      }
+    },
+
+    resetStationLayers() {
+      const defaultState = buildInitialState()
+      for (const [id, state] of Object.entries(defaultState)) {
+        if (state.parentLayer === 'saih' && this.layers[id]) {
+          this.layers[id].visible = true
+        }
+      }
+    },
+
     setTemporalLoadState(id: string, state?: Partial<TemporalLoadState>) {
       const layer = this.layers[id]
       if (!layer) return

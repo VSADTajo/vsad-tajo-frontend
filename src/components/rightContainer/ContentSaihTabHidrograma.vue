@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-row justify="center" class="px-3 align-stretch">
     <v-col
       cols="12"
@@ -47,7 +47,10 @@
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
           mode="observed"
+          :is-embalse="isEmbalse"
           :caudal-historical="caudalHistorical"
+          :caudal-outflow-historical="caudalOutflowHistorical"
+          :embalse-volume-historical="embalseVolumeHistorical"
           :thresholds="thresholds"
           title="Resumen Operativo Observado"
         />
@@ -61,12 +64,19 @@
             <v-sheet class="pa-5">
               <template v-if="isEmbalse">
                 <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
-                  <v-tab value="caudal">Caudal</v-tab>
-                  <v-tab value="volumen">Volumen</v-tab>
+                  <v-tab value="caudalNAM">Caudal NAM</v-tab>
+                  <v-tab value="caudalMIKE">Caudal MIKE</v-tab>
+                  <v-tab value="volumenNAM">Volumen NAM</v-tab>
+                  <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
                 </v-tabs>
 
-                <v-window v-model="selectedEmbalseChartTab">
-                  <v-window-item value="caudal">
+                <div class="chart-tab-root">
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalNAM' },
+                    ]"
+                  >
                     <ForecastChartNew
                       :data="caudalOnlyChartData"
                       :is-embalse="true"
@@ -76,9 +86,31 @@
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
-                  </v-window-item>
-
-                  <v-window-item value="volumen">
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalMIKE' },
+                    ]"
+                  >
+                    <ForecastChartNew
+                      :data="mikeChartData"
+                      :is-embalse="true"
+                      :height="550"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenNAM' },
+                    ]"
+                  >
                     <ForecastChartNew
                       :data="volumenOnlyChartData"
                       :is-embalse="true"
@@ -88,19 +120,63 @@
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
-                  </v-window-item>
-                </v-window>
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenMIKE' },
+                    ]"
+                  >
+                    <ForecastChartNew
+                      :data="mikeVolumenChartData"
+                      :is-embalse="true"
+                      :height="550"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
+                </div>
               </template>
 
               <template v-else>
-                <ForecastChartNew
-                  :data="caudalChartData"
-                  :is-embalse="isEmbalse"
-                  :loading="loadingCaudales"
-                  :thresholds="thresholds"
-                  :focus-threshold-request="thresholdFocusRequest"
-                  @focus-threshold-complete="handleThresholdFocusComplete"
-                />
+                <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
+                  <v-tab value="nam">NAM</v-tab>
+                  <v-tab value="mike">MIKE</v-tab>
+                </v-tabs>
+                <div class="chart-tab-root">
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'nam' },
+                    ]"
+                  >
+                    <ForecastChartNew
+                      :data="caudalChartData"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'mike' },
+                    ]"
+                  >
+                    <ForecastChartNew
+                      :data="mikeChartData"
+                      :loading="loadingCaudales"
+                      :thresholds="thresholds"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
+                </div>
               </template>
             </v-sheet>
           </v-card-text>
@@ -108,7 +184,7 @@
 
         <v-card class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            active-tab="caudal"
+            :active-tab="selectedEmbalseChartTab"
             :is-embalse="isEmbalse"
             :thresholds="thresholds"
             :selected-threshold="selectedThreshold"
@@ -118,10 +194,12 @@
 
         <v-card class="pa-2 bg-background mt-2" elevation="2">
           <ContentSaihCaudalMatrix
-            :forecast-harmonie="caudalForecastHarmonie"
-            :forecast-epsat="caudalForecastEpstat"
+            :forecast-harmonie="activeHarmonieforecast"
+            :forecast-epsat="activeEpsatForecast"
             :thresholds="thresholds"
             :loading="loadingCaudales"
+            :title="isVolumeTab ? 'Matriz de volumen (7 dias / 6h)' : undefined"
+            :no-thresholds="isVolumeTab"
           />
         </v-card>
       </div>
@@ -141,8 +219,9 @@
       >
         <ContentSaihAlertStatus
           :loading="loadingCaudales"
-          :caudal-forecast-harmonie="caudalForecastHarmonie"
-          :caudal-forecast-epsat="caudalForecastEpstat"
+          :caudal-forecast-harmonie="activeHarmonieforecast"
+          :caudal-forecast-epsat="activeEpsatForecast"
+          :active-tab="activePredictionsTab"
           :mode="'predictions'"
           :thresholds="thresholds"
         />
@@ -154,16 +233,16 @@
       >
         <ContentSaihPredictionsLatest
           class="ma-2"
-          active-tab="caudal"
+          :active-tab="activePredictionsTab"
           :loading="loadingCaudales"
           :loading-harmonie="loadingHarmoniePredict"
           :loading-eps="loadingEpsPredict"
-          :caudal-forecast-harmonie="caudalForecastHarmonie"
-          :caudal-forecast-epstat="caudalForecastEpstat"
-          :selected-harmonie-caudal-date="selectedHarmonieCaudalDate"
-          :selected-eps-caudal-date="selectedEpsCaudalDate"
-          :harmonie-caudal-dates="harmonieCaudalDates"
-          :eps-caudal-dates="epsCaudalDates"
+          :caudal-forecast-harmonie="activeHarmonieforecast"
+          :caudal-forecast-epstat="activeEpsatForecast"
+          :selected-harmonie-caudal-date="activeSelectedHarmonieDate"
+          :selected-eps-caudal-date="activeSelectedEpsDate"
+          :harmonie-caudal-dates="activeHarmonieDates"
+          :eps-caudal-dates="activeEpsDates"
           :thresholds="thresholds"
           @update:selected-harmonie-caudal-date="
             emit('update:selected-harmonie-caudal-date', $event)
@@ -181,12 +260,13 @@
         <ContentSaihOperationalSummary
           :loading="loadingCaudales"
           mode="predictions"
-          :caudal-forecast-harmonie="caudalForecastHarmonie"
-          :caudal-forecast-epstat="caudalForecastEpstat"
-          :caudal-forecast-ens-p10="caudalForecastEnsP10"
-          :caudal-forecast-ens-p25="caudalForecastEnsP25"
-          :caudal-forecast-ens-p75="caudalForecastEnsP75"
-          :caudal-forecast-ens-p90="caudalForecastEnsP90"
+          :active-tab="activePredictionsTab"
+          :caudal-forecast-harmonie="activeHarmonieforecast"
+          :caudal-forecast-epstat="activeEpsatForecast"
+          :caudal-forecast-ens-p10="activeEnsP10"
+          :caudal-forecast-ens-p25="activeEnsP25"
+          :caudal-forecast-ens-p75="activeEnsP75"
+          :caudal-forecast-ens-p90="activeEnsP90"
           :thresholds="thresholds"
           title="Resumen Operativo Predicciones"
         />
@@ -226,30 +306,10 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-  import type {
-    DataStationPrediction,
-    PredictionTypeName,
-    StationPrediction,
-  } from '@/types/Predictions'
-  import type { ResguardosStationResponse } from '@/types/Resguardos'
-  import {
-    getAvailablePredictionsService,
-    getHistoricalPredictionService,
-    getPredictionsService,
-  } from '@/services/predictions'
-
-  const HISTORICAL_RANGE_DAYS = 30
-  import { getResguardosByStationService } from '@/services/resguardos'
-  import {
-    applyForecastData,
-    clearForecasts,
-    fetchPredictionBatch,
-    pickDefaultDate,
-    toDateList,
-    type ForecastRequestDef,
-  } from './utils/predictionTabUtils'
+  import { useCaudalPredictions } from '@/composables/useCaudalPredictions'
+  import { useResguardos } from '@/composables/useResguardos'
 
   import ContentSaihAlertStatus from './ContentSaih/ContentSaihAlertStatus.vue'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
@@ -260,9 +320,6 @@
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
   import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
   import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
-
-  type ForecastKey = keyof DataStationPrediction
-  type ForecastRefsMap = Record<ForecastKey, Ref<StationPrediction | undefined>>
 
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
@@ -285,11 +342,242 @@
     (e: 'update:selected-eps-caudal-date', value: string): void
   }>()
 
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const selectedEmbalseChartTab = ref<'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE'>(
+    'caudalNAM'
+  )
+  const selectedCaudalTypeChartTab = ref<'nam' | 'mike'>('nam')
   const selectedThreshold = ref<ThresholdSelection>(null)
   const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
   const thresholdFocusNonce = ref(0)
-  const selectedEmbalseChartTab = ref<'caudal' | 'volumen'>('caudal')
+  // ── Composable args ───────────────────────────────────────────────────────
+  const codeType = computed(() => {
+    const val = props.thresholds?.tipoCod
+    return typeof val === 'string' ? val : undefined
+  })
 
+  // ── Data composables ──────────────────────────────────────────────────────
+  const {
+    caudalHistorical,
+    caudalForecastHarmonie,
+    caudalForecastEpstat,
+    caudalForecastEnsP10,
+    caudalForecastEnsP25,
+    caudalForecastEnsP75,
+    caudalForecastEnsP90,
+    caudalOutflowHistorical,
+    embalseVolumeHistorical,
+    mikeForecastHarmonie,
+    mikeForecastEpsat,
+    mikeForecastEnsP25,
+    mikeForecastEnsP75,
+    mikeChartData,
+    mikeVolumeHarmonie,
+    mikeVolumeEpsat,
+    mikeVolumeEnsP25,
+    mikeVolumeEnsP75,
+    harmonieCaudalDates,
+    epsCaudalDates,
+    mikeDates,
+    selectedHarmonieCaudalDate,
+    selectedEpsCaudalDate,
+    selectedMikeDate,
+    loading: loadingCaudales,
+    loadingHarmoniePredict,
+    loadingEpsPredict,
+  } = useCaudalPredictions(
+    computed(() => props.normalizedStationCode),
+    computed(() => props.isEmbalse),
+    codeType
+  )
+
+  const {
+    resguardosApiData,
+    loadingResguardos,
+    effectiveResguardoPrediction,
+    effectiveMinimoPrediction,
+    editedResguardoPrediction,
+    editedMinimoPrediction,
+  } = useResguardos(
+    computed(() => props.normalizedStationCode),
+    computed(() => props.isEmbalse)
+  )
+
+  // ── Chart data (composable refs + resguardos merged) ──────────────────────
+  const caudalChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  const caudalOnlyChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    historicalVolume: undefined,
+    resguardoVolume: undefined,
+    minimumVolume: undefined,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  const volumenOnlyChartData = computed(() => ({
+    historical: undefined,
+    historicalOutflow: undefined,
+    historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
+    forecastHarmonie: undefined,
+    forecastEpsat: undefined,
+    forecastEnsP10: undefined,
+    forecastEnsP25: undefined,
+    forecastEnsP90: undefined,
+    forecastEnsP75: undefined,
+  }))
+
+  const mikeVolumenChartData = computed(() => ({
+    historical: undefined,
+    historicalOutflow: undefined,
+    historicalVolume: embalseVolumeHistorical.value,
+    resguardoVolume: effectiveResguardoPrediction.value,
+    minimumVolume: effectiveMinimoPrediction.value,
+    forecastHarmonie: mikeVolumeHarmonie.value,
+    forecastEpsat: mikeVolumeEpsat.value,
+    forecastEnsP10: undefined,
+    forecastEnsP25: mikeVolumeEnsP25.value,
+    forecastEnsP90: undefined,
+    forecastEnsP75: mikeVolumeEnsP75.value,
+  }))
+
+  // ── Tab-aware props for side panels ───────────────────────────────────────
+  const isMikeTab = computed(() => !props.isEmbalse && selectedCaudalTypeChartTab.value === 'mike')
+
+  const isEmbalseOnMikeTab = computed(
+    () =>
+      !!props.isEmbalse &&
+      (selectedEmbalseChartTab.value === 'caudalMIKE' ||
+        selectedEmbalseChartTab.value === 'volumenMIKE')
+  )
+
+  const isVolumeTab = computed(
+    () =>
+      !!props.isEmbalse &&
+      (selectedEmbalseChartTab.value === 'volumenNAM' ||
+        selectedEmbalseChartTab.value === 'volumenMIKE')
+  )
+
+  const activePredictionsTab = computed((): 'caudal' | 'volumen' =>
+    isVolumeTab.value ? 'volumen' : 'caudal'
+  )
+
+  const activeHarmonieforecast = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastHarmonie.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeHarmonie.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastHarmonie.value
+    }
+    return isMikeTab.value ? mikeForecastHarmonie.value : caudalForecastHarmonie.value
+  })
+  const activeEpsatForecast = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastEpsat.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEpsat.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastEpstat.value
+    }
+    return isMikeTab.value ? mikeForecastEpsat.value : caudalForecastEpstat.value
+  })
+  const activeEnsP10 = computed(() => {
+    if (props.isEmbalse) {
+      return selectedEmbalseChartTab.value === 'caudalNAM' ? caudalForecastEnsP10.value : undefined
+    }
+    return isMikeTab.value ? undefined : caudalForecastEnsP10.value
+  })
+  const activeEnsP25 = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastEnsP25.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEnsP25.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastEnsP25.value
+    }
+    return isMikeTab.value ? mikeForecastEnsP25.value : caudalForecastEnsP25.value
+  })
+  const activeEnsP75 = computed(() => {
+    if (props.isEmbalse) {
+      if (selectedEmbalseChartTab.value === 'caudalMIKE') return mikeForecastEnsP75.value
+      if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEnsP75.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return undefined
+      return caudalForecastEnsP75.value
+    }
+    return isMikeTab.value ? mikeForecastEnsP75.value : caudalForecastEnsP75.value
+  })
+  const activeEnsP90 = computed(() => {
+    if (props.isEmbalse) {
+      return selectedEmbalseChartTab.value === 'caudalNAM' ? caudalForecastEnsP90.value : undefined
+    }
+    return isMikeTab.value ? undefined : caudalForecastEnsP90.value
+  })
+
+  const activeHarmonieDates = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? mikeDates.value : harmonieCaudalDates.value
+    }
+    return isMikeTab.value ? mikeDates.value : harmonieCaudalDates.value
+  })
+  const activeEpsDates = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? [] : epsCaudalDates.value
+    }
+    return isMikeTab.value ? [] : epsCaudalDates.value
+  })
+  const activeSelectedHarmonieDate = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? selectedMikeDate.value : selectedHarmonieCaudalDate.value
+    }
+    return isMikeTab.value ? selectedMikeDate.value : selectedHarmonieCaudalDate.value
+  })
+  const activeSelectedEpsDate = computed(() => {
+    if (props.isEmbalse) {
+      return isEmbalseOnMikeTab.value ? '' : selectedEpsCaudalDate.value
+    }
+    return isMikeTab.value ? '' : selectedEpsCaudalDate.value
+  })
+
+  // ── Threshold focus ───────────────────────────────────────────────────────
+  function handleThresholdFocus(payload: ThresholdSelection): void {
+    selectedThreshold.value = payload
+    thresholdFocusNonce.value += 1
+
+    if (!payload) {
+      thresholdFocusRequest.value = { action: 'reset', nonce: thresholdFocusNonce.value }
+      return
+    }
+
+    thresholdFocusRequest.value = {
+      action: 'focus',
+      kind: payload.kind,
+      level: payload.level,
+      nonce: thresholdFocusNonce.value,
+    }
+  }
+
+  function handleThresholdFocusComplete(): void {
+    // Selection stays active until the user toggles it off.
+  }
+
+  // ── Layout height management ──────────────────────────────────────────────
   const centerStackEl = ref<HTMLElement | null>(null)
   const leftStatusCardEl = ref<unknown>(null)
   const leftObservedCardEl = ref<unknown>(null)
@@ -382,452 +670,6 @@
     layoutObserver = null
   })
 
-  function handleThresholdFocus(payload: ThresholdSelection): void {
-    selectedThreshold.value = payload
-
-    thresholdFocusNonce.value += 1
-
-    if (!payload) {
-      thresholdFocusRequest.value = {
-        action: 'reset',
-        nonce: thresholdFocusNonce.value,
-      }
-      return
-    }
-
-    thresholdFocusRequest.value = {
-      action: 'focus',
-      kind: payload.kind,
-      level: payload.level,
-      nonce: thresholdFocusNonce.value,
-    }
-  }
-
-  function handleThresholdFocusComplete(): void {
-    // Intentionally left blank: the selection stays active until the user toggles it off.
-  }
-
-  // ── Loading ───────────────────────────────────────────────────────────────
-  const loadingCaudales = ref(false)
-  const loadingHarmoniePredict = ref(false)
-  const loadingEpsPredict = ref(false)
-  const loadingResguardos = ref(false)
-
-  const resguardosApiData = ref<ResguardosStationResponse>()
-
-  // ── Caudal data ───────────────────────────────────────────────────────────
-  const caudalHistorical = ref<StationPrediction>()
-  const caudalForecastEpstat = ref<StationPrediction>()
-  const caudalForecastHarmonie = ref<StationPrediction>()
-  const caudalForecastEnsP10 = ref<StationPrediction>()
-  const caudalForecastEnsP25 = ref<StationPrediction>()
-  const caudalForecastEnsP75 = ref<StationPrediction>()
-  const caudalForecastEnsP90 = ref<StationPrediction>()
-  const caudalOutflowHistorical = ref<StationPrediction>()
-  const embalseVolumeHistorical = ref<StationPrediction>()
-
-  // ── Available dates ───────────────────────────────────────────────────────
-  const harmonieCaudalDates = ref<string[]>([])
-  const harmoniePrecipDates = ref<string[]>([])
-  const epsCaudalDates = ref<string[]>([])
-  const epsPrecipDates = ref<string[]>([])
-
-  // ── Selected dates ────────────────────────────────────────────────────────
-  const selectedHarmonieCaudalDate = ref('')
-  const selectedEpsCaudalDate = ref('')
-
-  // ── Code type (E = embalse/aforo-especial, default = aforo) ──────────────
-  const codeType = computed(() => {
-    const val = props.thresholds?.tipoCod
-    return typeof val === 'string' ? val : undefined
-  })
-
-  function toStationPredictionFromResguardos(
-    kind: 'reserveVolume' | 'minimumVolume',
-    predictionTypeName: string
-  ): StationPrediction | undefined {
-    const payload = resguardosApiData.value
-    if (!payload) return undefined
-
-    const entries = Object.entries(payload.entries)
-      .map(([date, entry]) => {
-        const parsedTime = Date.parse(`${date}T00:00:00`)
-        if (!Number.isFinite(parsedTime)) return null
-        return {
-          date,
-          time: parsedTime,
-          value: kind === 'reserveVolume' ? entry.reserveVolume : entry.minimumVolume,
-        }
-      })
-      .filter(
-        (
-          item
-        ): item is {
-          date: string
-          time: number
-          value: number | null
-        } => item !== null
-      )
-      .sort((a, b) => a.time - b.time)
-
-    const results = entries.flatMap((entry, index) => {
-      const numericValue = Number(entry.value)
-      if (!Number.isFinite(numericValue)) return []
-
-      const startIso = new Date(`${entry.date}T00:00:00`).toISOString()
-      const endIso = new Date(`${entry.date}T23:59:59`).toISOString()
-
-      return [
-        { id: index * 2 + 1, date: startIso, value: numericValue, flag: 0 },
-        { id: index * 2 + 2, date: endIso, value: numericValue, flag: 0 },
-      ]
-    })
-
-    if (!results.length) return undefined
-
-    return {
-      id: `${predictionTypeName}-${payload.stationCode}`,
-      stationId: payload.stationCode,
-      stationName: payload.stationName,
-      predictionTypeName,
-      simulationDate: results[0].date,
-      predictionDate: new Date().toISOString(),
-      predictionProvider: 'resguardos-api',
-      predictedBy: 'api',
-      results,
-    }
-  }
-
-  const resguardoFromApi = computed<StationPrediction | undefined>(() =>
-    toStationPredictionFromResguardos('reserveVolume', 'resguardo.hydrologicalYear')
-  )
-
-  const minimoFromApi = computed<StationPrediction | undefined>(() =>
-    toStationPredictionFromResguardos('minimumVolume', 'volumen.minimo.hydrologicalYear')
-  )
-
-  const editedResguardoPrediction = ref<StationPrediction>()
-  const editedMinimoPrediction = ref<StationPrediction>()
-  const effectiveResguardoPrediction = computed(
-    () => editedResguardoPrediction.value ?? resguardoFromApi.value
-  )
-  const effectiveMinimoPrediction = computed(
-    () => editedMinimoPrediction.value ?? minimoFromApi.value
-  )
-
-  // ── Refs map & chart data ─────────────────────────────────────────────────
-  const caudalRefs: ForecastRefsMap = {
-    historical: caudalHistorical,
-    forecastHarmonie: caudalForecastHarmonie,
-    forecastEpsat: caudalForecastEpstat,
-    forecastEnsP10: caudalForecastEnsP10,
-    forecastEnsP25: caudalForecastEnsP25,
-    forecastEnsP75: caudalForecastEnsP75,
-    forecastEnsP90: caudalForecastEnsP90,
-  }
-
-  const caudalChartData = computed(() => ({
-    historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
-    historicalVolume: embalseVolumeHistorical.value,
-    resguardoVolume: effectiveResguardoPrediction.value,
-    minimumVolume: effectiveMinimoPrediction.value,
-    forecastHarmonie: caudalForecastHarmonie.value,
-    forecastEpsat: caudalForecastEpstat.value,
-    forecastEnsP10: caudalForecastEnsP10.value,
-    forecastEnsP25: caudalForecastEnsP25.value,
-    forecastEnsP90: caudalForecastEnsP90.value,
-    forecastEnsP75: caudalForecastEnsP75.value,
-  }))
-
-  const caudalOnlyChartData = computed(() => ({
-    historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
-    historicalVolume: undefined,
-    resguardoVolume: undefined,
-    minimumVolume: undefined,
-    forecastHarmonie: caudalForecastHarmonie.value,
-    forecastEpsat: caudalForecastEpstat.value,
-    forecastEnsP10: caudalForecastEnsP10.value,
-    forecastEnsP25: caudalForecastEnsP25.value,
-    forecastEnsP90: caudalForecastEnsP90.value,
-    forecastEnsP75: caudalForecastEnsP75.value,
-  }))
-
-  const volumenOnlyChartData = computed(() => ({
-    historical: undefined,
-    historicalOutflow: undefined,
-    historicalVolume: embalseVolumeHistorical.value,
-    resguardoVolume: effectiveResguardoPrediction.value,
-    minimumVolume: effectiveMinimoPrediction.value,
-    forecastHarmonie: undefined,
-    forecastEpsat: undefined,
-    forecastEnsP10: undefined,
-    forecastEnsP25: undefined,
-    forecastEnsP90: undefined,
-    forecastEnsP75: undefined,
-  }))
-
-  void caudalChartData.value
-
-  // ── Request definitions por tipo de estación ──────────────────────────────
-  const caudalRequestsByType = computed<Record<'default' | 'E', ForecastRequestDef[]>>(() => ({
-    default: [
-      {
-        key: 'historical',
-        predictionType: 'FICT98.historical',
-      },
-      {
-        key: 'forecastHarmonie',
-        predictionType: 'Q.NAM.harmonie',
-        simulationDate: selectedHarmonieCaudalDate.value,
-      },
-      {
-        key: 'forecastEpsat',
-        predictionType: 'Q.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-      },
-      {
-        key: 'forecastEnsP10',
-        predictionType: 'Q.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '10',
-      },
-      {
-        key: 'forecastEnsP25',
-        predictionType: 'Q.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '25',
-      },
-      {
-        key: 'forecastEnsP75',
-        predictionType: 'Q.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '75',
-      },
-      {
-        key: 'forecastEnsP90',
-        predictionType: 'Q.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '90',
-      },
-    ],
-    E: [
-      {
-        key: 'historical',
-        predictionType: 'FICT99.historical',
-      },
-      {
-        key: 'forecastHarmonie',
-        predictionType: 'I.NAM.harmonie',
-        simulationDate: selectedHarmonieCaudalDate.value,
-      },
-      {
-        key: 'forecastEpsat',
-        predictionType: 'I.NAM.ens.medio',
-        simulationDate: selectedEpsCaudalDate.value,
-      },
-      {
-        key: 'forecastEnsP10',
-        predictionType: 'I.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '10',
-      },
-      {
-        key: 'forecastEnsP25',
-        predictionType: 'I.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '25',
-      },
-      {
-        key: 'forecastEnsP75',
-        predictionType: 'I.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '75',
-      },
-      {
-        key: 'forecastEnsP90',
-        predictionType: 'I.NAM.ens',
-        simulationDate: selectedEpsCaudalDate.value,
-        percentile: '90',
-      },
-    ],
-  }))
-
-  // ── Fetch available dates ─────────────────────────────────────────────────
-  async function getAvailableDates(code: string) {
-    const selectedCodeType = codeType.value === 'E' ? 'E' : 'default'
-    const harmonieCaudalType: PredictionTypeName =
-      selectedCodeType === 'E' ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
-    const epsCaudalTypes: PredictionTypeName[] =
-      selectedCodeType === 'E' ? ['I.NAM.ens.medio', 'I.NAM.ens'] : ['Q.NAM.ens']
-
-    try {
-      const [harmonieCaudalResponse, harmoniePrecipResponse, ...epsResponses] = await Promise.all([
-        getAvailablePredictionsService(code, harmonieCaudalType),
-        getAvailablePredictionsService(code, 'P.harmonie.forecast'),
-        ...epsCaudalTypes.map((type) => getAvailablePredictionsService(code, type)),
-      ])
-
-      harmonieCaudalDates.value = toDateList(harmonieCaudalResponse)
-      harmoniePrecipDates.value = toDateList(harmoniePrecipResponse)
-      epsCaudalDates.value = Array.from(new Set(epsResponses.flatMap(toDateList))).sort((a, b) =>
-        b.localeCompare(a)
-      )
-    } catch (err) {
-      console.error('Error loading available dates:', err)
-      harmonieCaudalDates.value = []
-      harmoniePrecipDates.value = []
-      epsCaudalDates.value = []
-      epsPrecipDates.value = []
-    }
-  }
-
-  // ── Refresh caudal predictions ────────────────────────────────────────────
-  let fetchRequestId = 0
-  let isFullReloading = false
-  let skipNextDateWatch = false
-
-  async function refreshCaudalPredictions(requestId: number) {
-    const code = props.normalizedStationCode
-    if (!code) return
-
-    const historicalCaudalType: PredictionTypeName =
-      codeType.value === 'E' ? 'FICT99.historical' : 'FICT98.historical'
-
-    const historicalEnd = new Date().toISOString()
-    const historicalStart = new Date(
-      Date.now() - HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000
-    ).toISOString()
-
-    try {
-      const requests =
-        codeType.value === 'E' ? caudalRequestsByType.value.E : caudalRequestsByType.value.default
-
-      const [caudalData, caudalHistorical] = await Promise.all([
-        fetchPredictionBatch(code, requests),
-        getHistoricalPredictionService(code, historicalCaudalType, historicalStart, historicalEnd),
-      ])
-      if (requestId !== fetchRequestId) return
-      applyForecastData(caudalRefs, caudalData)
-      caudalRefs.historical.value = caudalHistorical
-
-      if (props.isEmbalse) {
-        const [outflow, volume] = await Promise.all([
-          getPredictionsService(code, 'FICT95.historical'),
-          getPredictionsService(code, 'VICT01.historical'),
-        ])
-        if (requestId !== fetchRequestId) return
-        caudalOutflowHistorical.value = outflow
-        embalseVolumeHistorical.value = volume
-      } else {
-        caudalOutflowHistorical.value = undefined
-        embalseVolumeHistorical.value = undefined
-      }
-    } catch (err) {
-      console.error('Error loading caudal predictions:', err)
-      if (requestId !== fetchRequestId) return
-      clearForecasts(caudalRefs)
-      caudalOutflowHistorical.value = undefined
-      embalseVolumeHistorical.value = undefined
-    }
-  }
-
-  // ── Watchers ──────────────────────────────────────────────────────────────
-  watch(
-    [() => props.normalizedStationCode, codeType],
-    async ([code]) => {
-      isFullReloading = true
-      clearForecasts(caudalRefs)
-      caudalOutflowHistorical.value = undefined
-      embalseVolumeHistorical.value = undefined
-      harmonieCaudalDates.value = []
-      harmoniePrecipDates.value = []
-      epsCaudalDates.value = []
-      epsPrecipDates.value = []
-      selectedHarmonieCaudalDate.value = ''
-      selectedEpsCaudalDate.value = ''
-
-      if (!code) {
-        loadingCaudales.value = false
-        isFullReloading = false
-        return
-      }
-
-      const requestId = ++fetchRequestId
-      loadingCaudales.value = true
-      try {
-        await getAvailableDates(code)
-        if (requestId !== fetchRequestId) return
-
-        skipNextDateWatch = true
-        selectedHarmonieCaudalDate.value = pickDefaultDate('', harmonieCaudalDates.value)
-        selectedEpsCaudalDate.value = pickDefaultDate('', epsCaudalDates.value)
-
-        await refreshCaudalPredictions(requestId)
-      } finally {
-        isFullReloading = false
-        if (requestId === fetchRequestId) loadingCaudales.value = false
-      }
-    },
-    { immediate: true }
-  )
-
-  watch(
-    [selectedHarmonieCaudalDate, selectedEpsCaudalDate],
-    async (currentValues, previousValues) => {
-      if (skipNextDateWatch) {
-        skipNextDateWatch = false
-        return
-      }
-      if (isFullReloading) return
-
-      const harmonieChanged = currentValues[0] !== previousValues?.[0]
-      const epsChanged = currentValues[1] !== previousValues?.[1]
-      if (!harmonieChanged && !epsChanged) return
-
-      loadingHarmoniePredict.value = harmonieChanged
-      loadingEpsPredict.value = epsChanged
-
-      const requestId = ++fetchRequestId
-      try {
-        await refreshCaudalPredictions(requestId)
-      } finally {
-        loadingHarmoniePredict.value = false
-        loadingEpsPredict.value = false
-      }
-    }
-  )
-
-  let resguardosRequestId = 0
-
-  watch(
-    [() => props.isEmbalse, () => props.normalizedStationCode],
-    async ([isEmbalseStation, stationCode]) => {
-      resguardosApiData.value = undefined
-
-      if (!isEmbalseStation || !stationCode) return
-
-      const requestId = ++resguardosRequestId
-      loadingResguardos.value = true
-
-      try {
-        const response = await getResguardosByStationService(stationCode)
-        if (requestId !== resguardosRequestId) return
-        resguardosApiData.value = response
-      } catch (error) {
-        if (requestId !== resguardosRequestId) return
-        resguardosApiData.value = undefined
-        console.error('Error loading resguardos data:', error)
-      } finally {
-        if (requestId === resguardosRequestId) {
-          loadingResguardos.value = false
-        }
-      }
-    },
-    { immediate: true }
-  )
-
   watch(
     [
       loadingCaudales,
@@ -846,5 +688,21 @@
   .summary-container-card {
     min-height: 0;
     overflow: hidden;
+  }
+
+  .chart-tab-root {
+    position: relative;
+  }
+
+  /* MIKE chart sits on top of NAM, filling the same space */
+  .chart-tab-overlay {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* visibility keeps layout/dimensions intact — ECharts can always read container size */
+  .chart-tab-panel--hidden {
+    visibility: hidden;
+    pointer-events: none;
   }
 </style>

@@ -1,10 +1,44 @@
-<template>
+﻿<template>
   <div class="map-wrapper">
-    <div ref="mapContainer" class="map-container"></div>
+    <div class="map-area">
+      <div ref="mapContainer" class="map-container"></div>
 
-    <MapAvisosTimeControls v-if="hasSelectedAviso && mdAndUp" :stacked="hasBottomTimeControls" />
-    <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
-    <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
+      <MapAvisosTimeControls v-if="hasSelectedAviso && mdAndUp" :stacked="hasBottomTimeControls" />
+      <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
+      <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
+
+      <div v-if="isSimulationsRoute" class="simulation-controls">
+        <MapSimulationButton />
+        <v-tooltip
+          :text="
+            simulationHistoryOpen ? 'Cerrar lista de simulaciones' : 'Abrir lista de simulaciones'
+          "
+          location="left"
+        >
+          <template #activator="{ props: tooltipProps }">
+            <v-btn
+              v-bind="tooltipProps"
+              icon
+              size="large"
+              :color="simulationHistoryOpen ? 'primary' : undefined"
+              :variant="simulationHistoryOpen ? 'flat' : 'tonal'"
+              elevation="4"
+              @click="simulationsStore.toggleHistory()"
+            >
+              <v-icon size="26">
+                {{ simulationHistoryOpen ? 'mdi-chevron-right' : 'mdi-chevron-left' }}
+              </v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
+      </div>
+    </div>
+
+    <MapSimulationsHistorySidebar
+      v-if="isSimulationsRoute"
+      :open="simulationHistoryOpen"
+      @close="simulationsStore.closeHistory()"
+    />
   </div>
 </template>
 
@@ -23,16 +57,25 @@
   import MapAvisosTimeControls from '@/components/map/MapAvisosTimeControls.vue'
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import MapTimeRangeControls from '@/components/map/MapTimeRangeControls.vue'
+  import MapSimulationButton from '@/components/map/MapSimulationButton.vue'
+  import MapSimulationsHistorySidebar from '@/components/rightContainer/MapSimulationsHistorySidebar.vue'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import { useAvisosStore } from '@/stores/avisosStore'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
+  import { useSimulationsStore } from '@/stores/simulationsStore'
   import { useDisplay } from 'vuetify'
+  import { useRoute } from 'vue-router'
 
+  const route = useRoute()
   const layersStore = useLayersStore()
   const avisosStore = useAvisosStore()
   const mapStore = useMapStore()
+  const simulationsStore = useSimulationsStore()
   const { mdAndUp } = useDisplay()
+
+  const isSimulationsRoute = computed(() => route.name === 'simulaciones')
+  const simulationHistoryOpen = computed(() => simulationsStore.historyOpen)
 
   const temporalRangeLayerIds = new Set(
     dynamicLayersConfig
@@ -40,7 +83,6 @@
       .map((config) => config.id)
   )
 
-  // Referencias
   const mapContainer = ref<HTMLElement | null>(null)
   let map: L.Map
 
@@ -120,7 +162,6 @@
     useAvisosLayers(map)
     await initBaseLayers()
 
-    // Resize map
     const resizeObserver = new ResizeObserver(() => map.invalidateSize())
     resizeObserver.observe(mapContainer.value)
   })
@@ -128,15 +169,31 @@
 
 <style scoped>
   .map-wrapper {
-    position: relative;
     width: 100%;
     height: 100%;
     display: flex;
   }
 
-  .map-container {
+  .map-area {
     flex: 1;
+    position: relative;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .map-container {
     width: 100%;
     height: 100%;
+  }
+
+  .simulation-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
   }
 </style>

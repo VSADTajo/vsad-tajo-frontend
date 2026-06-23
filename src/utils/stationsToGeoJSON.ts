@@ -16,6 +16,9 @@ export interface StationData {
     umbralCaudal1?: number | null
     umbralCaudal2?: number | null
     umbralCaudal3?: number | null
+    umbralVolumen1?: number | null
+    umbralVolumen2?: number | null
+    umbralVolumen3?: number | null
     [key: string]: unknown
   } | null
   subBasinName?: string
@@ -50,6 +53,9 @@ function getThresholdValue(
     | 'umbralCaudal1'
     | 'umbralCaudal2'
     | 'umbralCaudal3'
+    | 'umbralVolumen1'
+    | 'umbralVolumen2'
+    | 'umbralVolumen3'
   >
 ): number | null {
   if (!threshold) return null
@@ -93,6 +99,9 @@ export function stationsToGeoJSON(stations: StationData[]): GeoJSON.FeatureColle
       umbral_amarillo: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
       umbral_naranja: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
       umbral_rojo: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
+      umbral_1_volumen: getThresholdValue(station.threshold, ['umbralVolumen1']),
+      umbral_2_volumen: getThresholdValue(station.threshold, ['umbralVolumen2']),
+      umbral_3_volumen: getThresholdValue(station.threshold, ['umbralVolumen3']),
     },
   }))
 

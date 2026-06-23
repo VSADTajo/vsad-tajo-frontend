@@ -30,7 +30,7 @@
       color="surface_variant"
       bg-color="surface_variant"
       clearable
-      placeholder="Buscar estación, Subcuenca, Sistema o Zona"
+      :placeholder="searchPlaceholder"
       persistent-placeholder
       variant="outlined"
       hide-details
@@ -95,6 +95,7 @@
   import type { SearchResult } from '@/types/Search'
   import { useMapStore } from '@/stores/mapStore'
   import { useLayersStore } from '@/stores/layersStore'
+  import { useSimulationsStore } from '@/stores/simulationsStore'
   import UserMenu from '@/components/basics/UserMenu.vue'
   import MobileNavigationMenu from './mobile/MobileNavigationMenu.vue'
   import logo from '@/assets/img/logo_saih-6.png'
@@ -105,6 +106,9 @@
   const route = useRoute()
   const mapStore = useMapStore()
   const layersStore = useLayersStore()
+  const simulationsStore = useSimulationsStore()
+
+  const isSimulationsRoute = computed(() => route.name === 'simulaciones')
 
   const searchText = ref('')
   const isSearching = ref(false)
@@ -233,7 +237,7 @@
     }
   }
 
-  const searchResults = computed<SearchAutocompleteItem[]>(() =>
+  const allSearchResults = computed<SearchAutocompleteItem[]>(() =>
     rawResults.value.map((result, index) => {
       const originType = getOriginType(result.origen)
 
@@ -254,6 +258,23 @@
       }
     })
   )
+
+  const searchResults = computed<SearchAutocompleteItem[]>(() => {
+    if (!isSimulationsRoute.value) return allSearchResults.value
+
+    const allowedTipoCods = simulationsStore.isSimulationActive
+      ? new Set(['E', 'AR'])
+      : new Set(['E'])
+
+    return allSearchResults.value.filter(
+      (r) => r.originType === 'punto_saih' && allowedTipoCods.has((r.tipoCod ?? '').toUpperCase())
+    )
+  })
+
+  const searchPlaceholder = computed(() => {
+    if (!isSimulationsRoute.value) return 'Buscar estación, Subcuenca, Sistema o Zona'
+    return simulationsStore.isSimulationActive ? 'Buscar embalse o aforo en río' : 'Buscar embalse'
+  })
 
   const hasTypedQuery = computed(() => searchText.value.trim().length >= 2)
   const showNoData = computed(() => hasTypedQuery.value && !isSearching.value)

@@ -9,7 +9,8 @@
     temporary
     @update:model-value="onDrawerChange"
   >
-    <RightContentSaih v-if="station" />
+    <RightContentSimulationEmbalse v-if="station && route.name === 'simulaciones'" />
+    <RightContentSaih v-else-if="station" />
     <RightContentReporting v-if="reporting" />
     <RightContentByAreaService v-if="subcuenca" kind="subcuenca" />
     <RightContentByAreaService v-if="sistema" kind="sistema" />
@@ -25,6 +26,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import RightContentSaih from './RightContentSaih.vue'
+  import RightContentSimulationEmbalse from './RightContentSimulationEmbalse.vue'
   import RightContentReporting from './RightContentReporting.vue'
   import RightContentByAreaService from './RightContentByAreaService.vue'
   import RightContentPrecipitacion from './RightContentPrecipitacion.vue'

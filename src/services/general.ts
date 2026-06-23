@@ -8,6 +8,34 @@ export type StationsSearchParams =
   | { comarcaName: string }
   | { zonaExplOgcFid: string }
 
+type PaginatedStationsResponse = {
+  items: StationData[]
+  total?: number
+  page?: number
+  limit?: number
+}
+
+export async function getEmbalseStationsService(): Promise<StationByCodeResponse[]> {
+  const PAGE_SIZE = 200
+  const all: StationData[] = []
+  let page = 1
+
+  while (true) {
+    const res = await api
+      .get('stations', {
+        searchParams: { stationType: 'EMBALSE_SAIH', limit: PAGE_SIZE, page },
+      })
+      .json<PaginatedStationsResponse>()
+
+    all.push(...res.items)
+
+    if (res.items.length < PAGE_SIZE) break
+    page++
+  }
+
+  return all as StationByCodeResponse[]
+}
+
 export type StationByCodeResponse = {
   id: string
   name: string
@@ -39,6 +67,38 @@ export async function getStationsByAreaService(
 
 export async function getStationByCodeService(code: string): Promise<StationByCodeResponse> {
   return api.get(`stations/by-code/${encodeURIComponent(code)}`).json<StationByCodeResponse>()
+}
+
+type DownstreamStation = {
+  codigoDestino: string
+  nombreDestino: string
+  tipoDestino: string
+}
+
+export async function getDownstreamStationsService(codes: string[]): Promise<string[]> {
+  if (!codes.length) return []
+  const params = new URLSearchParams()
+  codes.forEach((code) => params.append('codes', code))
+  const result = await api
+    .get('stations/downstream', { searchParams: params })
+    .json<{ items: DownstreamStation[]; count: number }>()
+  return result.items.map((s) => s.codigoDestino)
+}
+
+type CreateSimulationPayload = {
+  modmeteo: 'BOTH'
+  maneuvers: { reservoirCode: string; outputFlowValue: number }[]
+}
+
+export type CreateSimulationResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export async function createSimulationService(
+  payload: CreateSimulationPayload
+): Promise<CreateSimulationResponse> {
+  return api.post('simulations/manual', { json: payload }).json<CreateSimulationResponse>()
 }
 
 export async function searchService(query: string): Promise<SearchResult[]> {

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-card class="bg-surface" elevation="2">
     <v-card-title class="text-subtitle-1 font-weight-bold">Resumen Datos Predicciones</v-card-title>
     <v-divider />
@@ -174,7 +174,7 @@
   import type { StationPrediction } from '@/types/Predictions'
 
   const props = defineProps<{
-    activeTab?: 'caudal' | 'precipitaciones'
+    activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
     loading?: boolean
     loadingHarmonie?: boolean
     loadingEps?: boolean
@@ -280,11 +280,15 @@
     }
   }
 
-  const unit = computed(() => (props.activeTab === 'caudal' ? 'm3/s' : 'mm'))
+  const unit = computed(() => {
+    if (props.activeTab === 'volumen') return 'hm3'
+    if (props.activeTab !== 'precipitaciones') return 'm3/s'
+    return 'mm'
+  })
 
   const harmonieData = computed(() =>
     summaryFor(
-      props.activeTab === 'caudal'
+      props.activeTab !== 'precipitaciones'
         ? props.caudalForecastHarmonie
         : props.precipitationsForecastHarmonie,
       unit.value
@@ -293,7 +297,7 @@
 
   const epstatData = computed(() =>
     summaryFor(
-      props.activeTab === 'caudal'
+      props.activeTab !== 'precipitaciones'
         ? props.caudalForecastEpstat
         : props.precipitationsForecastEpstat,
       unit.value
@@ -301,7 +305,7 @@
   )
 
   const harmonieSelectedDate = computed(() =>
-    props.activeTab === 'caudal'
+    props.activeTab !== 'precipitaciones'
       ? selectedHarmonieCaudalDateModel.value
       : selectedHarmoniePrecipDateModel.value
   )
@@ -310,7 +314,7 @@
 
   const harmonieDateOptions = computed(() => {
     const dates =
-      props.activeTab === 'caudal' ? props.harmonieCaudalDates : props.harmoniePrecipDates
+      props.activeTab !== 'precipitaciones' ? props.harmonieCaudalDates : props.harmoniePrecipDates
     return (dates ?? []).map((date) => ({
       title: formatSimulationDate(date),
       value: date,
@@ -318,7 +322,7 @@
   })
 
   const epsSelectedDate = computed(() =>
-    props.activeTab === 'caudal'
+    props.activeTab !== 'precipitaciones'
       ? selectedEpsCaudalDateModel.value
       : selectedEpsPrecipDateModel.value
   )
@@ -326,7 +330,7 @@
   const setEpsDate = (value: string) => updateEpsDate(value)
 
   const epsDateOptions = computed(() => {
-    const dates = props.activeTab === 'caudal' ? props.epsCaudalDates : props.epsPrecipDates
+    const dates = props.activeTab !== 'precipitaciones' ? props.epsCaudalDates : props.epsPrecipDates
     return (dates ?? []).map((date) => ({
       title: formatSimulationDate(date),
       value: date,
@@ -334,7 +338,7 @@
   })
 
   function updateHarmonieDate(value: string): void {
-    if (props.activeTab === 'caudal') {
+    if (props.activeTab !== 'precipitaciones') {
       selectedHarmonieCaudalDateModel.value = value
     } else {
       selectedHarmoniePrecipDateModel.value = value
@@ -342,7 +346,7 @@
   }
 
   function updateEpsDate(value: string): void {
-    if (props.activeTab === 'caudal') {
+    if (props.activeTab !== 'precipitaciones') {
       selectedEpsCaudalDateModel.value = value
     } else {
       selectedEpsPrecipDateModel.value = value

@@ -1,11 +1,11 @@
 <template>
-  <v-navigation-drawer v-model="drawerOpen" permanent width="320" :mobile="true" color="background">
-    <component :is="activeComponent" v-if="drawerOpen" />
+  <v-navigation-drawer v-model="localOpen" permanent width="320" :mobile="true" color="background">
+    <component :is="activeComponent" v-if="activeComponent" />
   </v-navigation-drawer>
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { useNavigation } from '@/composables/useNavigation'
 
   import ItemsLayersPanel from '@/components/panels/ItemsLayersPanel.vue'
@@ -33,6 +33,32 @@
         return SettingsPanel
       default:
         return null
+    }
+  })
+
+  const localOpen = ref(drawerOpen.value)
+  let hideTimer: ReturnType<typeof setTimeout> | null = null
+
+  watch(drawerOpen, (val) => {
+    if (!val) {
+      if (hideTimer) {
+        clearTimeout(hideTimer)
+        hideTimer = null
+      }
+      localOpen.value = false
+    }
+  })
+
+  watch(activeSection, (newVal, oldVal) => {
+    if (newVal && oldVal && newVal !== oldVal) {
+      if (hideTimer) clearTimeout(hideTimer)
+      localOpen.value = false
+      hideTimer = setTimeout(() => {
+        hideTimer = null
+        localOpen.value = true
+      }, 280)
+    } else if (newVal && !oldVal) {
+      localOpen.value = true
     }
   })
 </script>
