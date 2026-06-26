@@ -111,6 +111,15 @@ export async function deleteSimulationService(id: string): Promise<void> {
   await api.delete(`simulations/manual/${encodeURIComponent(id)}`).json()
 }
 
+type UpdateManeuverPayload = { id: string; startDate: string | null; endDate: string | null }
+
+export async function updateSimulationService(
+  id: string,
+  maneuvers: UpdateManeuverPayload[]
+): Promise<void> {
+  await api.patch(`simulations/manual/${encodeURIComponent(id)}`, { json: { maneuvers } }).json()
+}
+
 export async function searchService(query: string): Promise<SearchResult[]> {
   const result = await api
     .get(`search`, {

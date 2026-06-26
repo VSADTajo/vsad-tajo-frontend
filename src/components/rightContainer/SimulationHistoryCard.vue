@@ -27,7 +27,7 @@
           {{ formatDateDDMMYYYY(new Date(sim.createdAt)) }}
         </span>
         <div class="d-flex align-center gap-1">
-          <v-tooltip text="Recargar" location="bottom">
+          <v-tooltip text="Editar Simulación" location="bottom">
             <template #activator="{ props }">
               <v-btn
                 v-bind="props"
@@ -35,9 +35,9 @@
                 size="x-small"
                 elevation="0"
                 class="mr-2"
-                @click.stop="emit('reload')"
+                @click.stop="editDialog = true"
               >
-                <v-icon size="16">mdi-refresh</v-icon>
+                <v-icon size="16">mdi-pencil-outline</v-icon>
               </v-btn>
             </template>
           </v-tooltip>
@@ -84,6 +84,8 @@
     </v-card-text>
   </v-card>
 
+  <SimulationEditDialog v-model="editDialog" :sim="sim" @saved="emit('reload')" />
+
   <v-dialog
     v-model="confirmDelete"
     max-width="380"
@@ -108,6 +110,7 @@
   import type { SimulationRecord } from '@/types/Simulations'
   import { formatDateDDMMYYYY, formatDateDDMM } from '@/utils/dates'
   import { deleteSimulationService } from '@/services/general'
+  import SimulationEditDialog from './SimulationEditDialog.vue'
 
   const props = defineProps<{
     sim: SimulationRecord
@@ -134,6 +137,7 @@
   const expandedRef = ref<HTMLElement | null>(null)
   const confirmDelete = ref(false)
   const deleting = ref(false)
+  const editDialog = ref(false)
 
   watch(
     () => props.isExpanded,

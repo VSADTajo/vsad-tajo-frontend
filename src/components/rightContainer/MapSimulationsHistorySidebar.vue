@@ -7,6 +7,21 @@
           {{ simulations.length }}
         </v-chip>
         <v-spacer />
+        <v-tooltip text="Recargar simulaciones" location="left">
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon
+              size="small"
+              :loading="refreshing"
+              class="mr-1"
+              variant="flat"
+              @click="fetchSimulations()"
+            >
+              <v-icon size="18">mdi-refresh</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
         <v-btn icon size="small" color="primary" variant="flat" @click="emit('close')">
           <v-icon size="18">mdi-close</v-icon>
         </v-btn>
@@ -34,7 +49,11 @@
             </v-chip>
           </div>
           <div class="sim-list">
-            <template v-if="disponibles.length">
+            <template v-if="refreshing">
+              <v-skeleton-loader type="list-item-two-line" class="sim-list-item" />
+              <v-skeleton-loader type="list-item-two-line" class="sim-list-item" />
+            </template>
+            <template v-else-if="disponibles.length">
               <SimulationHistoryCard
                 v-for="sim in disponibles"
                 :key="sim.id"
@@ -66,7 +85,11 @@
             </v-chip>
           </div>
           <div class="sim-list">
-            <template v-if="noDisponibles.length">
+            <template v-if="refreshing">
+              <v-skeleton-loader type="list-item-two-line" class="sim-list-item" />
+              <v-skeleton-loader type="list-item-two-line" class="sim-list-item" />
+            </template>
+            <template v-else-if="noDisponibles.length">
               <SimulationHistoryCard
                 v-for="sim in noDisponibles"
                 :key="sim.id"
@@ -112,13 +135,19 @@
 
   const simulations = ref<SimulationRecord[]>([])
   const loading = ref(false)
+  const refreshing = ref(false)
 
-  async function fetchSimulations() {
-    loading.value = true
+  async function fetchSimulations(isInitial = false) {
+    if (isInitial) {
+      loading.value = true
+    } else {
+      refreshing.value = true
+    }
     try {
       simulations.value = await getSimulationsService()
     } finally {
       loading.value = false
+      refreshing.value = false
     }
   }
 
@@ -176,16 +205,22 @@
     }
   )
 
-  onMounted(fetchSimulations)
+  let refreshInterval: ReturnType<typeof setInterval> | null = null
+
+  onMounted(() => {
+    fetchSimulations(true)
+    refreshInterval = setInterval(() => fetchSimulations(), 120_000)
+  })
 
   onUnmounted(() => {
+    if (refreshInterval !== null) clearInterval(refreshInterval)
     setSimulationMarkers(null)
     setDownstreamMarkers(null)
     simulationsStore.setActiveSimulation(null)
   })
 
   async function reloadSimulation(id: string) {
-    await fetchSimulations()
+    await fetchSimulations(false)
     const sim = simulations.value.find((s) => s.id === id)
     if (!sim || !isActive(id)) return
     const codes = [...new Set(sim.maneuvers.map((m) => m.reservoirCode))]
