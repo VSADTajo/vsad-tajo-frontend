@@ -1,13 +1,13 @@
 ﻿<template>
   <div class="chart-wrapper" :style="{ height: `${chartHeight}px` }">
     <div
-      v-if="(loading || thresholdTransitionLoading) && hasRenderableSeries"
+      v-show="thresholdTransitionLoading || (loading && hasRenderableSeries)"
       class="chart-loading-overlay"
     >
       <v-skeleton-loader type="image" class="h-100 w-100" />
     </div>
     <div
-      v-else-if="loading"
+      v-if="loading && !hasRenderableSeries"
       class="chart-loading-state"
       :style="{ height: `${chartHeight}px` }"
     >
@@ -731,7 +731,7 @@
       type: 'line',
       stacked: false,
       height: chartHeight.value,
-      animations: { enabled: false },
+      animations: { enabled: false, dynamicAnimation: { enabled: false, speed: 0 } },
       zoom: { enabled: true, type: 'xy', autoScaleYaxis: false, allowMouseWheelZoom: false },
       toolbar: {
         show: props.toolbar,
@@ -845,10 +845,15 @@
     thresholdTransitionLoading.value = true
     try {
       await nextTick()
+      // setTimeout (macro task) yields to the browser so it actually paints the skeleton
+      // before updateOptions blocks the main thread. rAF alone doesn't guarantee paint
+      // because Promise microtasks run before the browser renders.
+      await new Promise<void>((resolve) => setTimeout(resolve, 50))
+
+      const noAnim = { chart: { animations: { enabled: false, dynamicAnimation: { enabled: false, speed: 0 } } } }
 
       if (request.action === 'reset') {
-        await ApexCharts.exec(chartId, 'resetSeries')
-        await ApexCharts.exec(chartId, 'updateOptions', { yaxis: dynamicYAxis.value }, false, true)
+        await ApexCharts.exec(chartId, 'updateOptions', { yaxis: dynamicYAxis.value, ...noAnim }, false, false)
         return
       }
 
@@ -871,7 +876,7 @@
           : { ...currentYaxis, ...focusedRange }
       }
 
-      await ApexCharts.exec(chartId, 'updateOptions', { yaxis: nextYaxis }, false, true)
+      await ApexCharts.exec(chartId, 'updateOptions', { yaxis: nextYaxis, ...noAnim }, false, false)
     } finally {
       thresholdTransitionLoading.value = false
       emit('focus-threshold-complete')
