@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="chart-wrapper" :style="{ height: `${chartHeight}px` }">
     <div
       v-if="(loading || thresholdTransitionLoading) && hasRenderableSeries"
@@ -7,7 +7,7 @@
       <v-skeleton-loader type="image" class="h-100 w-100" />
     </div>
     <div
-      v-else-if="loading || thresholdTransitionLoading"
+      v-else-if="loading"
       class="chart-loading-state"
       :style="{ height: `${chartHeight}px` }"
     >
@@ -20,7 +20,7 @@
       :options="chartOptions"
       :series="series"
     />
-    <div v-else-if="!loading && !thresholdTransitionLoading" class="chart-empty-state">
+    <div v-else-if="!loading" class="chart-empty-state">
       Sin datos para mostrar
     </div>
   </div>
@@ -561,13 +561,9 @@
   const isVolumeOnlySeries = computed(() => hasVolumeSeries.value && !hasCaudalSeries.value)
 
   const chartInstanceKey = computed(() => {
-    const axisMode = isVolumeOnlySeries.value
-      ? 'volume-only'
-      : hasVolumeSeries.value
-        ? 'dual'
-        : 'single'
-    const names = series.value.map((s) => s.name).join('|')
-    return `${axisMode}:${names}`
+    if (isVolumeOnlySeries.value) return 'volume-only'
+    if (hasVolumeSeries.value) return 'dual'
+    return 'single'
   })
 
   // Colores dinámicos basados en qué series existen (mismo orden que series)
@@ -671,12 +667,71 @@
     ]
   })
 
+  function tooltipCustom({
+    dataPointIndex,
+    w,
+  }: {
+    dataPointIndex: number
+    w: { config?: { series?: SeriesItem[] }; globals?: { colors?: string[] } }
+  }): string {
+    const cfgSeries = (w.config?.series ?? []) as SeriesItem[]
+    let dateFormatted = ''
+    for (let si = 0; si < cfgSeries.length; si++) {
+      const pt = cfgSeries[si]?.data?.[dataPointIndex]
+      if (pt && typeof pt === 'object' && 'x' in pt) {
+        const candidate = (pt as { x?: unknown }).x
+        if (candidate !== undefined && candidate !== null) {
+          dateFormatted = String(candidate)
+          break
+        }
+      }
+    }
+    if (!dateFormatted) {
+      const rawDate = allDates.value?.[dataPointIndex]
+      dateFormatted = rawDate ? dateFormattedWithHours(new Date(rawDate).getTime()) : ''
+    }
+
+    let rows = ''
+    cfgSeries.forEach((s: SeriesItem, idx: number) => {
+      const point = s.data?.[dataPointIndex] as Point | RangePoint | number | null
+      if (point === null || point === undefined) return
+      let raw: number | [number | null, number | null] | null
+      if (typeof point === 'object' && 'y' in point) raw = (point as Point | RangePoint).y
+      else raw = point
+      if (raw === null || raw === undefined) return
+
+      const name = s.name ?? `Serie ${idx + 1}`
+      const color = w.globals?.colors?.[idx] ?? '#ccc'
+      const unit =
+        name === 'Volumen observado' || name === 'Resguardo volumen' || name === 'Volumen minimo'
+          ? 'hm3'
+          : 'm3/s'
+      const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
+
+      if (Array.isArray(raw) && raw.length === 2) {
+        const a = Number(raw[0])
+        const b = Number(raw[1])
+        if (Number.isFinite(a) && Number.isFinite(b)) {
+          rows += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;"><span style="display:flex;align-items:center;">${dot}${name}</span><strong style="margin-left:16px;">${Math.min(a, b).toFixed(2)} - ${Math.max(a, b).toFixed(2)} ${unit}</strong></div>`
+        }
+      } else {
+        const val = Number(raw)
+        if (Number.isFinite(val)) {
+          rows += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;"><span style="display:flex;align-items:center;">${dot}${name}</span><strong style="margin-left:16px;">${val.toFixed(2)} ${unit}</strong></div>`
+        }
+      }
+    })
+
+    return `<div style="min-width:280px;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;"><div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px 14px;font-weight:600;">${dateFormatted}</div><div style="background:#fff;color:#333;padding:8px 14px;">${rows || '<div style="padding:4px 0;color:#999;">Sin datos</div>'}</div></div>`
+  }
+
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
       id: chartId,
       type: 'line',
       stacked: false,
       height: chartHeight.value,
+      animations: { enabled: false },
       zoom: { enabled: true, type: 'xy', autoScaleYaxis: false, allowMouseWheelZoom: false },
       toolbar: {
         show: props.toolbar,
@@ -748,88 +803,10 @@
       shared: true,
       intersect: false,
       followCursor: true,
-      // hide the small x-axis tooltip and auxiliary fixed tooltip
       x: { show: false },
       fixed: { enabled: false },
       onDatasetHover: { highlightDataSeries: false },
-      custom: ({
-        dataPointIndex,
-        w,
-      }: {
-        dataPointIndex: number
-        w: { config?: { series?: SeriesItem[] }; globals?: { colors?: string[] } }
-      }) => {
-        const cfgSeries = (w.config?.series ?? []) as SeriesItem[]
-        // Try to get formatted date from any series' x value (handles hidden/disabled series)
-        let dateFormatted = ''
-        for (let si = 0; si < cfgSeries.length; si++) {
-          const pt = cfgSeries[si]?.data?.[dataPointIndex]
-          // pt can be a number or an object like Point/RangePoint — guard before accessing `x`
-          if (pt && typeof pt === 'object' && 'x' in pt) {
-            const candidate = (pt as { x?: unknown }).x
-            if (candidate !== undefined && candidate !== null) {
-              dateFormatted = String(candidate)
-              break
-            }
-          }
-        }
-        // Fallback: build from allDates if no x found
-        if (!dateFormatted) {
-          const rawDate = allDates.value?.[dataPointIndex]
-          dateFormatted = rawDate ? dateFormattedWithHours(new Date(rawDate).getTime()) : ''
-        }
-
-        let rows = ''
-        cfgSeries.forEach((s: SeriesItem, idx: number) => {
-          const point = s.data?.[dataPointIndex] as Point | RangePoint | number | null
-          if (point === null || point === undefined) return
-          let raw: number | [number | null, number | null] | null
-          if (typeof point === 'object' && 'y' in point) raw = (point as Point | RangePoint).y
-          else raw = point
-          if (raw === null || raw === undefined) return
-
-          const name = s.name ?? `Serie ${idx + 1}`
-          const color = w.globals?.colors?.[idx] ?? '#ccc'
-          const unit =
-            name === 'Volumen observado' ||
-            name === 'Resguardo volumen' ||
-            name === 'Volumen minimo'
-              ? 'hm3'
-              : 'm3/s'
-          const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
-
-          if (Array.isArray(raw) && raw.length === 2) {
-            const a = Number(raw[0])
-            const b = Number(raw[1])
-            if (Number.isFinite(a) && Number.isFinite(b)) {
-              rows += `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
-                  <span style="display:flex;align-items:center;">${dot}${name}</span>
-                  <strong style="margin-left:16px;">${Math.min(a, b).toFixed(2)} - ${Math.max(a, b).toFixed(2)} ${unit}</strong>
-                </div>`
-            }
-          } else {
-            const val = Number(raw)
-            if (Number.isFinite(val)) {
-              rows += `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
-                  <span style="display:flex;align-items:center;">${dot}${name}</span>
-                  <strong style="margin-left:16px;">${val.toFixed(2)} ${unit}</strong>
-                </div>`
-            }
-          }
-        })
-
-        return `
-          <div style="min-width:280px;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;">
-            <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px 14px;font-weight:600;">
-              ${dateFormatted}
-            </div>
-            <div style="background:#fff;color:#333;padding:8px 14px;">
-              ${rows || '<div style="padding:4px 0;color:#999;">Sin datos</div>'}
-            </div>
-          </div>`
-      },
+      custom: tooltipCustom,
     },
   }))
 
@@ -862,22 +839,16 @@
     }
   }
 
-  async function waitBriefTransition(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 220))
-  }
-
   async function focusChartAtThreshold(request: ThresholdFocusRequest | null): Promise<void> {
     if (!request) return
 
     thresholdTransitionLoading.value = true
-
     try {
       await nextTick()
 
       if (request.action === 'reset') {
         await ApexCharts.exec(chartId, 'resetSeries')
         await ApexCharts.exec(chartId, 'updateOptions', { yaxis: dynamicYAxis.value }, false, true)
-        await waitBriefTransition()
         return
       }
 
@@ -888,25 +859,19 @@
 
       const focusedRange = getFocusedRange(target)
       const currentYaxis = dynamicYAxis.value
-
       let nextYaxis: ApexOptions['yaxis'] = currentYaxis
 
       if (request.kind === 'caudal') {
-        if (Array.isArray(currentYaxis)) {
-          nextYaxis = [{ ...currentYaxis[0], ...focusedRange }, currentYaxis[1]]
-        } else {
-          nextYaxis = { ...currentYaxis, ...focusedRange }
-        }
+        nextYaxis = Array.isArray(currentYaxis)
+          ? [{ ...currentYaxis[0], ...focusedRange }, currentYaxis[1]]
+          : { ...currentYaxis, ...focusedRange }
       } else {
-        if (Array.isArray(currentYaxis)) {
-          nextYaxis = [currentYaxis[0], { ...currentYaxis[1], ...focusedRange }]
-        } else {
-          nextYaxis = { ...currentYaxis, ...focusedRange }
-        }
+        nextYaxis = Array.isArray(currentYaxis)
+          ? [currentYaxis[0], { ...currentYaxis[1], ...focusedRange }]
+          : { ...currentYaxis, ...focusedRange }
       }
 
       await ApexCharts.exec(chartId, 'updateOptions', { yaxis: nextYaxis }, false, true)
-      await waitBriefTransition()
     } finally {
       thresholdTransitionLoading.value = false
       emit('focus-threshold-complete')

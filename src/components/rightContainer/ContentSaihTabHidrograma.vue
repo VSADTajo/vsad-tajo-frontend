@@ -78,6 +78,7 @@
                     ]"
                   >
                     <ForecastChartNew
+                      v-if="mountedTabs.has('caudalNAM')"
                       :data="caudalOnlyChartData"
                       :is-embalse="true"
                       :height="550"
@@ -95,6 +96,7 @@
                     ]"
                   >
                     <ForecastChartNew
+                      v-if="mountedTabs.has('caudalMIKE')"
                       :data="mikeChartData"
                       :is-embalse="true"
                       :height="550"
@@ -112,6 +114,7 @@
                     ]"
                   >
                     <ForecastChartNew
+                      v-if="mountedTabs.has('volumenNAM')"
                       :data="volumenOnlyChartData"
                       :is-embalse="true"
                       :height="550"
@@ -129,6 +132,7 @@
                     ]"
                   >
                     <ForecastChartNew
+                      v-if="mountedTabs.has('volumenMIKE')"
                       :data="mikeVolumenChartData"
                       :is-embalse="true"
                       :height="550"
@@ -154,6 +158,7 @@
                     ]"
                   >
                     <ForecastChartNew
+                      v-if="mountedTabs.has('nam')"
                       :data="caudalChartData"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
@@ -169,6 +174,7 @@
                     ]"
                   >
                     <ForecastChartNew
+                      v-if="mountedTabs.has('mike')"
                       :data="mikeChartData"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
@@ -306,7 +312,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+  import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
   import { useCaudalPredictions } from '@/composables/useCaudalPredictions'
   import { useResguardos } from '@/composables/useResguardos'
@@ -347,6 +353,10 @@
     'caudalNAM'
   )
   const selectedCaudalTypeChartTab = ref<'nam' | 'mike'>('nam')
+
+  const mountedTabs = reactive(new Set<string>(['caudalNAM', 'nam']))
+  watch(selectedEmbalseChartTab, (tab) => mountedTabs.add(tab))
+  watch(selectedCaudalTypeChartTab, (tab) => mountedTabs.add(tab))
   const selectedThreshold = ref<ThresholdSelection>(null)
   const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
   const thresholdFocusNonce = ref(0)
