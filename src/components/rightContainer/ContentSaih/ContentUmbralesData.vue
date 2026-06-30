@@ -1,5 +1,5 @@
 <template>
-  <v-card class="bg-surface mb-2" elevation="2">
+  <v-card class="bg-surface" elevation="2">
     <v-card-text class="pt-0">
       <template v-if="activeTab === 'caudalNAM' || activeTab === 'caudalMIKE'">
         <div class="text-caption text-medium-emphasis font-weight-bold mb-2 mt-1">
