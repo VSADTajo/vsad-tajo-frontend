@@ -46,7 +46,7 @@
                 <v-sheet class="pa-2 h-100 d-flex flex-column">
                   <PrecipitationsChart
                     :data="precipitationsChartData"
-                    :height="700"
+                    :height="550"
                     :loading="loadingPrecipitaciones"
                     mode="precipitations"
                   />

@@ -1,61 +1,15 @@
-<template>
-  <div
-    v-if="loadingFeature || feature"
-    class="d-flex justify-space-between align-start pa-4 saih-sticky-header"
-    :style="topHeaderStyle"
-  >
-    <div v-if="feature">
-      <div class="text-h6 font-weight-bold" style="color: white">
-        {{ feature.properties?.codigo }}
-      </div>
-      <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">
-        {{ feature.properties?.nombre }}
-      </div>
-    </div>
-    <div v-else>
-      <div class="text-h6 font-weight-bold" style="color: white">Cargando estacion</div>
-      <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">Recuperando datos...</div>
-    </div>
+﻿<template>
+  <StationStickyHeader
+    :feature="feature"
+    :loading="loadingFeature"
+    :header-style="topHeaderStyle"
+    @close="closeDrawer"
+  />
 
-    <v-btn icon="mdi-close" variant="text" size="small" style="color: white" @click="closeDrawer" />
-  </div>
-
-  <v-card class="bg-background" elevation="2">
-    <v-progress-linear v-if="loadingFeature" indeterminate />
-
-    <!-- Skeleton while loading feature -->
-    <template v-if="loadingFeature">
-      <div class="pa-4">
-        <v-skeleton-loader type="heading" height="28" class="mb-2" />
-        <v-skeleton-loader type="text" height="18" class="mb-2" />
-        <v-skeleton-loader type="list-item" class="mb-2" />
-      </div>
-    </template>
-
-    <template v-else-if="feature">
-      <v-card-text class="pt-1">
-        <!-- Tipo -->
-        <div class="mb-2 mt-2">
-          <v-chip
-            :icon="feature?.properties?.tipo === 'SAIH' ? 'mdi-water' : 'mdi-map-marker'"
-            :color="stationBaseColor"
-            variant="tonal"
-            size="small"
-            class="font-weight-bold"
-          >
-            {{ feature?.properties?.stationType }}
-          </v-chip>
-        </div>
-
-        <!-- Información -->
-        <ContentSaihInfo :feature="feature" />
-      </v-card-text>
-    </template>
-
-    <v-alert v-if="error" type="error" variant="tonal">
-      {{ error }}
-    </v-alert>
-  </v-card>
+  <v-progress-linear v-if="loadingFeature" indeterminate />
+  <v-alert v-if="error" type="error" variant="tonal" class="ma-2">
+    {{ error }}
+  </v-alert>
 
   <v-sheet elevation="2" class="mt-2">
     <v-tabs v-model="tab" color="primary">
@@ -85,7 +39,7 @@
   import { useRoute, useRouter } from 'vue-router'
   import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
   import { getSaihTypeColor } from '@/utils/saihStations'
-  import ContentSaihInfo from './ContentSaih/ContentSaihInfo.vue'
+  import StationStickyHeader from './StationStickyHeader.vue'
   import {
     aforosWithCaudalPredictions,
     embalsesWithCaudalPredictions,
@@ -293,13 +247,6 @@
 </script>
 
 <style scoped>
-  .saih-sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    border-radius: 4px 4px 0 0;
-  }
-
   .chart-placeholder {
     display: flex;
     align-items: center;

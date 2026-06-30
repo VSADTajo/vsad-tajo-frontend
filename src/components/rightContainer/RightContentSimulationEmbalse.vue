@@ -1,53 +1,10 @@
 ﻿<template>
-  <div
-    v-if="loading || station"
-    class="d-flex justify-space-between align-start pa-4 saih-sticky-header"
-    :style="headerStyle"
-  >
-    <div v-if="station">
-      <div class="text-h6 font-weight-bold" style="color: white">
-        {{ station.stationCode }}
-      </div>
-      <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">
-        {{ station.name }}
-      </div>
-    </div>
-    <div v-else>
-      <div class="text-h6 font-weight-bold" style="color: white">Cargando estacion</div>
-      <div class="text-caption" style="color: rgba(255, 255, 255, 0.9)">Recuperando datos...</div>
-    </div>
-
-    <v-btn icon="mdi-close" variant="text" size="small" style="color: white" @click="close" />
-  </div>
-
-  <v-card class="bg-background" elevation="2">
-    <v-progress-linear v-if="loading" indeterminate />
-
-    <template v-if="loading">
-      <div class="pa-4">
-        <v-skeleton-loader type="heading" height="28" class="mb-2" />
-        <v-skeleton-loader type="text" height="18" class="mb-2" />
-        <v-skeleton-loader type="list-item" class="mb-2" />
-      </div>
-    </template>
-
-    <template v-else-if="stationFeature">
-      <v-card-text class="pt-1">
-        <div class="mb-2 mt-2">
-          <v-chip
-            :icon="'mdi-water'"
-            :color="stationBaseColor"
-            variant="tonal"
-            size="small"
-            class="font-weight-bold"
-          >
-            {{ stationFeature.properties?.stationType }}
-          </v-chip>
-        </div>
-        <ContentSaihInfo :feature="stationFeature" />
-      </v-card-text>
-    </template>
-  </v-card>
+  <StationStickyHeader
+    :feature="stationFeature"
+    :loading="loading"
+    :header-style="headerStyle"
+    @close="close"
+  />
 
   <v-row v-if="station" justify="center" class="px-3 align-stretch">
     <v-col
@@ -306,7 +263,7 @@
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
   import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
   import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
-  import ContentSaihInfo from './ContentSaih/ContentSaihInfo.vue'
+  import StationStickyHeader from './StationStickyHeader.vue'
 
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
@@ -341,8 +298,6 @@
     return typeof val === 'string' ? val : undefined
   })
 
-  const stationBaseColor = computed(() => getSaihTypeColor(codeType.value))
-
   const stationFeature = computed<GeoJSON.Feature | null>(() => {
     const s = station.value
     if (!s) return null
@@ -352,7 +307,12 @@
         type: 'Point',
         coordinates: [s.longitude ?? 0, s.latitude ?? 0],
       },
-      properties: { ...(s as unknown as Record<string, unknown>), tipo: 'SAIH' },
+      properties: {
+        ...(s as unknown as Record<string, unknown>),
+        tipo: 'SAIH',
+        codigo: s.stationCode,
+        nombre: s.name,
+      },
     }
   })
 
@@ -595,13 +555,6 @@
 </script>
 
 <style scoped>
-  .saih-sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    border-radius: 4px 4px 0 0;
-  }
-
   .summary-container-card {
     min-height: 0;
     overflow: hidden;
