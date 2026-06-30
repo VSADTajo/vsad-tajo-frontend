@@ -1,6 +1,13 @@
-<template>
+﻿<template>
   <v-card class="bg-surface" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">Resumen datos observados</v-card-title>
+    <v-tooltip text="Resumen datos observados" location="end">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          Resumen Datos Observados
+        </v-card-title>
+      </template>
+    </v-tooltip>
+
     <v-divider />
     <v-card-text v-if="loading" class="pa-4">
       <v-skeleton-loader type="heading" height="22" class="mb-2" />
@@ -12,26 +19,19 @@
 
     <v-card-text v-else class="observed-content">
       <template v-if="hasObservedData && activeTab === 'caudal'">
-        <v-btn-toggle
-          v-if="isEmbalse"
-          v-model="embalseObservedMode"
-          mandatory
-          density="compact"
-          divided
-          color="primary"
-          variant="outlined"
-          class="mb-3 observed-mode-toggle"
-        >
-          <v-btn value="entrada" size="small" class="observed-mode-btn" :disabled="!hasEntradaData">
-            Entrada
-          </v-btn>
-          <v-btn value="salida" size="small" class="observed-mode-btn" :disabled="!hasSalidaData">
-            Salida
-          </v-btn>
-          <v-btn value="volumen" size="small" class="observed-mode-btn" :disabled="!hasVolumenData">
-            Volumen
-          </v-btn>
-        </v-btn-toggle>
+        <div v-if="isEmbalse" class="d-flex justify-center mb-3">
+          <v-btn-toggle
+            v-model="embalseObservedMode"
+            mandatory
+            density="compact"
+            divided
+            variant="outlined"
+          >
+            <v-btn value="entrada" size="x-small" :disabled="!hasEntradaData">Entr.</v-btn>
+            <v-btn value="salida" size="x-small" :disabled="!hasSalidaData">Sal.</v-btn>
+            <v-btn value="volumen" size="x-small" :disabled="!hasVolumenData">Vol.</v-btn>
+          </v-btn-toggle>
+        </div>
 
         <div class="text-caption text-medium-emphasis font-weight-bold mb-1">
           {{ observedSectionTitle }}
@@ -341,16 +341,5 @@
     justify-content: center;
     text-align: center;
     font-weight: 500;
-  }
-
-  .observed-mode-toggle {
-    width: 100%;
-    display: flex;
-    height: 38px !important;
-  }
-
-  .observed-mode-btn {
-    flex: 1;
-    min-height: 38px !important;
   }
 </style>

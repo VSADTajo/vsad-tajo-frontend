@@ -1,7 +1,14 @@
 <template>
   <v-card class="pa-2 bg-surface" elevation="2">
     <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
-      <span class="text-subtitle-1 font-weight-bold pl-2">Acumulado Precipitación</span>
+      <v-tooltip text="Gráfica Acumulado Precipitación" location="top">
+        <template #activator="{ props: tooltipProps }">
+          <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+            Gráfica Acumulado Precipitación
+          </v-card-title>
+        </template>
+      </v-tooltip>
+
       <v-btn-toggle
         v-model="selectedProvider"
         mandatory

@@ -1,8 +1,13 @@
 <template>
   <v-card class="bg-surface" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">
-      Resguardos y Volúmenes Mínimos
-    </v-card-title>
+    <v-tooltip text="Resumen Resguardos y Volúmenes Mínimos" location="end">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          Resumen Resguardos y Volúmenes Mínimos
+        </v-card-title>
+      </template>
+    </v-tooltip>
+
     <v-divider />
 
     <v-card-text class="pa-2">

@@ -1,7 +1,7 @@
 ﻿<template>
   <v-card class="bg-surface" elevation="2">
     <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-3 px-4">
-      <div class="text-subtitle-1 font-weight-bold">
+      <div class="text-body-2 font-weight-bold text-truncate">
         {{ title ?? 'Matriz de caudales (7 dias / 6h)' }}
       </div>
 

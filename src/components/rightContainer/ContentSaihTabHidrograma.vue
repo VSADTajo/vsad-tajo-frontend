@@ -61,7 +61,7 @@
       <div ref="centerStackEl" class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
-            <v-sheet class="pa-5">
+            <v-sheet class="pa-2">
               <template v-if="isEmbalse">
                 <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
                   <v-tab value="caudalNAM">Caudal NAM</v-tab>

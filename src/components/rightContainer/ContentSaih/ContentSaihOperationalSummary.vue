@@ -1,11 +1,12 @@
 ﻿<template>
   <v-card class="bg-surface operational-summary-card" elevation="2">
-    <v-card-title
-      class="text-subtitle-1 font-weight-bold d-flex align-center ga-2"
-      style="min-width: 0"
-    >
-      <span class="text-truncate" style="min-width: 0; flex: 1">{{ title }}</span>
-    </v-card-title>
+    <v-tooltip :text="title" location="end">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          {{ title }}
+        </v-card-title>
+      </template>
+    </v-tooltip>
     <v-divider />
 
     <v-card-text class="pa-2 d-flex flex-column flex-grow-1 operational-summary-body">
@@ -254,9 +255,9 @@
     const items: SummaryItem[] = []
 
     const labels: Record<1 | 2 | 3, string> = {
-      1: 'Nivel 1',
-      2: 'Nivel 2',
-      3: 'Nivel 3',
+      1: 'Nivel Amarillo',
+      2: 'Nivel Naranja',
+      3: 'Nivel Rojo',
     }
 
     const levelColor: Record<1 | 2 | 3, SummaryLevel> = {

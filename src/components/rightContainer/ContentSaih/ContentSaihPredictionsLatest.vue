@@ -1,6 +1,13 @@
 ﻿<template>
   <v-card class="bg-surface" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">Resumen Datos Predicciones</v-card-title>
+    <v-tooltip text="Resumen Datos Predicciones" location="end">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          Resumen Datos Predicciones
+        </v-card-title>
+      </template>
+    </v-tooltip>
+
     <v-divider />
     <v-card-text v-if="loading" class="pa-4">
       <v-skeleton-loader type="heading" height="22" class="mb-2" />
@@ -330,7 +337,8 @@
   const setEpsDate = (value: string) => updateEpsDate(value)
 
   const epsDateOptions = computed(() => {
-    const dates = props.activeTab !== 'precipitaciones' ? props.epsCaudalDates : props.epsPrecipDates
+    const dates =
+      props.activeTab !== 'precipitaciones' ? props.epsCaudalDates : props.epsPrecipDates
     return (dates ?? []).map((date) => ({
       title: formatSimulationDate(date),
       value: date,

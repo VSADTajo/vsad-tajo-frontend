@@ -1,13 +1,13 @@
 <template>
   <v-row class="align-stretch">
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
-      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+      <!-- <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatusPrecipObserved
           :loading="loadingPrecipitaciones"
           :precipitations-historical="precipitationsHistorical"
           :thresholds="thresholds"
         />
-      </v-card>
+      </v-card> -->
 
       <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <v-row>
@@ -22,18 +22,18 @@
         </v-row>
       </v-card>
 
-      <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
+      <!-- <v-card class="ma-2 mt-0 pa-2 bg-background w-100 flex-grow-1" elevation="2">
         <ContentSaihOperationalSummaryPrecipObserved
           :loading="loadingPrecipitaciones"
           :precipitations-historical="precipitationsHistorical"
           :thresholds="thresholds"
           title="Resumen Operativo Observado"
         />
-      </v-card>
+      </v-card> -->
     </v-col>
 
     <v-col cols="12" md="6" lg="8" class="pt-2 pt-md-4 order-1 order-md-2 d-flex flex-column">
-      <div class="w-100 h-100 d-flex flex-column">
+      <div class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 d-flex flex-column flex-grow-1" elevation="2">
           <v-card-text class="pa-2 d-flex flex-column flex-grow-1">
             <v-tabs v-model="selectedPrecipChartTab" class="bg-surface px-2">
@@ -46,7 +46,7 @@
                 <v-sheet class="pa-2 h-100 d-flex flex-column">
                   <PrecipitationsChart
                     :data="precipitationsChartData"
-                    :height="550"
+                    :height="400"
                     :loading="loadingPrecipitaciones"
                     mode="precipitations"
                   />
@@ -57,7 +57,7 @@
                 <v-sheet class="pa-2 h-100 d-flex flex-column">
                   <PrecipitationsChart
                     :data="precipitationsChartData"
-                    :height="700"
+                    :height="400"
                     :loading="loadingPrecipitaciones"
                     mode="accumulated"
                   />
@@ -70,7 +70,7 @@
     </v-col>
 
     <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column pe-3 pl-0">
-      <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+      <!-- <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatusPrecipPredictions
           :loading="loadingPrecipitaciones"
           :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
@@ -81,9 +81,9 @@
           :precipitations-forecast-ens-p90="precipitationsForecastEnsP90"
           :thresholds="thresholds"
         />
-      </v-card>
+      </v-card> -->
 
-      <v-card class="ml-1 mr-1 my-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
+      <v-card class="ml-1 mr-1 my-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihPredictionsLatest
           class="ma-2"
           active-tab="precipitaciones"
@@ -102,7 +102,7 @@
         />
       </v-card>
 
-      <v-card class="ml-1 mr-1 mt-2 pa-2 bg-background w-100 flex-grow-1" elevation="2">
+      <!-- <v-card class="ml-1 mr-1 mt-2 pa-2 bg-background w-100 flex-grow-1" elevation="2">
         <ContentSaihOperationalSummaryPrecipPredictions
           :loading="loadingPrecipitaciones"
           :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
@@ -114,12 +114,12 @@
           :thresholds="thresholds"
           title="Resumen Operativo Predicciones"
         />
-      </v-card>
+      </v-card> -->
     </v-col>
   </v-row>
 
   <v-row class="align-stretch">
-    <v-col cols="12" md="3" lg="3" class="order-4 order-md-4 d-flex flex-column">
+    <v-col cols="12" md="3" lg="4" class="order-4 order-md-4 d-flex flex-column">
       <v-card
         class="ma-2 mt-2 pa-2 bg-background w-100 flex-grow-1 d-flex flex-column"
         elevation="2"
@@ -138,7 +138,7 @@
       </v-card>
     </v-col>
 
-    <v-col cols="12" md="6" lg="9" class="order-5 order-md-5 d-flex flex-column">
+    <v-col cols="12" md="6" lg="8" class="order-5 order-md-5 d-flex flex-column">
       <v-card
         class="pa-2 bg-background w-100 mt-2 md:mt-0 flex-grow-1 d-flex flex-column"
         elevation="2"

@@ -1,8 +1,12 @@
 <template>
   <v-card class="pa-2 bg-surface" elevation="2">
-    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
-      <span class="text-subtitle-1 font-weight-bold pl-2">Prevision Precipitación</span>
-    </v-card-title>
+    <v-tooltip text="Resumen Prevision Precipitación" location="top">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          Resumen Prevision Precipitación
+        </v-card-title>
+      </template>
+    </v-tooltip>
 
     <v-divider class="mb-2" />
 
