@@ -7,7 +7,7 @@
       :timeout="3500"
     >
       <div class="d-flex align-center gap-2">
-        <v-icon>{{ snackbar.icon }}</v-icon>
+        <v-icon class="pr-2">{{ snackbar.icon }}</v-icon>
         {{ snackbar.message }}
       </div>
     </v-snackbar>
@@ -181,6 +181,8 @@
         maneuvers: operations.value.map((op) => ({
           reservoirCode: op.stationCode,
           outputFlowValue: op.caudalSalida,
+          startDate: op.fechaInicio.toISOString(),
+          endDate: op.fechaFin.toISOString(),
         })),
       })
       snackbar.value = {

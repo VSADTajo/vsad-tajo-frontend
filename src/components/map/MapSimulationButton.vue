@@ -1,5 +1,8 @@
 ﻿<template>
-  <v-tooltip :text="isActive ? 'Desactivar simulación' : 'Activar simulación'" location="left">
+  <v-tooltip
+    :text="isActive ? 'Hay una simulación activa' : 'No hay una simulación activa'"
+    location="left"
+  >
     <template #activator="{ props: tooltipProps }">
       <div
         v-bind="tooltipProps"
@@ -12,6 +15,7 @@
           :color="isActive ? 'primary' : undefined"
           :variant="isActive ? 'flat' : 'tonal'"
           elevation="4"
+          style="pointer-events: none"
         >
           <v-icon size="26">mdi-waves</v-icon>
         </v-btn>
