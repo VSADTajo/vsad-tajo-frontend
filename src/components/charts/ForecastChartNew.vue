@@ -20,9 +20,7 @@
       :options="chartOptions"
       :series="series"
     />
-    <div v-else-if="!loading" class="chart-empty-state">
-      Sin datos para mostrar
-    </div>
+    <div v-else-if="!loading" class="chart-empty-state">Sin datos para mostrar</div>
   </div>
 </template>
 
@@ -110,27 +108,15 @@
     const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
     if (t1 != null) {
-      annotations.push({
-        y: t1,
-        borderColor: '#fde68a',
-        label: { text: `Nivel 1: ${t1.toFixed(2)} m3/s`, style: { background: '#fde68a', color: '#7c2d12' } },
-      })
+      annotations.push({ y: t1, borderColor: '#fde68a', borderWidth: 2 })
     }
 
     if (t2 != null) {
-      annotations.push({
-        y: t2,
-        borderColor: '#fdba74',
-        label: { text: `Nivel 2: ${t2.toFixed(2)} m3/s`, style: { background: '#fdba74', color: '#7c2d12' } },
-      })
+      annotations.push({ y: t2, borderColor: '#fdba74', borderWidth: 2 })
     }
 
     if (t3 != null) {
-      annotations.push({
-        y: t3,
-        borderColor: '#fca5a5',
-        label: { text: `Nivel 3: ${t3.toFixed(2)} m3/s`, style: { background: '#fca5a5', color: '#7c2d12' } },
-      })
+      annotations.push({ y: t3, borderColor: '#fca5a5', borderWidth: 2 })
     }
 
     return annotations
@@ -146,30 +132,15 @@
     const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
     if (t1 != null) {
-      annotations.push({
-        y: t1,
-        yAxisIndex: 1,
-        borderColor: '#fde68a',
-        label: { text: `Nivel 1: ${t1.toFixed(2)} hm³`, style: { background: '#fde68a', color: '#7c2d12' } },
-      })
+      annotations.push({ y: t1, yAxisIndex: 1, borderColor: '#fde68a', borderWidth: 2 })
     }
 
     if (t2 != null) {
-      annotations.push({
-        y: t2,
-        yAxisIndex: 1,
-        borderColor: '#fdba74',
-        label: { text: `Nivel 2: ${t2.toFixed(2)} hm³`, style: { background: '#fdba74', color: '#7c2d12' } },
-      })
+      annotations.push({ y: t2, yAxisIndex: 1, borderColor: '#fdba74', borderWidth: 2 })
     }
 
     if (t3 != null) {
-      annotations.push({
-        y: t3,
-        yAxisIndex: 1,
-        borderColor: '#fca5a5',
-        label: { text: `Nivel 3: ${t3.toFixed(2)} hm³`, style: { background: '#fca5a5', color: '#7c2d12' } },
-      })
+      annotations.push({ y: t3, yAxisIndex: 1, borderColor: '#fca5a5', borderWidth: 2 })
     }
 
     return annotations
@@ -850,10 +821,18 @@
       // because Promise microtasks run before the browser renders.
       await new Promise<void>((resolve) => setTimeout(resolve, 50))
 
-      const noAnim = { chart: { animations: { enabled: false, dynamicAnimation: { enabled: false, speed: 0 } } } }
+      const noAnim = {
+        chart: { animations: { enabled: false, dynamicAnimation: { enabled: false, speed: 0 } } },
+      }
 
       if (request.action === 'reset') {
-        await ApexCharts.exec(chartId, 'updateOptions', { yaxis: dynamicYAxis.value, ...noAnim }, false, false)
+        await ApexCharts.exec(
+          chartId,
+          'updateOptions',
+          { yaxis: dynamicYAxis.value, ...noAnim },
+          false,
+          false
+        )
         return
       }
 

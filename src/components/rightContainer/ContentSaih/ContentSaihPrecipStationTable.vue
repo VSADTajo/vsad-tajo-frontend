@@ -1,8 +1,12 @@
-<template>
+﻿<template>
   <v-card class="pa-2 bg-surface" elevation="2">
-    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
-      <span class="text-subtitle-1 font-weight-bold pl-2">Prevision Precipitación</span>
-    </v-card-title>
+    <v-tooltip text="Resumen Prevision Precipitación" location="top">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          Resumen Prevision Precipitación
+        </v-card-title>
+      </template>
+    </v-tooltip>
 
     <v-divider class="mb-2" />
 
@@ -138,9 +142,9 @@
   const headers = [
     { title: 'Periodo', key: 'periodo', sortable: false, width: 80 },
     { title: 'Valor', key: 'valor', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Leve', key: 'leve', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Medio', key: 'medio', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Grave', key: 'grave', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Amarillo', key: 'leve', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Naranja', key: 'medio', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Rojo', key: 'grave', align: 'end' as const, sortable: false, width: 70 },
   ]
 
   const harmoniePrediction = computed<StationPrediction | undefined>(

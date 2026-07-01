@@ -18,7 +18,7 @@ import {
   type ForecastRequestDef,
 } from '@/components/rightContainer/utils/predictionTabUtils'
 
-const HISTORICAL_RANGE_DAYS = 30
+const HISTORICAL_RANGE_DAYS = 10
 
 type ForecastKey = keyof DataStationPrediction
 type ForecastRefsMap = Record<ForecastKey, { value: StationPrediction | undefined }>

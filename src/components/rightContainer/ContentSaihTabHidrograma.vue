@@ -61,7 +61,7 @@
       <div ref="centerStackEl" class="w-100 d-flex flex-column">
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
-            <v-sheet class="pa-5">
+            <v-sheet class="pa-2">
               <template v-if="isEmbalse">
                 <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
                   <v-tab value="caudalNAM">Caudal NAM</v-tab>
@@ -81,7 +81,7 @@
                       v-if="mountedTabs.has('caudalNAM')"
                       :data="caudalOnlyChartData"
                       :is-embalse="true"
-                      :height="550"
+                      :height="470"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
                       :focus-threshold-request="thresholdFocusRequest"
@@ -99,7 +99,7 @@
                       v-if="mountedTabs.has('caudalMIKE')"
                       :data="mikeChartData"
                       :is-embalse="true"
-                      :height="550"
+                      :height="470"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
                       :focus-threshold-request="thresholdFocusRequest"
@@ -117,7 +117,7 @@
                       v-if="mountedTabs.has('volumenNAM')"
                       :data="volumenOnlyChartData"
                       :is-embalse="true"
-                      :height="550"
+                      :height="470"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
                       :focus-threshold-request="thresholdFocusRequest"
@@ -135,7 +135,7 @@
                       v-if="mountedTabs.has('volumenMIKE')"
                       :data="mikeVolumenChartData"
                       :is-embalse="true"
-                      :height="550"
+                      :height="470"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
                       :focus-threshold-request="thresholdFocusRequest"
@@ -162,6 +162,7 @@
                       :data="caudalChartData"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
+                      :height="470"
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
@@ -178,6 +179,7 @@
                       :data="mikeChartData"
                       :loading="loadingCaudales"
                       :thresholds="thresholds"
+                      :height="470"
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
@@ -202,6 +204,10 @@
           <ContentSaihCaudalMatrix
             :forecast-harmonie="activeHarmonieforecast"
             :forecast-epsat="activeEpsatForecast"
+            :forecast-ens-p10="activeEnsP10"
+            :forecast-ens-p25="activeEnsP25"
+            :forecast-ens-p75="activeEnsP75"
+            :forecast-ens-p90="activeEnsP90"
             :thresholds="thresholds"
             :loading="loadingCaudales"
             :title="isVolumeTab ? 'Matriz de volumen (7 dias / 6h)' : undefined"

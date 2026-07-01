@@ -1,6 +1,13 @@
 ﻿<template>
   <v-card class="bg-surface h-100" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">{{ cardTitle }}</v-card-title>
+    <v-tooltip :text="cardTitle" location="end">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          {{ cardTitle }}
+        </v-card-title>
+      </template>
+    </v-tooltip>
+
     <v-divider />
 
     <v-card-text v-if="loading" class="justify-center d-flex align-center">
@@ -97,7 +104,10 @@
 
   const threshold1 = computed<number | null>(() => {
     if (props.activeTab === 'volumen') {
-      return readNumber(['umbralVolumen1', 'umbral_1_volumen'], nestedThreshold.value ?? props.thresholds)
+      return readNumber(
+        ['umbralVolumen1', 'umbral_1_volumen'],
+        nestedThreshold.value ?? props.thresholds
+      )
     }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_1', 'umbral_amarillo'], props.thresholds)
@@ -107,7 +117,10 @@
 
   const threshold2 = computed<number | null>(() => {
     if (props.activeTab === 'volumen') {
-      return readNumber(['umbralVolumen2', 'umbral_2_volumen'], nestedThreshold.value ?? props.thresholds)
+      return readNumber(
+        ['umbralVolumen2', 'umbral_2_volumen'],
+        nestedThreshold.value ?? props.thresholds
+      )
     }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_2', 'umbral_naranja'], props.thresholds)
@@ -117,7 +130,10 @@
 
   const threshold3 = computed<number | null>(() => {
     if (props.activeTab === 'volumen') {
-      return readNumber(['umbralVolumen3', 'umbral_3_volumen'], nestedThreshold.value ?? props.thresholds)
+      return readNumber(
+        ['umbralVolumen3', 'umbral_3_volumen'],
+        nestedThreshold.value ?? props.thresholds
+      )
     }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_3', 'umbral_rojo'], props.thresholds)
@@ -134,7 +150,14 @@
     return 'NORMAL'
   })
 
-  const statusLabel = computed<string>(() => alertLevel.value)
+  const ALERT_LABELS: Record<AlertLevel, string> = {
+    NORMAL: 'Normal',
+    LEVE: 'Amarillo',
+    MODERADO: 'Naranja',
+    GRAVE: 'Rojo',
+  }
+
+  const statusLabel = computed<string>(() => ALERT_LABELS[alertLevel.value])
 
   const statusChipColor = computed<string>(() => {
     switch (alertLevel.value) {

@@ -1,10 +1,8 @@
-<template>
-  <v-card class="bg-surface mb-2" elevation="2">
+﻿<template>
+  <v-card class="bg-surface" elevation="2">
     <v-card-text class="pt-0">
-      <template v-if="activeTab === 'caudalNAM' || activeTab === 'caudalMIKE'">
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-2 mt-1">
-          Umbrales de caudal
-        </div>
+      <template v-if="activeTab !== 'precipitaciones'">
+        <div class="text-body-2 font-weight-bold text-truncate mb-2 mt-2">Umbrales de caudal</div>
         <div v-if="hasAnyThreshold" class="thresholds-row">
           <div class="threshold-item">
             <v-chip
@@ -16,7 +14,7 @@
               :aria-pressed="isSelected('caudal', 1)"
               @click="focusThreshold('caudal', 1)"
             >
-              Nivel 1
+              Amarillo
             </v-chip>
             <span class="threshold-value">{{ threshold1Label }}</span>
           </div>
@@ -30,7 +28,7 @@
               :aria-pressed="isSelected('caudal', 2)"
               @click="focusThreshold('caudal', 2)"
             >
-              Nivel 2
+              Naranja
             </v-chip>
             <span class="threshold-value">{{ threshold2Label }}</span>
           </div>
@@ -44,65 +42,12 @@
               :aria-pressed="isSelected('caudal', 3)"
               @click="focusThreshold('caudal', 3)"
             >
-              Nivel 3
+              Rojo
             </v-chip>
             <span class="threshold-value">{{ threshold3Label }}</span>
           </div>
         </div>
         <div v-else class="text-caption text-medium-emphasis pt-2">No hay umbrales de caudal.</div>
-      </template>
-
-      <template
-        v-else-if="(activeTab === 'volumenNAM' || activeTab === 'volumenMIKE') && isEmbalse"
-      >
-        <div class="text-caption text-medium-emphasis font-weight-bold mb-2 mt-1">
-          Umbrales de volumen
-        </div>
-        <div v-if="hasAnyVolumeThreshold" class="thresholds-row">
-          <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('volumen', 1) }]"
-              color="#fde68a"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('volumen', 1)"
-              @click="focusThreshold('volumen', 1)"
-            >
-              Nivel 1
-            </v-chip>
-            <span class="threshold-value">{{ volumeThreshold1Label }}</span>
-          </div>
-          <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('volumen', 2) }]"
-              color="#fdba74"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('volumen', 2)"
-              @click="focusThreshold('volumen', 2)"
-            >
-              Nivel 2
-            </v-chip>
-            <span class="threshold-value">{{ volumeThreshold2Label }}</span>
-          </div>
-          <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('volumen', 3) }]"
-              color="#fca5a5"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('volumen', 3)"
-              @click="focusThreshold('volumen', 3)"
-            >
-              Nivel 3
-            </v-chip>
-            <span class="threshold-value">{{ volumeThreshold3Label }}</span>
-          </div>
-        </div>
-        <div v-else class="text-caption text-medium-emphasis pt-2">No hay umbrales de volumen.</div>
       </template>
 
       <div v-else class="text-caption text-medium-emphasis pt-2">No hay umbrales disponibles.</div>
@@ -132,7 +77,6 @@
       emit('focus-threshold', null)
       return
     }
-
     emit('focus-threshold', { kind, level })
   }
 
@@ -142,70 +86,41 @@
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
     if (!source) return null
-
     for (const key of keys) {
       const raw = source[key]
       if (raw == null) continue
-
       if (typeof raw === 'number' && Number.isFinite(raw)) return raw
       if (typeof raw === 'string') {
         const parsed = Number.parseFloat(raw.replace(',', '.'))
         if (Number.isFinite(parsed)) return parsed
       }
     }
-
     return null
   }
 
   const threshold1 = computed(() =>
-    readNumber(['umbral_caudal_1', 'umbralCaudal1'], props.thresholds)
+    readNumber(['umbral_caudal_1', 'umbralCaudal1', 'umbral_amarillo'], props.thresholds)
   )
 
   const threshold2 = computed(() =>
-    readNumber(['umbral_caudal_2', 'umbralCaudal2'], props.thresholds)
+    readNumber(['umbral_caudal_2', 'umbralCaudal2', 'umbral_naranja'], props.thresholds)
   )
 
   const threshold3 = computed(() =>
-    readNumber(['umbral_caudal_3', 'umbralCaudal3'], props.thresholds)
+    readNumber(['umbral_caudal_3', 'umbralCaudal3', 'umbral_rojo'], props.thresholds)
   )
-
-  const nestedThreshold = computed(
-    () => props.thresholds?.threshold as Record<string, unknown> | undefined
-  )
-
-  const volumeThreshold1 = computed(() => readNumber(['umbralVolumen1'], nestedThreshold.value))
-
-  const volumeThreshold2 = computed(() => readNumber(['umbralVolumen2'], nestedThreshold.value))
-
-  const volumeThreshold3 = computed(() => readNumber(['umbralVolumen3'], nestedThreshold.value))
 
   function formatThreshold(value: number | null): string {
     if (value == null) return '--'
-    return `${value.toFixed(2)} m3/s`
-  }
-
-  function formatVolumeThreshold(value: number | null): string {
-    if (value == null) return '--'
-    return `${value.toFixed(2)} hm3`
+    return `${value.toFixed(2)} m³/s`
   }
 
   const threshold1Label = computed(() => formatThreshold(threshold1.value))
   const threshold2Label = computed(() => formatThreshold(threshold2.value))
   const threshold3Label = computed(() => formatThreshold(threshold3.value))
 
-  const volumeThreshold1Label = computed(() => formatVolumeThreshold(volumeThreshold1.value))
-  const volumeThreshold2Label = computed(() => formatVolumeThreshold(volumeThreshold2.value))
-  const volumeThreshold3Label = computed(() => formatVolumeThreshold(volumeThreshold3.value))
-
   const hasAnyThreshold = computed(
     () => threshold1.value != null || threshold2.value != null || threshold3.value != null
-  )
-
-  const hasAnyVolumeThreshold = computed(
-    () =>
-      volumeThreshold1.value != null ||
-      volumeThreshold2.value != null ||
-      volumeThreshold3.value != null
   )
 </script>
 
@@ -218,6 +133,7 @@
     overflow: hidden;
     padding-top: 4px;
     padding-bottom: 4px;
+    padding-left: 4px;
   }
 
   .threshold-item {

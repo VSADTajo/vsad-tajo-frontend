@@ -1,6 +1,12 @@
 <template>
   <v-card class="bg-surface h-100" elevation="2">
-    <v-card-title class="text-subtitle-1 font-weight-bold">Estado Segun Predicciones</v-card-title>
+    <v-tooltip text="Estado Según Predicciones" location="end">
+      <template #activator="{ props: tooltipProps }">
+        <v-card-title v-bind="tooltipProps" class="text-body-2 font-weight-bold text-truncate">
+          Estado Según Predicciones
+        </v-card-title>
+      </template>
+    </v-tooltip>
     <v-divider />
 
     <v-card-text v-if="loading" class="justify-center d-flex align-center">
