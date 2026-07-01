@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-card class="pa-2 bg-surface" elevation="2">
     <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
       <v-tooltip text="Gráfica Acumulado Precipitación" location="top">
@@ -36,7 +36,7 @@
     <apexchart
       v-else-if="hasData"
       :key="`precip-bars-${selectedProvider}`"
-      type="bar"
+      type="line"
       :height="chartHeight"
       :options="chartOptions"
       :series="series"
@@ -189,17 +189,17 @@
     },
     {
       type: 'line',
-      name: 'Leve',
+      name: 'Amarillo',
       data: leveValues.value,
     },
     {
       type: 'line',
-      name: 'Medio',
+      name: 'Naranja',
       data: medioValues.value,
     },
     {
       type: 'line',
-      name: 'Grave',
+      name: 'Rojo',
       data: graveValues.value,
     },
   ])
@@ -208,7 +208,11 @@
 
   const chartOptions = computed<ApexOptions>(() => ({
     chart: {
-      toolbar: { show: true },
+      toolbar: {
+        show: true,
+        tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true },
+      },
+      zoom: { enabled: true, type: 'x' },
       animations: { enabled: true },
     },
     stroke: {

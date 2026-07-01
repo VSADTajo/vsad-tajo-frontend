@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-row class="align-stretch">
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
       <!-- <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
@@ -171,7 +171,7 @@
     getHistoricalPredictionService,
   } from '@/services/predictions'
 
-  const HISTORICAL_RANGE_DAYS = 30
+  const HISTORICAL_RANGE_DAYS = 10
 
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import ContentSaihAlertStatusPrecipObserved from './ContentSaih/ContentSaihAlertStatusPrecipObserved.vue'

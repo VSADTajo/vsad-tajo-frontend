@@ -74,6 +74,10 @@
   const props = defineProps<{
     forecastHarmonie?: StationPrediction
     forecastEpsat?: StationPrediction
+    forecastEnsP10?: StationPrediction
+    forecastEnsP25?: StationPrediction
+    forecastEnsP75?: StationPrediction
+    forecastEnsP90?: StationPrediction
     thresholds?: Record<string, unknown>
     loading?: boolean
     title?: string
@@ -94,6 +98,10 @@
   const rowDefinitions = computed<RowDefinition[]>(() => [
     { id: 'harmonie', label: 'Harmonie', prediction: props.forecastHarmonie },
     { id: 'eps', label: 'EPS medio', prediction: props.forecastEpsat },
+    { id: 'p10', label: 'EPS P10', prediction: props.forecastEnsP10 },
+    { id: 'p25', label: 'EPS P25', prediction: props.forecastEnsP25 },
+    { id: 'p75', label: 'EPS P75', prediction: props.forecastEnsP75 },
+    { id: 'p90', label: 'EPS P90', prediction: props.forecastEnsP90 },
   ])
 
   function toFiniteNumber(value: unknown): number | null {
@@ -236,7 +244,7 @@
     const date = Number.isFinite(numericDate) ? new Date(numericDate) : new Date(dateIso)
     if (Number.isNaN(date.getTime())) return dateIso
 
-    return format(date, 'dd/MM HH')
+    return format(date, "dd/MM H:mm'hs'")
   }
 
   function formatValue(value: number | null): string {
@@ -286,9 +294,9 @@
 
   .time-col,
   .value-col {
-    width: 75px;
-    min-width: 75px;
-    max-width: 75px;
+    width: 99px;
+    min-width: 99px;
+    max-width: 99px;
   }
 
   .sticky-col {

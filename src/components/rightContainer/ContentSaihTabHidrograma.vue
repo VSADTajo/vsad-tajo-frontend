@@ -204,6 +204,10 @@
           <ContentSaihCaudalMatrix
             :forecast-harmonie="activeHarmonieforecast"
             :forecast-epsat="activeEpsatForecast"
+            :forecast-ens-p10="activeEnsP10"
+            :forecast-ens-p25="activeEnsP25"
+            :forecast-ens-p75="activeEnsP75"
+            :forecast-ens-p90="activeEnsP90"
             :thresholds="thresholds"
             :loading="loadingCaudales"
             :title="isVolumeTab ? 'Matriz de volumen (7 dias / 6h)' : undefined"

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-card class="pa-2 bg-surface" elevation="2">
     <v-tooltip text="Resumen Prevision Precipitación" location="top">
       <template #activator="{ props: tooltipProps }">
@@ -142,9 +142,9 @@
   const headers = [
     { title: 'Periodo', key: 'periodo', sortable: false, width: 80 },
     { title: 'Valor', key: 'valor', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Leve', key: 'leve', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Medio', key: 'medio', align: 'end' as const, sortable: false, width: 70 },
-    { title: 'Grave', key: 'grave', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Amarillo', key: 'leve', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Naranja', key: 'medio', align: 'end' as const, sortable: false, width: 70 },
+    { title: 'Rojo', key: 'grave', align: 'end' as const, sortable: false, width: 70 },
   ]
 
   const harmoniePrediction = computed<StationPrediction | undefined>(
