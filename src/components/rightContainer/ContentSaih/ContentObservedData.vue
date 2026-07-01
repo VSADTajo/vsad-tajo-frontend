@@ -140,7 +140,7 @@
           </v-col>
 
           <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
-            <v-chip size="small" color="success" variant="tonal">
+            <v-chip size="small" :color="precipAlertColor" variant="tonal">
               {{ totalObservedPrecipMm.toFixed(1) }} mm
             </v-chip>
           </v-col>
@@ -160,6 +160,16 @@
   import { formatDate, toTimestamp } from '@/utils/dates'
 
   import type { StationPrediction } from '@/types/Predictions'
+
+  import {
+    extractAccumulatedHorizonValuesWithMode,
+    PRECIP_HORIZON_META,
+  } from '../utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+  } from '../utils/precipThresholds'
 
   type EmbalseObservedMode = 'entrada' | 'salida' | 'volumen'
 
@@ -358,6 +368,34 @@
     const vals = results.map((r) => Number(r.value)).filter((v) => Number.isFinite(v))
 
     return vals.length ? vals.reduce((a, b) => a + b, 0) : null
+  })
+
+  const precipBackwardValues = computed(() =>
+    extractAccumulatedHorizonValuesWithMode(props.precipitationsHistorical, 'backward')
+  )
+
+  const precipAlertColor = computed((): string => {
+    if (props.activeTab !== 'precipitaciones') return 'success'
+    const values = precipBackwardValues.value
+    let worst: 0 | 1 | 2 | 3 = 0 // 0=normal, 1=leve, 2=medio, 3=grave
+    for (const h of PRECIP_HORIZON_META) {
+      if (h.hours === 0) continue
+      const val = values[h.key]
+      if (val === null || !Number.isFinite(val)) continue
+      const grave = DEFAULT_PRECIP_THRESHOLDS_GRAVE[h.key]
+      const medio = DEFAULT_PRECIP_THRESHOLDS_MEDIO[h.key]
+      const leve = DEFAULT_PRECIP_THRESHOLDS_LEVE[h.key]
+      if (grave !== null && val >= grave) {
+        worst = 3
+        break
+      }
+      if (medio !== null && val >= medio && worst < 2) worst = 2
+      else if (leve !== null && val >= leve && worst < 1) worst = 1
+    }
+    if (worst === 3) return '#ef5350'
+    if (worst === 2) return '#fb923c'
+    if (worst === 1) return '#fdd835'
+    return 'success'
   })
 
   const yellowThreshold = computed(() => readNumber(['umbral_caudal_1'], props.thresholds))

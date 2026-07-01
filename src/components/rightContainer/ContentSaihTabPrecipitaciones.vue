@@ -1,19 +1,13 @@
 <template>
   <v-row class="align-stretch">
     <v-col cols="12" md="3" lg="2" class="order-2 order-md-1 d-flex flex-column">
-      <!-- <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
-
+      <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatusPrecipObserved
-
           :loading="loadingPrecipitaciones"
-
           :precipitations-historical="precipitationsHistorical"
-
           :thresholds="thresholds"
-
         />
-
-      </v-card> -->
+      </v-card>
 
       <v-card class="ma-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <v-row>
@@ -60,7 +54,7 @@
                 <v-sheet class="pa-2 h-100 d-flex flex-column">
                   <PrecipitationsChart
                     :data="precipitationsChartData"
-                    :height="400"
+                    :height="570"
                     :loading="loadingPrecipitaciones"
                     mode="precipitations"
                   />
@@ -73,7 +67,7 @@
                     :precipitations-historical="precipitationsHistorical"
                     :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
                     :precipitations-forecast-epstat="precipitationsForecastEpstat"
-                    :height="400"
+                    :height="570"
                     :loading="loadingPrecipitaciones"
                   />
                 </v-sheet>
@@ -85,29 +79,18 @@
     </v-col>
 
     <v-col cols="12" md="3" lg="2" class="order-3 order-md-3 d-flex flex-column pe-3 pl-0">
-      <!-- <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
-
+      <v-card class="ml-1 mr-1 mt-2 mb-2 pa-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihAlertStatusPrecipPredictions
-
           :loading="loadingPrecipitaciones"
-
           :precipitations-forecast-harmonie="precipitationsForecastHarmonie"
-
           :precipitations-forecast-epstat="precipitationsForecastEpstat"
-
           :precipitations-forecast-ens-p10="precipitationsForecastEnsP10"
-
           :precipitations-forecast-ens-p25="precipitationsForecastEnsP25"
-
           :precipitations-forecast-ens-p75="precipitationsForecastEnsP75"
-
           :precipitations-forecast-ens-p90="precipitationsForecastEnsP90"
-
           :thresholds="thresholds"
-
         />
-
-      </v-card> -->
+      </v-card>
 
       <v-card class="ml-1 mr-1 my-2 bg-background w-100 flex-shrink-0" elevation="2">
         <ContentSaihPredictionsLatest
@@ -214,16 +197,13 @@
   const HISTORICAL_RANGE_DAYS = 10
 
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
-
   import PrecipAccumulatedTimeSeriesChart from '../charts/PrecipAccumulatedTimeSeriesChart.vue'
-
   import ContentObservedData from './ContentSaih/ContentObservedData.vue'
-
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
-
   import ContentSaihPrecipStationTable from './ContentSaih/ContentSaihPrecipStationTable.vue'
-
   import ContentSaihPrecipAccumulatedBars from './ContentSaih/ContentSaihPrecipAccumulatedBars.vue'
+  import ContentSaihAlertStatusPrecipPredictions from './ContentSaih/ContentSaihAlertStatusPrecipPredictions.vue'
+  import ContentSaihAlertStatusPrecipObserved from './ContentSaih/ContentSaihAlertStatusPrecipObserved.vue'
 
   import {
     applyForecastData,

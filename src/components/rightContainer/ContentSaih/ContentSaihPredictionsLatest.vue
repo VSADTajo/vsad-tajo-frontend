@@ -116,10 +116,10 @@
           </v-row>
 
           <v-row v-if="harmonieAccumMm !== null">
-            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Acumulado total</v-col>
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Acumulado 3 días</v-col>
 
             <v-col cols="6" class="text-right font-weight-medium pr-4">
-              <v-chip size="small" color="primary" variant="tonal">
+              <v-chip size="small" :color="harmonieAlertColor" variant="tonal">
                 {{ harmonieAccumMm.toFixed(1) }} mm
               </v-chip>
             </v-col>
@@ -206,10 +206,10 @@
           </v-row>
 
           <v-row v-if="epsAccumMm !== null">
-            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Acumulado total</v-col>
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Acumulado 6 días</v-col>
 
             <v-col cols="6" class="text-right font-weight-medium pr-4">
-              <v-chip size="small" color="primary" variant="tonal">
+              <v-chip size="small" :color="epsAlertColor" variant="tonal">
                 {{ epsAccumMm.toFixed(1) }} mm
               </v-chip>
             </v-col>
@@ -228,6 +228,16 @@
   import { formatDate, formatSimulationDate, parseDate } from '@/utils/dates'
 
   import type { StationPrediction } from '@/types/Predictions'
+
+  import {
+    extractAccumulatedHorizonValuesWithMode,
+    PRECIP_HORIZON_META,
+  } from '../utils/precipAccumulation'
+  import {
+    DEFAULT_PRECIP_THRESHOLDS_GRAVE,
+    DEFAULT_PRECIP_THRESHOLDS_LEVE,
+    DEFAULT_PRECIP_THRESHOLDS_MEDIO,
+  } from '../utils/precipThresholds'
 
   const props = defineProps<{
     activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
@@ -401,26 +411,63 @@
     )
   )
 
-  function sumPrediction(prediction: StationPrediction | undefined): number | null {
+  function sumPredictionHours(
+    prediction: StationPrediction | undefined,
+    maxHours: number
+  ): number | null {
     const results = prediction?.results
-
     if (!results?.length) return null
-
-    const vals = results.map((r) => Number(r.value)).filter((v) => Number.isFinite(v))
-
+    const sorted = results
+      .map((r) => ({ ts: new Date(r.date).getTime(), v: Number(r.value) }))
+      .filter((r) => Number.isFinite(r.ts) && Number.isFinite(r.v))
+      .sort((a, b) => a.ts - b.ts)
+    if (!sorted.length) return null
+    const cutoff = sorted[0].ts + maxHours * 60 * 60 * 1000
+    const vals = sorted.filter((r) => r.ts <= cutoff).map((r) => r.v)
     return vals.length ? vals.reduce((a, b) => a + b, 0) : null
+  }
+
+  function getPrecipAlertColor(prediction: StationPrediction | undefined): string {
+    const values = extractAccumulatedHorizonValuesWithMode(prediction, 'forward')
+    let worst: 0 | 1 | 2 | 3 = 0
+    for (const h of PRECIP_HORIZON_META) {
+      if (h.hours === 0) continue
+      const val = values[h.key]
+      if (val === null || !Number.isFinite(val)) continue
+      const grave = DEFAULT_PRECIP_THRESHOLDS_GRAVE[h.key]
+      const medio = DEFAULT_PRECIP_THRESHOLDS_MEDIO[h.key]
+      const leve = DEFAULT_PRECIP_THRESHOLDS_LEVE[h.key]
+      if (grave !== null && val >= grave) {
+        worst = 3
+        break
+      }
+      if (medio !== null && val >= medio && worst < 2) worst = 2
+      else if (leve !== null && val >= leve && worst < 1) worst = 1
+    }
+    if (worst === 3) return '#ef5350'
+    if (worst === 2) return '#fb923c'
+    if (worst === 1) return '#fdd835'
+    return 'success'
   }
 
   const harmonieAccumMm = computed((): number | null => {
     if (props.activeTab !== 'precipitaciones') return null
-
-    return sumPrediction(props.precipitationsForecastHarmonie)
+    return sumPredictionHours(props.precipitationsForecastHarmonie, 72)
   })
 
   const epsAccumMm = computed((): number | null => {
     if (props.activeTab !== 'precipitaciones') return null
+    return sumPredictionHours(props.precipitationsForecastEpstat, 144)
+  })
 
-    return sumPrediction(props.precipitationsForecastEpstat)
+  const harmonieAlertColor = computed((): string => {
+    if (props.activeTab !== 'precipitaciones') return 'primary'
+    return getPrecipAlertColor(props.precipitationsForecastHarmonie)
+  })
+
+  const epsAlertColor = computed((): string => {
+    if (props.activeTab !== 'precipitaciones') return 'primary'
+    return getPrecipAlertColor(props.precipitationsForecastEpstat)
   })
 
   const harmonieSelectedDate = computed(() =>
