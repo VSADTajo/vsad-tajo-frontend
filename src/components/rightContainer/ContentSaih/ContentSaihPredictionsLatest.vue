@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <v-card class="bg-surface" elevation="2">
     <v-tooltip text="Resumen Datos Predicciones" location="end">
       <template #activator="{ props: tooltipProps }">
@@ -9,11 +9,16 @@
     </v-tooltip>
 
     <v-divider />
+
     <v-card-text v-if="loading" class="pa-4">
       <v-skeleton-loader type="heading" height="22" class="mb-2" />
+
       <v-skeleton-loader type="text" height="18" class="mb-2" />
+
       <v-skeleton-loader type="list-item-two-line" class="mb-2" />
+
       <v-skeleton-loader type="list-item-two-line" class="mb-2" />
+
       <v-skeleton-loader type="list-item-two-line" />
     </v-card-text>
 
@@ -27,6 +32,7 @@
           variant="outlined"
         >
           <v-btn value="harmonie" size="x-small">Harmonie</v-btn>
+
           <v-btn value="eps" size="x-small">EPS Medio</v-btn>
         </v-btn-toggle>
       </div>
@@ -36,6 +42,7 @@
 
         <v-row>
           <v-col cols="12" class="text-caption text-medium-emphasis pl-4">Fecha simulacion</v-col>
+
           <v-col cols="12" class="text-right font-weight-medium rounded px-4 pt-0">
             <v-select
               :model-value="harmonieSelectedDate"
@@ -55,13 +62,16 @@
           <v-row>
             <v-col cols="12" class="px-4 py-1">
               <v-skeleton-loader type="list-item-two-line" />
+
               <v-skeleton-loader type="list-item-two-line" />
             </v-col>
           </v-row>
         </template>
+
         <template v-else>
           <v-row>
             <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+
             <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(harmonieData.lastValue)"
@@ -73,14 +83,18 @@
               </v-chip>
             </v-col>
           </v-row>
+
           <v-row>
             <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha ultimo</v-col>
+
             <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
               {{ harmonieData.lastDateLabel }}
             </v-col>
           </v-row>
+
           <v-row>
             <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+
             <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(harmonieData.maxValue)"
@@ -92,10 +106,22 @@
               </v-chip>
             </v-col>
           </v-row>
+
           <v-row>
             <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha maximo</v-col>
+
             <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
               {{ harmonieData.maxDateLabel }}
+            </v-col>
+          </v-row>
+
+          <v-row v-if="harmonieAccumMm !== null">
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Acumulado total</v-col>
+
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip size="small" color="primary" variant="tonal">
+                {{ harmonieAccumMm.toFixed(1) }} mm
+              </v-chip>
             </v-col>
           </v-row>
         </template>
@@ -106,6 +132,7 @@
 
         <v-row>
           <v-col cols="12" class="text-caption text-medium-emphasis pl-4">Fecha simulacion</v-col>
+
           <v-col cols="12" class="text-right font-weight-medium rounded px-4 pt-0">
             <v-select
               :model-value="epsSelectedDate"
@@ -125,13 +152,16 @@
           <v-row>
             <v-col cols="12" class="px-4 py-1">
               <v-skeleton-loader type="list-item-two-line" />
+
               <v-skeleton-loader type="list-item-two-line" />
             </v-col>
           </v-row>
         </template>
+
         <template v-else>
           <v-row>
             <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Ultimo previsto</v-col>
+
             <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(epstatData.lastValue)"
@@ -143,14 +173,18 @@
               </v-chip>
             </v-col>
           </v-row>
+
           <v-row>
             <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha ultimo</v-col>
+
             <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
               {{ epstatData.lastDateLabel }}
             </v-col>
           </v-row>
+
           <v-row>
             <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Maximo previsto</v-col>
+
             <v-col cols="6" class="text-right font-weight-medium pr-4">
               <v-chip
                 :color="getThresholdClass(epstatData.maxValue)"
@@ -162,10 +196,22 @@
               </v-chip>
             </v-col>
           </v-row>
+
           <v-row>
             <v-col cols="5" class="text-caption text-medium-emphasis pl-4">Fecha maximo</v-col>
+
             <v-col cols="7" class="text-right font-weight-medium rounded pr-4">
               {{ epstatData.maxDateLabel }}
+            </v-col>
+          </v-row>
+
+          <v-row v-if="epsAccumMm !== null">
+            <v-col cols="6" class="text-caption text-medium-emphasis pl-4">Acumulado total</v-col>
+
+            <v-col cols="6" class="text-right font-weight-medium pr-4">
+              <v-chip size="small" color="primary" variant="tonal">
+                {{ epsAccumMm.toFixed(1) }} mm
+              </v-chip>
             </v-col>
           </v-row>
         </template>
@@ -176,34 +222,56 @@
 
 <script lang="ts" setup>
   import { computed, ref } from 'vue'
+
   import { useVModel } from '@vueuse/core'
+
   import { formatDate, formatSimulationDate, parseDate } from '@/utils/dates'
+
   import type { StationPrediction } from '@/types/Predictions'
 
   const props = defineProps<{
     activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
+
     loading?: boolean
+
     loadingHarmonie?: boolean
+
     loadingEps?: boolean
+
     caudalForecastHarmonie?: StationPrediction
+
     caudalForecastEpstat?: StationPrediction
+
     precipitationsForecastHarmonie?: StationPrediction
+
     precipitationsForecastEpstat?: StationPrediction
+
     selectedHarmonieCaudalDate?: string
+
     selectedHarmoniePrecipDate?: string
+
     selectedEpsCaudalDate?: string
+
     selectedEpsPrecipDate?: string
+
     harmonieCaudalDates?: string[]
+
     harmoniePrecipDates?: string[]
+
     epsCaudalDates?: string[]
+
     epsPrecipDates?: string[]
+
     thresholds?: Record<string, unknown>
   }>()
 
   const emit = defineEmits<{
     (e: 'update:selectedHarmonieCaudalDate', value: string): void
+
     (e: 'update:selectedHarmoniePrecipDate', value: string): void
+
     (e: 'update:selectedEpsCaudalDate', value: string): void
+
     (e: 'update:selectedEpsPrecipDate', value: string): void
   }>()
 
@@ -227,20 +295,27 @@
 
   function fmtValue(value: number | undefined, unit: string): string {
     if (value == null || !Number.isFinite(value)) return '--'
+
     return `${value.toFixed(2)} ${unit}`
   }
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
     if (!source) return null
+
     for (const key of keys) {
       const raw = source[key]
+
       if (raw == null) continue
+
       if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+
       if (typeof raw === 'string') {
         const parsed = Number.parseFloat(raw.replace(',', '.'))
+
         if (Number.isFinite(parsed)) return parsed
       }
     }
+
     return null
   }
 
@@ -258,9 +333,13 @@
 
   function getThresholdClass(value: number | undefined): string {
     if (props.activeTab !== 'caudal' || value == null || !Number.isFinite(value)) return ''
+
     if (redThreshold.value != null && value >= redThreshold.value) return 'red-lighten-3'
+
     if (orangeThreshold.value != null && value >= orangeThreshold.value) return 'orange-lighten-3'
+
     if (yellowThreshold.value != null && value >= yellowThreshold.value) return 'amber-lighten-3'
+
     return ''
   }
 
@@ -272,24 +351,33 @@
     const results = [...(prediction?.results ?? [])].sort(
       (a, b) => toTimestamp(a.date) - toTimestamp(b.date)
     )
+
     const last = results.length ? results[results.length - 1] : undefined
+
     const max = results.length
       ? results.reduce((acc, r) => (r.value > acc.value ? r : acc), results[0])
       : undefined
 
     return {
       lastValue: last?.value,
+
       lastValueLabel: fmtValue(last?.value, unit),
+
       lastDateLabel: formatDate(last?.date),
+
       maxValue: max?.value,
+
       maxValueLabel: fmtValue(max?.value, unit),
+
       maxDateLabel: formatDate(max?.date),
     }
   }
 
   const unit = computed(() => {
     if (props.activeTab === 'volumen') return 'hm3'
+
     if (props.activeTab !== 'precipitaciones') return 'm3/s'
+
     return 'mm'
   })
 
@@ -298,6 +386,7 @@
       props.activeTab !== 'precipitaciones'
         ? props.caudalForecastHarmonie
         : props.precipitationsForecastHarmonie,
+
       unit.value
     )
   )
@@ -307,9 +396,32 @@
       props.activeTab !== 'precipitaciones'
         ? props.caudalForecastEpstat
         : props.precipitationsForecastEpstat,
+
       unit.value
     )
   )
+
+  function sumPrediction(prediction: StationPrediction | undefined): number | null {
+    const results = prediction?.results
+
+    if (!results?.length) return null
+
+    const vals = results.map((r) => Number(r.value)).filter((v) => Number.isFinite(v))
+
+    return vals.length ? vals.reduce((a, b) => a + b, 0) : null
+  }
+
+  const harmonieAccumMm = computed((): number | null => {
+    if (props.activeTab !== 'precipitaciones') return null
+
+    return sumPrediction(props.precipitationsForecastHarmonie)
+  })
+
+  const epsAccumMm = computed((): number | null => {
+    if (props.activeTab !== 'precipitaciones') return null
+
+    return sumPrediction(props.precipitationsForecastEpstat)
+  })
 
   const harmonieSelectedDate = computed(() =>
     props.activeTab !== 'precipitaciones'
@@ -322,8 +434,10 @@
   const harmonieDateOptions = computed(() => {
     const dates =
       props.activeTab !== 'precipitaciones' ? props.harmonieCaudalDates : props.harmoniePrecipDates
+
     return (dates ?? []).map((date) => ({
       title: formatSimulationDate(date),
+
       value: date,
     }))
   })
@@ -339,8 +453,10 @@
   const epsDateOptions = computed(() => {
     const dates =
       props.activeTab !== 'precipitaciones' ? props.epsCaudalDates : props.epsPrecipDates
+
     return (dates ?? []).map((date) => ({
       title: formatSimulationDate(date),
+
       value: date,
     }))
   })
