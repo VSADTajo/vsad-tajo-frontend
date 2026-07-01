@@ -133,6 +133,7 @@
     overflow: hidden;
     padding-top: 4px;
     padding-bottom: 4px;
+    padding-left: 4px;
   }
 
   .threshold-item {

@@ -52,6 +52,9 @@ export type StationByCodeResponse = {
     umbralCaudal1?: number | null
     umbralCaudal2?: number | null
     umbralCaudal3?: number | null
+    umbralVolumen1?: number | null
+    umbralVolumen2?: number | null
+    umbralVolumen3?: number | null
     [key: string]: unknown
   } | null
   [key: string]: unknown
