@@ -218,7 +218,8 @@
     return normalizePredictionResults(props.data.forecastEnsP90)
   })
 
-  // Todas las fechas únicas ordenadas
+  // Todas las fechas únicas ordenadas, rellenando huecos temporales con fechas sintéticas
+  // para que el eje de categorías refleje el espacio real entre observados y predicciones.
   const allDates = computed(() => {
     const dateSet = new Set<string>()
 
@@ -241,7 +242,41 @@
       minimumVolumeData.value?.forEach((d) => dateSet.add(d.date))
     }
 
-    return Array.from(dateSet).sort()
+    const sorted = Array.from(dateSet).sort()
+    if (sorted.length < 2) return sorted
+
+    // Detect the most common interval between consecutive timestamps (mode)
+    const counts = new Map<number, number>()
+    for (let i = 1; i < Math.min(sorted.length, 30); i++) {
+      const diff = new Date(sorted[i]).getTime() - new Date(sorted[i - 1]).getTime()
+      if (diff > 0) counts.set(diff, (counts.get(diff) ?? 0) + 1)
+    }
+    let step = 3_600_000 // default 1h
+    let maxCount = 0
+    for (const [diff, count] of counts) {
+      if (count > maxCount) {
+        maxCount = count
+        step = diff
+      }
+    }
+
+    // Fill temporal gaps so the category axis shows the real time spacing
+    const filled: string[] = []
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0) {
+        const prev = new Date(sorted[i - 1]).getTime()
+        const curr = new Date(sorted[i]).getTime()
+        if (curr - prev > step * 1.5) {
+          let t = prev + step
+          while (t < curr) {
+            filled.push(new Date(t).toISOString())
+            t += step
+          }
+        }
+      }
+      filled.push(sorted[i])
+    }
+    return filled
   })
 
   // Categorías formateadas para el eje X (una por cada fecha)
@@ -249,27 +284,27 @@
     allDates.value.map((date) => dateFormattedWithHours(new Date(date).getTime()))
   )
 
-  const observedEndLabel = computed(() => {
-    if (!historicalData.value?.length) return null
-
-    const lastObserved = [...historicalData.value]
-      .reverse()
-      .find((item) => Number.isFinite(item.value))
-
-    if (!lastObserved) return null
-
-    const index = allDates.value.lastIndexOf(lastObserved.date)
-    if (index < 0) return null
-
-    return xLabels.value[index] ?? null
+  const t0Label = computed(() => {
+    if (allDates.value.length === 0) return null
+    const now = Date.now()
+    let closestIndex = 0
+    let minDiff = Math.abs(new Date(allDates.value[0]).getTime() - now)
+    for (let i = 1; i < allDates.value.length; i++) {
+      const diff = Math.abs(new Date(allDates.value[i]).getTime() - now)
+      if (diff < minDiff) {
+        minDiff = diff
+        closestIndex = i
+      }
+    }
+    return xLabels.value[closestIndex] ?? null
   })
 
   const observedEndXAnnotation = computed(() => {
-    if (!observedEndLabel.value) return []
+    if (!t0Label.value) return []
 
     return [
       {
-        x: observedEndLabel.value,
+        x: t0Label.value,
         borderColor: '#455A64',
         strokeDashArray: 4,
         label: {
@@ -309,6 +344,7 @@
 
     const result: ApexSeriesItem[] = []
     const labels = xLabels.value
+    const nowMs = Date.now()
 
     // Observado
     if (historicalData.value) {
@@ -436,7 +472,9 @@
     // Harmonie
     if (HarmonieData.value) {
       const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
-      const values = allDates.value.map((date) => detMap.get(date) ?? null)
+      const values = allDates.value.map((date) =>
+        new Date(date).getTime() < nowMs ? null : (detMap.get(date) ?? null)
+      )
       if (hasFiniteValue(values)) {
         result.push({
           name: predictionHarmonieSeriesName.value,
@@ -453,7 +491,9 @@
     // EPS
     if (epsatData.value) {
       const epsatMap = new Map(epsatData.value.map((d) => [d.date, d.value]))
-      const values = allDates.value.map((date) => epsatMap.get(date) ?? null)
+      const values = allDates.value.map((date) =>
+        new Date(date).getTime() < nowMs ? null : (epsatMap.get(date) ?? null)
+      )
       if (hasFiniteValue(values)) {
         result.push({
           name: 'Predicción Prob. EPS',
@@ -472,6 +512,7 @@
       const p10Map = new Map(p10Data.value.map((d) => [d.date, d.value]))
       const p90Map = new Map(p90Data.value.map((d) => [d.date, d.value]))
       const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
+        if (new Date(date).getTime() < nowMs) return null
         const low = p10Map.get(date) ?? null
         const high = p90Map.get(date) ?? null
         return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
@@ -494,6 +535,7 @@
       const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
       const p75Map = new Map(p75Data.value.map((d) => [d.date, d.value]))
       const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
+        if (new Date(date).getTime() < nowMs) return null
         const low = p25Map.get(date) ?? null
         const high = p75Map.get(date) ?? null
         return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null

@@ -23,6 +23,13 @@
     </v-card-text>
 
     <v-card-text v-else class="pa-2">
+      <div v-if="mikeHarmonieForecast" class="mb-2 d-flex justify-center">
+        <v-btn-toggle v-model="selectedSource" mandatory density="compact">
+          <v-btn value="nam" size="x-small">NAM</v-btn>
+          <v-btn value="mike" size="x-small">MIKE</v-btn>
+        </v-btn-toggle>
+      </div>
+
       <div class="mb-3 d-flex justify-center">
         <v-btn-toggle
           v-model="selectedModel"
@@ -272,6 +279,14 @@
 
     epsPrecipDates?: string[]
 
+    mikeHarmonieForecast?: StationPrediction
+
+    mikeEpsatForecast?: StationPrediction
+
+    mikeHarmonieDates?: string[]
+
+    selectedMikeHarmonieDate?: string
+
     thresholds?: Record<string, unknown>
   }>()
 
@@ -283,9 +298,12 @@
     (e: 'update:selectedEpsCaudalDate', value: string): void
 
     (e: 'update:selectedEpsPrecipDate', value: string): void
+
+    (e: 'update:selectedMikeHarmonieDate', value: string): void
   }>()
 
   const selectedModel = ref<'harmonie' | 'eps'>('harmonie')
+  const selectedSource = ref<'nam' | 'mike'>('nam')
 
   const selectedHarmonieCaudalDateModel = useVModel(props, 'selectedHarmonieCaudalDate', emit, {
     defaultValue: '',
@@ -300,6 +318,10 @@
   })
 
   const selectedEpsPrecipDateModel = useVModel(props, 'selectedEpsPrecipDate', emit, {
+    defaultValue: '',
+  })
+
+  const selectedMikeHarmonieDateModel = useVModel(props, 'selectedMikeHarmonieDate', emit, {
     defaultValue: '',
   })
 
@@ -391,25 +413,23 @@
     return 'mm'
   })
 
-  const harmonieData = computed(() =>
-    summaryFor(
-      props.activeTab !== 'precipitaciones'
-        ? props.caudalForecastHarmonie
-        : props.precipitationsForecastHarmonie,
+  const harmonieData = computed(() => {
+    if (props.activeTab === 'precipitaciones') {
+      return summaryFor(props.precipitationsForecastHarmonie, unit.value)
+    }
+    const forecast =
+      selectedSource.value === 'mike' ? props.mikeHarmonieForecast : props.caudalForecastHarmonie
+    return summaryFor(forecast, unit.value)
+  })
 
-      unit.value
-    )
-  )
-
-  const epstatData = computed(() =>
-    summaryFor(
-      props.activeTab !== 'precipitaciones'
-        ? props.caudalForecastEpstat
-        : props.precipitationsForecastEpstat,
-
-      unit.value
-    )
-  )
+  const epstatData = computed(() => {
+    if (props.activeTab === 'precipitaciones') {
+      return summaryFor(props.precipitationsForecastEpstat, unit.value)
+    }
+    const forecast =
+      selectedSource.value === 'mike' ? props.mikeEpsatForecast : props.caudalForecastEpstat
+    return summaryFor(forecast, unit.value)
+  })
 
   function sumPredictionHours(
     prediction: StationPrediction | undefined,
@@ -470,57 +490,63 @@
     return getPrecipAlertColor(props.precipitationsForecastEpstat)
   })
 
-  const harmonieSelectedDate = computed(() =>
-    props.activeTab !== 'precipitaciones'
-      ? selectedHarmonieCaudalDateModel.value
-      : selectedHarmoniePrecipDateModel.value
-  )
+  const harmonieSelectedDate = computed(() => {
+    if (props.activeTab === 'precipitaciones') return selectedHarmoniePrecipDateModel.value
+    if (selectedSource.value === 'mike') return selectedMikeHarmonieDateModel.value
+    return selectedHarmonieCaudalDateModel.value
+  })
 
   const setHarmonieDate = (value: string) => updateHarmonieDate(value)
 
   const harmonieDateOptions = computed(() => {
-    const dates =
-      props.activeTab !== 'precipitaciones' ? props.harmonieCaudalDates : props.harmoniePrecipDates
-
-    return (dates ?? []).map((date) => ({
-      title: formatSimulationDate(date),
-
-      value: date,
-    }))
+    let dates: string[] | undefined
+    if (props.activeTab === 'precipitaciones') {
+      dates = props.harmoniePrecipDates
+    } else if (selectedSource.value === 'mike') {
+      dates = props.mikeHarmonieDates
+    } else {
+      dates = props.harmonieCaudalDates
+    }
+    return (dates ?? []).map((date) => ({ title: formatSimulationDate(date), value: date }))
   })
 
-  const epsSelectedDate = computed(() =>
-    props.activeTab !== 'precipitaciones'
-      ? selectedEpsCaudalDateModel.value
-      : selectedEpsPrecipDateModel.value
-  )
+  const epsSelectedDate = computed(() => {
+    if (props.activeTab === 'precipitaciones') return selectedEpsPrecipDateModel.value
+    if (selectedSource.value === 'mike') return selectedMikeHarmonieDateModel.value
+    return selectedEpsCaudalDateModel.value
+  })
 
   const setEpsDate = (value: string) => updateEpsDate(value)
 
   const epsDateOptions = computed(() => {
-    const dates =
-      props.activeTab !== 'precipitaciones' ? props.epsCaudalDates : props.epsPrecipDates
-
-    return (dates ?? []).map((date) => ({
-      title: formatSimulationDate(date),
-
-      value: date,
-    }))
+    let dates: string[] | undefined
+    if (props.activeTab === 'precipitaciones') {
+      dates = props.epsPrecipDates
+    } else if (selectedSource.value === 'mike') {
+      dates = props.mikeHarmonieDates
+    } else {
+      dates = props.epsCaudalDates
+    }
+    return (dates ?? []).map((date) => ({ title: formatSimulationDate(date), value: date }))
   })
 
   function updateHarmonieDate(value: string): void {
-    if (props.activeTab !== 'precipitaciones') {
-      selectedHarmonieCaudalDateModel.value = value
-    } else {
+    if (props.activeTab === 'precipitaciones') {
       selectedHarmoniePrecipDateModel.value = value
+    } else if (selectedSource.value === 'mike') {
+      selectedMikeHarmonieDateModel.value = value
+    } else {
+      selectedHarmonieCaudalDateModel.value = value
     }
   }
 
   function updateEpsDate(value: string): void {
-    if (props.activeTab !== 'precipitaciones') {
-      selectedEpsCaudalDateModel.value = value
-    } else {
+    if (props.activeTab === 'precipitaciones') {
       selectedEpsPrecipDateModel.value = value
+    } else if (selectedSource.value === 'mike') {
+      selectedMikeHarmonieDateModel.value = value
+    } else {
+      selectedEpsCaudalDateModel.value = value
     }
   }
 </script>

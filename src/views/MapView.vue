@@ -7,6 +7,50 @@
       <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
+      <div v-if="!isSimulationsRoute" class="map-data-source-toggle">
+        <v-tooltip
+          text="No aplica para datos observados"
+          location="bottom"
+          :disabled="selectedDataSource !== 'observado'"
+        >
+          <template #activator="{ props: tooltipProps }">
+            <v-btn-toggle
+              v-bind="tooltipProps"
+              v-model="selectedModel"
+              mandatory
+              density="compact"
+              divided
+              variant="flat"
+              color="primary"
+              rounded="lg"
+              elevation="4"
+              :disabled="selectedDataSource === 'observado'"
+              class="mr-4"
+              :class="selectedDataSource === 'observado' ? 'bg-primary opacity-40' : 'bg-primary'"
+            >
+              <v-btn value="nam" size="small">NAM</v-btn>
+              <v-btn value="mike11" size="small">MIKE11</v-btn>
+            </v-btn-toggle>
+          </template>
+        </v-tooltip>
+
+        <v-btn-toggle
+          v-model="selectedDataSource"
+          mandatory
+          density="compact"
+          divided
+          variant="flat"
+          color="primary"
+          rounded="lg"
+          elevation="4"
+          class="bg-primary"
+        >
+          <v-btn value="observado" size="small">Observado</v-btn>
+          <v-btn value="harmonie" size="small">Harmonie</v-btn>
+          <v-btn value="epsmedio" size="small">EPS Medio</v-btn>
+        </v-btn-toggle>
+      </div>
+
       <div v-if="isSimulationsRoute" class="simulation-controls">
         <MapSimulationButton />
         <v-tooltip
@@ -66,15 +110,31 @@
   import { useSimulationsStore } from '@/stores/simulationsStore'
   import { useDisplay } from 'vuetify'
   import { useRoute } from 'vue-router'
+  import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
+  import { useMapModelStore } from '@/stores/mapModelStore'
 
   const route = useRoute()
   const layersStore = useLayersStore()
   const avisosStore = useAvisosStore()
   const mapStore = useMapStore()
   const simulationsStore = useSimulationsStore()
+  const dataSourceStore = useMapDataSourceStore()
+  const modelStore = useMapModelStore()
   const { mdAndUp } = useDisplay()
 
   const isSimulationsRoute = computed(() => route.name === 'simulaciones')
+  const selectedDataSource = computed({
+    get: () => dataSourceStore.selectedDataSource,
+    set: (v) => {
+      dataSourceStore.selectedDataSource = v
+    },
+  })
+  const selectedModel = computed({
+    get: () => modelStore.selectedModel,
+    set: (v) => {
+      modelStore.selectedModel = v
+    },
+  })
   const simulationHistoryOpen = computed(() => simulationsStore.historyOpen)
 
   const temporalRangeLayerIds = new Set(
@@ -184,6 +244,13 @@
   .map-container {
     width: 100%;
     height: 100%;
+  }
+
+  .map-data-source-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
   }
 
   .simulation-controls {

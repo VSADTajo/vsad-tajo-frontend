@@ -125,8 +125,16 @@ export async function getMaxAndLatestValuesService(
     | 'Q.NAM.harmonie'
     | 'Q.NAM.ens'
     | 'I.NAM.harmonie'
+    | 'I.nam.ens'
     | 'P.harmonie.forecast'
     | 'P.ens.forecast'
+    | 'FICT98.historical'
+    | 'FICT99.historical'
+    | 'WI__01.historical'
+    | 'Q.mk11.forecast'
+    | 'I.mk11.forecast'
+    | 'Q.mk11.EPSforecast'
+    | 'I.mk11.EPSforecast'
 ): Promise<StationMaxLatestValue[]> {
   const response = await api
     .get('predictions/max-and-latest-values', {
