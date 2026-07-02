@@ -8,20 +8,31 @@
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
       <div v-if="!isSimulationsRoute" class="map-data-source-toggle">
-        <v-btn-toggle
-          v-model="selectedModel"
-          mandatory
-          density="compact"
-          divided
-          variant="flat"
-          color="primary"
-          rounded="lg"
-          elevation="4"
-          class="bg-primary mr-4"
+        <v-tooltip
+          text="No aplica para datos observados"
+          location="bottom"
+          :disabled="selectedDataSource !== 'observado'"
         >
-          <v-btn value="nam" size="small">NAM</v-btn>
-          <v-btn value="mike11" size="small">MIKE11</v-btn>
-        </v-btn-toggle>
+          <template #activator="{ props: tooltipProps }">
+            <v-btn-toggle
+              v-bind="tooltipProps"
+              v-model="selectedModel"
+              mandatory
+              density="compact"
+              divided
+              variant="flat"
+              color="primary"
+              rounded="lg"
+              elevation="4"
+              :disabled="selectedDataSource === 'observado'"
+              class="mr-4"
+              :class="selectedDataSource === 'observado' ? 'bg-primary opacity-40' : 'bg-primary'"
+            >
+              <v-btn value="nam" size="small">NAM</v-btn>
+              <v-btn value="mike11" size="small">MIKE11</v-btn>
+            </v-btn-toggle>
+          </template>
+        </v-tooltip>
 
         <v-btn-toggle
           v-model="selectedDataSource"
