@@ -149,6 +149,7 @@
                 <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
                   <v-tab value="nam">NAM</v-tab>
                   <v-tab value="mike">MIKE</v-tab>
+                  <v-tab value="combined">NAM + MIKE</v-tab>
                 </v-tabs>
                 <div class="chart-tab-root">
                   <div
@@ -184,6 +185,27 @@
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
                   </div>
+                  <div
+                    :class="[
+                      'chart-tab-panel',
+                      'chart-tab-overlay',
+                      { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'combined' },
+                    ]"
+                  >
+                    <CombinedNamMikeChart
+                      v-if="mountedTabs.has('combined')"
+                      :historical="caudalHistorical"
+                      :nam-harmonie="caudalForecastHarmonie"
+                      :nam-eps="caudalForecastEpstat"
+                      :mike-harmonie="mikeForecastHarmonie"
+                      :mike-eps="mikeForecastEpsat"
+                      :thresholds="thresholds"
+                      :loading="loadingCaudales"
+                      :height="470"
+                      :focus-threshold-request="thresholdFocusRequest"
+                      @focus-threshold-complete="handleThresholdFocusComplete"
+                    />
+                  </div>
                 </div>
               </template>
             </v-sheet>
@@ -204,10 +226,12 @@
           <ContentSaihCaudalMatrix
             :forecast-harmonie="activeHarmonieforecast"
             :forecast-epsat="activeEpsatForecast"
-            :forecast-ens-p10="activeEnsP10"
-            :forecast-ens-p25="activeEnsP25"
-            :forecast-ens-p75="activeEnsP75"
-            :forecast-ens-p90="activeEnsP90"
+            :forecast-ens-p10="isCombinedTab ? undefined : activeEnsP10"
+            :forecast-ens-p25="isCombinedTab ? undefined : activeEnsP25"
+            :forecast-ens-p75="isCombinedTab ? undefined : activeEnsP75"
+            :forecast-ens-p90="isCombinedTab ? undefined : activeEnsP90"
+            :forecast-mike-harmonie="isCombinedTab ? mikeForecastHarmonie : undefined"
+            :forecast-mike-epsat="isCombinedTab ? mikeForecastEpsat : undefined"
             :thresholds="thresholds"
             :loading="loadingCaudales"
             :title="isVolumeTab ? 'Matriz de volumen (7 dias / 6h)' : undefined"
@@ -332,6 +356,7 @@
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
   import ContentSaihResguardosData from './ContentSaih/ContentSaihResguardosData.vue'
   import ContentSaihResguardosChart from './ContentSaih/ContentSaihResguardosChart.vue'
+  import CombinedNamMikeChart from '../charts/CombinedNamMikeChart.vue'
 
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
@@ -358,7 +383,7 @@
   const selectedEmbalseChartTab = ref<'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE'>(
     'caudalNAM'
   )
-  const selectedCaudalTypeChartTab = ref<'nam' | 'mike'>('nam')
+  const selectedCaudalTypeChartTab = ref<'nam' | 'mike' | 'combined'>('nam')
 
   const mountedTabs = reactive(new Set<string>(['caudalNAM', 'nam']))
   watch(selectedEmbalseChartTab, (tab) => mountedTabs.add(tab))
@@ -478,6 +503,9 @@
 
   // ── Tab-aware props for side panels ───────────────────────────────────────
   const isMikeTab = computed(() => !props.isEmbalse && selectedCaudalTypeChartTab.value === 'mike')
+  const isCombinedTab = computed(
+    () => !props.isEmbalse && selectedCaudalTypeChartTab.value === 'combined'
+  )
 
   const isEmbalseOnMikeTab = computed(
     () =>

@@ -78,6 +78,8 @@
     forecastEnsP25?: StationPrediction
     forecastEnsP75?: StationPrediction
     forecastEnsP90?: StationPrediction
+    forecastMikeHarmonie?: StationPrediction
+    forecastMikeEpsat?: StationPrediction
     thresholds?: Record<string, unknown>
     loading?: boolean
     title?: string
@@ -95,14 +97,26 @@
   type RawResult = Record<string, unknown>
   const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
-  const rowDefinitions = computed<RowDefinition[]>(() => [
-    { id: 'harmonie', label: 'Harmonie', prediction: props.forecastHarmonie },
-    { id: 'eps', label: 'EPS medio', prediction: props.forecastEpsat },
-    { id: 'p10', label: 'EPS P10', prediction: props.forecastEnsP10 },
-    { id: 'p25', label: 'EPS P25', prediction: props.forecastEnsP25 },
-    { id: 'p75', label: 'EPS P75', prediction: props.forecastEnsP75 },
-    { id: 'p90', label: 'EPS P90', prediction: props.forecastEnsP90 },
-  ])
+  const isCombinedMode = computed(() => !!(props.forecastMikeHarmonie || props.forecastMikeEpsat))
+
+  const rowDefinitions = computed<RowDefinition[]>(() => {
+    if (isCombinedMode.value) {
+      return [
+        { id: 'namHarmonie', label: 'NAM Harmonie', prediction: props.forecastHarmonie },
+        { id: 'namEps', label: 'NAM EPS Medio', prediction: props.forecastEpsat },
+        { id: 'mikeHarmonie', label: 'MIKE Harmonie', prediction: props.forecastMikeHarmonie },
+        { id: 'mikeEps', label: 'MIKE EPS Medio', prediction: props.forecastMikeEpsat },
+      ]
+    }
+    return [
+      { id: 'harmonie', label: 'Harmonie', prediction: props.forecastHarmonie },
+      { id: 'eps', label: 'EPS medio', prediction: props.forecastEpsat },
+      { id: 'p10', label: 'EPS P10', prediction: props.forecastEnsP10 },
+      { id: 'p25', label: 'EPS P25', prediction: props.forecastEnsP25 },
+      { id: 'p75', label: 'EPS P75', prediction: props.forecastEnsP75 },
+      { id: 'p90', label: 'EPS P90', prediction: props.forecastEnsP90 },
+    ]
+  })
 
   function toFiniteNumber(value: unknown): number | null {
     const numericValue = typeof value === 'number' ? value : Number.parseFloat(String(value))
