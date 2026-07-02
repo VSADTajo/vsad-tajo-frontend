@@ -279,6 +279,10 @@
           :selected-eps-caudal-date="activeSelectedEpsDate"
           :harmonie-caudal-dates="activeHarmonieDates"
           :eps-caudal-dates="activeEpsDates"
+          :mike-harmonie-forecast="isCombinedTab ? mikeForecastHarmonie : undefined"
+          :mike-epsat-forecast="isCombinedTab ? mikeForecastEpsat : undefined"
+          :mike-harmonie-dates="isCombinedTab ? mikeDates : undefined"
+          :selected-mike-harmonie-date="isCombinedTab ? selectedMikeDate : undefined"
           :thresholds="thresholds"
           @update:selected-harmonie-caudal-date="
             emit('update:selected-harmonie-caudal-date', $event)
