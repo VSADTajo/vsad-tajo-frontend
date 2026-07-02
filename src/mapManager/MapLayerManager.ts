@@ -69,6 +69,10 @@ export class MapLayerManager {
     this.normalizePaneOrder()
   }
 
+  resetLayerCache(id: string): void {
+    delete this.cachedGroupCQLFilters[id]
+  }
+
   private async handleGroupedLayers(layersState: Record<string, LayerState>) {
     for (const config of this.configMap.values()) {
       if (!config.groupBy) continue

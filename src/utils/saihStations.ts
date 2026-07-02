@@ -1,4 +1,5 @@
 import { getSaihAlertInfo, getSaihPrecipMaxInfo } from '@/utils/saihAlerts'
+import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
 import { formatPopupDate } from './dates'
 
 export const SAIH_TYPE_COLORS: Record<string, string> = {
@@ -77,7 +78,7 @@ function buildAlertChip(
   const orangeThreshold = readNumericValue(props, ['umbral_naranja', 'threshold_orange']) ?? 70
   const redThreshold = readNumericValue(props, ['umbral_rojo', 'threshold_red']) ?? 90
 
-  const formatValue = Number.isInteger(value) ? String(value) : value.toFixed(1)
+  const formatValue = value.toFixed(2)
 
   if (backgroundColor === '#fca5a5') {
     return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#fca5a5;color:#fff;font-weight:700">${formatValue} m3/s</span>`
@@ -141,35 +142,38 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   const nombre = escapeHtml(props.name ?? props.nombre ?? '')
   const municipio = escapeHtml(props.municipio ?? '-')
 
+  const dataSource = useMapDataSourceStore().selectedDataSource
+  const isObservado = dataSource === 'observado'
+
   const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
 
   const maxTime = escapeHtml(formatPopupDate(alertInfo.maxDate))
+  const caudalLabel = isObservado ? 'Caudal Max Observado' : 'Caudal Máximo Previsto'
+  const caudalDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
 
   const caudalSection =
     alertInfo.maxValue != null
       ? `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <strong>Caudal Máximo Previsto</strong>
+          <strong>${caudalLabel}</strong>
           ${maxValueChip}
         </div>
-        <div style="margin-bottom:6px"><strong>Fecha Prevista</strong> ${maxTime}</div>`
+        <div style="margin-bottom:6px"><strong>${caudalDateLabel}</strong> ${maxTime}</div>`
       : ''
 
-  const precipValue =
-    precipInfo.maxValue != null
-      ? (Number.isInteger(precipInfo.maxValue)
-          ? String(precipInfo.maxValue)
-          : precipInfo.maxValue.toFixed(1)) + ' mm'
-      : '-'
+  const precipValue = precipInfo.maxValue != null ? precipInfo.maxValue.toFixed(1) + ' mm' : '-'
   const precipTime = escapeHtml(formatPopupDate(precipInfo.maxDate))
+  const precipLabel = isObservado ? 'Precipitacion Max observada' : 'Precipitación Máx. Prevista'
+  const precipDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
+
   const precipSection =
     precipInfo.maxValue != null
       ? `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-          <strong>Precipitación Máx. Prevista</strong>
+          <strong>${precipLabel}</strong>
           <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#bfdbfe;color:#1e3a5f;font-weight:700">${precipValue}</span>
         </div>
-        <div style="margin-bottom:6px"><strong>Fecha Prevista</strong> ${precipTime}</div>`
+        <div style="margin-bottom:6px"><strong>${precipDateLabel}</strong> ${precipTime}</div>`
       : ''
 
   return `
