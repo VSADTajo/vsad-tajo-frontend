@@ -219,6 +219,12 @@ export const efasLayers: LayerNode[] = [
     opacityEnabled: true,
     opacity: 1,
   },
+  {
+    id: 'floodInundationScenarios',
+    title: 'Flood Inundation Scenarios',
+    opacityEnabled: true,
+    opacity: 1,
+  },
 ]
 
 export const avisosLayers: LayerNode[] = [
