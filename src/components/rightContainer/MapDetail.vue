@@ -16,7 +16,7 @@
     subcuencasStyle,
     sistemas10Style,
     zonasexplStyle,
-    comarcasagrariasStyle,
+    zonasmeteoalertaStyle,
   } from '@/config/styles/layerStyles'
   import { useRoute } from 'vue-router'
   import type { WFSLayerConfig } from '@/types/Layers'
@@ -25,7 +25,7 @@
   import { buildSaihPopupContent } from '@/utils/saihStations'
 
   const props = defineProps<{
-    type: 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias'
+    type: 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'meteoalerta'
     stations?: StationData[]
     selectedStationCode?: string | null
   }>()
@@ -125,7 +125,9 @@
           ? 'sistema'
           : props.type === 'zonasexpl'
             ? 'zona'
-            : 'comarca'
+            : props.type === 'meteoalerta'
+              ? 'meteoalerta'
+              : 'comarca'
 
     const fieldName =
       props.type === 'subcuencas'
@@ -134,8 +136,8 @@
           ? 'sistema'
           : props.type === 'zonasexpl'
             ? 'ogc_fid'
-            : props.type === 'comarcasagrarias'
-              ? 'ds_comarca'
+            : props.type === 'meteoalerta'
+              ? 'cod_z'
               : 'code'
 
     const featurePolygon = await getWFSFeatureById(
@@ -150,7 +152,7 @@
     if (props.type === 'subcuencas') styleOptions = subcuencasStyle.normal
     else if (props.type === 'sistemas10') styleOptions = sistemas10Style.normal
     else if (props.type === 'zonasexpl') styleOptions = zonasexplStyle.normal
-    else if (props.type === 'comarcasagrarias') styleOptions = comarcasagrariasStyle.normal
+    else if (props.type === 'meteoalerta') styleOptions = zonasmeteoalertaStyle.normal
 
     if (polygonLayer) {
       map.value.removeLayer(polygonLayer)

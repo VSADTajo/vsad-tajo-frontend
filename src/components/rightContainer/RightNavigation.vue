@@ -16,6 +16,7 @@
     <RightContentByAreaService v-if="sistema" kind="sistema" />
     <RightContentByAreaService v-if="zona" kind="zona" />
     <RightContentByAreaService v-if="comarca" kind="comarca" />
+    <RightContentByAreaService v-if="meteoalerta" kind="meteoalerta" />
     <RightContentPrecipitacion v-if="precipitacion" />
     <RightContentAviso v-if="aviso" />
   </v-navigation-drawer>
@@ -48,6 +49,8 @@
 
   const comarca = computed(() => route.query.comarca as string | undefined)
 
+  const meteoalerta = computed(() => route.query.meteoalerta as string | undefined)
+
   const precipitacion = computed(() => route.query.precipitacion as string | undefined)
 
   const aviso = computed(() => route.query.aviso as string | undefined)
@@ -61,6 +64,7 @@
       !!sistema.value ||
       !!zona.value ||
       !!comarca.value ||
+      !!meteoalerta.value ||
       !!precipitacion.value ||
       !!aviso.value
   )

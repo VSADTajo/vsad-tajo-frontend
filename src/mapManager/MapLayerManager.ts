@@ -456,13 +456,13 @@ export class MapLayerManager {
         break
       }
 
-      case 'comarcasagrarias': {
-        const comarca = feature.properties?.ds_comarca
+      case 'meteoalerta': {
+        const meteoalerta = feature.properties?.cod_z
 
         router.replace({
           query: {
             ...router.currentRoute.value.query,
-            comarca,
+            meteoalerta,
           },
         })
         break

@@ -16,7 +16,7 @@ import { registerSaihMarker } from '@/utils/saihMarkersRegistry'
 import { useMapStore } from '@/stores/mapStore'
 import { useSimulationsStore } from '@/stores/simulationsStore'
 import {
-  buildComarcaPopupContent,
+  buildMeteoalertaPopupContent,
   buildSubcuencaPopupContent,
   buildSistemaPopupContent,
   buildZonaPopupContent,
@@ -334,7 +334,7 @@ export async function createWFSLayer(
     })
 
     // Guardar StyleManager en el layer para acceso desde MapLayerManager
-    const isSelectable = ['subcuencas', 'sistemas10', 'zonasexpl', 'comarcasagrarias'].includes(
+    const isSelectable = ['subcuencas', 'sistemas10', 'zonasexpl', 'meteoalerta'].includes(
       config.id
     )
 
@@ -347,8 +347,8 @@ export async function createWFSLayer(
       popupBuilder = buildSistemaPopupContent
     } else if (config.id === 'zonasexpl') {
       popupBuilder = buildZonaPopupContent
-    } else if (config.id === 'comarcasagrarias') {
-      popupBuilder = buildComarcaPopupContent
+    } else if (config.id === 'meteoalerta') {
+      popupBuilder = buildMeteoalertaPopupContent
     }
 
     const styleManager = new StyleManager(

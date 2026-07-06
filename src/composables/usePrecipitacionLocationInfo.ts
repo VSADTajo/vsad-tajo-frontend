@@ -41,7 +41,7 @@ export function usePrecipitacionLocationInfo(initialLat: number | null, initialL
         ),
         getFeatureContainingPoint(
           geoserverTajoUrl,
-          'Tajo:cht_comarcasagrarias',
+          'Tajo:cht_meteoalerta',
           lat.value,
           lng.value,
           'wkb_geometry'

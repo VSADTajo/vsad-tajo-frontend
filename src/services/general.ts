@@ -8,6 +8,7 @@ export type StationsSearchParams =
   | { subBasinName: string }
   | { comarcaName: string }
   | { zonaExplOgcFid: string }
+  | { cod_z: string }
 
 type PaginatedStationsResponse = {
   items: StationData[]

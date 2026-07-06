@@ -14,8 +14,8 @@ export const zonasLayers: LayerNode[] = [
     title: 'Zonas Expl',
   },
   {
-    id: 'comarcasagrarias',
-    title: 'Comarcas Agrarias',
+    id: 'meteoalerta',
+    title: 'Zonas Meteoalerta',
   },
 ]
 

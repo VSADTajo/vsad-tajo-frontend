@@ -5,7 +5,7 @@ import {
   subcuencasStyle,
   sistemas10Style,
   zonasexplStyle,
-  comarcasagrariasStyle,
+  zonasmeteoalertaStyle,
   contornoStyle,
 } from './styles/layerStyles'
 import { MAP_PANES } from '@/config/panes/mapPanes'
@@ -73,12 +73,12 @@ export const dynamicLayersConfig: LayerConfig[] = [
     interactive: true,
   },
   {
-    id: 'comarcasagrarias',
-    name: 'Comarcas Agrarias',
+    id: 'meteoalerta',
+    name: 'Zonas Meteoalerta',
     type: 'WFS',
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
-    typeName: 'Tajo:cht_comarcasagrarias',
-    style: comarcasagrariasStyle,
+    typeName: 'Tajo:cht_meteoalerta',
+    style: zonasmeteoalertaStyle,
     highlight: true,
     pane: MAP_PANES.POLYGONS,
     interactive: true,

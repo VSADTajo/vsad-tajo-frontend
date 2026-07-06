@@ -21,7 +21,7 @@ export class StyleManager {
     if (this.layerId === 'subcuencas') return '#8d5d26'
     if (this.layerId === 'sistemas10') return '#33a02c'
     if (this.layerId === 'zonasexpl') return '#1f78b4'
-    if (this.layerId === 'comarcasagrarias') return '#aa3c3c'
+    if (this.layerId === 'meteoalerta') return '#aa3c3c'
     return '#ffffff'
   }
 
@@ -249,8 +249,8 @@ export class StyleManager {
       id = props['sistema'] ?? props['fid'] ?? props['id'] ?? feature.id
     } else if (this.layerId === 'zonasexpl') {
       id = props['ogc_fid'] ?? props['id'] ?? feature.id
-    } else if (this.layerId === 'comarcasagrarias') {
-      id = props['ogc_fid'] ?? props['co_comarca'] ?? props['fid'] ?? props['id'] ?? feature.id
+    } else if (this.layerId === 'meteoalerta') {
+      id = props['ogc_fid'] ?? props['cod_z'] ?? props['fid'] ?? props['id'] ?? feature.id
     } else {
       id =
         props['code'] ??

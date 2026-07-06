@@ -265,7 +265,7 @@ export class LayerInteractionManager {
       'subcuencas',
       'sistemas10',
       'zonasexpl',
-      'comarcasagrarias',
+      'meteoalerta',
     ] as SelectableLayerId[]) {
       if (selectableLayerId === layerId) {
         continue
