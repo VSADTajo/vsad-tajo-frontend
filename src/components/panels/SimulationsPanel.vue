@@ -95,9 +95,11 @@
             <SimulationsOperationsList
               :operations="operations"
               :loading="isCreating"
+              :description="simulationDescription"
               @edit="onEditOperation"
               @delete="onDeleteOperation"
               @create-simulation="onCreateSimulation"
+              @update:description="simulationDescription = $event"
             />
           </v-col>
         </template>
@@ -138,6 +140,7 @@
   const searchText = ref('')
   const operations = ref<SimulationOperation[]>([])
   const editingIndex = ref<number | null>(null)
+  const simulationDescription = ref('')
 
   const autocompleteItems = computed(() =>
     embalses.value.map((e) => ({ title: e.name, value: e.stationCode }))
@@ -178,6 +181,7 @@
     try {
       await createSimulationService({
         modmeteo: 'BOTH',
+        description: simulationDescription.value || undefined,
         maneuvers: operations.value.map((op) => ({
           reservoirCode: op.stationCode,
           outputFlowValue: op.caudalSalida,
@@ -185,6 +189,11 @@
           endDate: op.fechaFin.toISOString(),
         })),
       })
+      operations.value = []
+      editingIndex.value = null
+      simulationDescription.value = ''
+      selectedCode.value = null
+      simulationsStore.notifySimulationCreated()
       snackbar.value = {
         visible: true,
         message: 'Simulación creada correctamente',
@@ -199,8 +208,6 @@
         icon: 'mdi-alert-circle-outline',
       }
     } finally {
-      operations.value = []
-      editingIndex.value = null
       isCreating.value = false
     }
   }

@@ -13,7 +13,7 @@
         <v-icon :color="cfg.color" size="16" class="mr-1">{{ cfg.icon }}</v-icon>
       </template>
       <v-card-title class="text-body-2 font-weight-medium pa-0 text-truncate">
-        {{ sim.description || sim.id }}
+        {{ sim.description || 'Sin Descripción' }}
       </v-card-title>
       <template #append>
         <v-chip v-if="isActive" color="surface" size="x-small" class="mr-1">Activa</v-chip>

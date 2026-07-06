@@ -205,6 +205,13 @@
     }
   )
 
+  watch(
+    () => simulationsStore.simulationCreatedCount,
+    (count, prev) => {
+      if (count !== prev) fetchSimulations()
+    }
+  )
+
   let refreshInterval: ReturnType<typeof setInterval> | null = null
 
   onMounted(() => {
