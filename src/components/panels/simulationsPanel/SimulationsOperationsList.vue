@@ -55,7 +55,19 @@
       </div>
     </v-card-text>
 
-    <v-card-actions class="px-4 pb-4 pt-2">
+    <v-card-actions class="px-4 pb-4 pt-2 flex-column ga-2">
+      <v-textarea
+        v-if="operations.length"
+        :model-value="description"
+        label="Descripción (opcional)"
+        variant="outlined"
+        density="compact"
+        rows="2"
+        auto-grow
+        hide-details
+        class="w-100"
+        @update:model-value="emit('update:description', $event)"
+      />
       <v-btn
         color="primary"
         variant="flat"
@@ -78,11 +90,13 @@
   defineProps<{
     operations: SimulationOperation[]
     loading?: boolean
+    description?: string
   }>()
 
   const emit = defineEmits<{
     edit: [index: number]
     delete: [index: number]
     'create-simulation': []
+    'update:description': [value: string]
   }>()
 </script>

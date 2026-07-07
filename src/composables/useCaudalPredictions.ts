@@ -7,7 +7,6 @@ import type {
 import {
   getAvailablePredictionsService,
   getHistoricalPredictionService,
-  getPredictionsService,
 } from '@/services/predictions'
 import {
   applyForecastData,
@@ -284,7 +283,7 @@ export function useCaudalPredictions(
 
       if (isEmbalse.value) {
         const [outflow, volume] = await Promise.all([
-          getPredictionsService(code, 'FICT95.historical'),
+          getHistoricalPredictionService(code, 'FICT95.historical', historicalStart, historicalEnd),
           getHistoricalPredictionService(code, 'VICT01.historical', historicalStart, historicalEnd),
         ])
         if (requestId !== fetchRequestId) return

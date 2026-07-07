@@ -119,7 +119,7 @@
     uid: string
     display: string
     subtitle: string
-    originType: 'punto_saih' | 'subcuenca' | 'sistema' | 'zona' | 'comarca_agraria' | 'other'
+    originType: 'punto_saih' | 'subcuenca' | 'sistema' | 'zona' | 'meteoalerta' | 'other'
     originLabel: string
   }
 
@@ -129,8 +129,8 @@
     if (source.includes('punto_saih')) return 'punto_saih'
     if (source.includes('subcuenca')) return 'subcuenca'
     if (source.includes('sistema')) return 'sistema'
+    if (source.includes('meteoalerta')) return 'meteoalerta'
     if (source.includes('zona')) return 'zona'
-    if (source.includes('comarca_agraria')) return 'comarca_agraria'
     return 'other'
   }
 
@@ -144,8 +144,8 @@
         return 'Sistema'
       case 'zona':
         return 'Zona'
-      case 'comarca_agraria':
-        return 'Comarca'
+      case 'meteoalerta':
+        return 'Zona Meteoalerta'
       default:
         return 'Resultado'
     }
@@ -168,7 +168,7 @@
           background: '#2563eb',
           color: '#ffffff',
         }
-      case 'comarca_agraria':
+      case 'meteoalerta':
         return {
           background: '#aa3c3c',
           color: '#ffffff',
@@ -328,7 +328,7 @@
 
   function getLayerIdForOriginType(
     originType: SearchAutocompleteItem['originType']
-  ): 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias' | null {
+  ): 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'meteoalerta' | null {
     switch (originType) {
       case 'subcuenca':
         return 'subcuencas'
@@ -336,8 +336,8 @@
         return 'sistemas10'
       case 'zona':
         return 'zonasexpl'
-      case 'comarca_agraria':
-        return 'comarcasagrarias'
+      case 'meteoalerta':
+        return 'meteoalerta'
       default:
         return null
     }
@@ -347,11 +347,11 @@
     const originType = getOriginType(result.origen)
     const layerId = getLayerIdForOriginType(originType)
 
-    const groupedLayerIds: Array<'subcuencas' | 'sistemas10' | 'zonasexpl' | 'comarcasagrarias'> = [
+    const groupedLayerIds: Array<'subcuencas' | 'sistemas10' | 'zonasexpl' | 'meteoalerta'> = [
       'subcuencas',
       'sistemas10',
       'zonasexpl',
-      'comarcasagrarias',
+      'meteoalerta',
     ]
 
     if (originType === 'punto_saih') {
@@ -389,7 +389,7 @@
     if (originType === 'subcuenca') return 'subcuenca'
     if (originType === 'sistema') return 'sistema'
     if (originType === 'zona') return 'zona'
-    if (originType === 'comarca_agraria') return 'comarca'
+    if (originType === 'meteoalerta') return 'meteoalerta'
 
     const source = `${result.origen} ${result.tipoCod ?? ''}`.toLowerCase()
     if (source.includes('reporting')) return 'reportingPoint'

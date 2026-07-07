@@ -13,7 +13,7 @@
         <v-icon :color="cfg.color" size="16" class="mr-1">{{ cfg.icon }}</v-icon>
       </template>
       <v-card-title class="text-body-2 font-weight-medium pa-0 text-truncate">
-        {{ sim.description || sim.id }}
+        {{ sim.description || 'Sin Descripción' }}
       </v-card-title>
       <template #append>
         <v-chip v-if="isActive" color="surface" size="x-small" class="mr-1">Activa</v-chip>
@@ -35,6 +35,7 @@
                 size="x-small"
                 elevation="0"
                 class="mr-2"
+                :disabled="isActive"
                 @click.stop="editDialog = true"
               >
                 <v-icon size="16">mdi-pencil-outline</v-icon>
@@ -49,6 +50,7 @@
                 size="x-small"
                 elevation="0"
                 color="error"
+                :disabled="isActive"
                 @click.stop="confirmDelete = true"
               >
                 <v-icon size="16">mdi-trash-can-outline</v-icon>

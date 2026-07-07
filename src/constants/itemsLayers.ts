@@ -14,8 +14,8 @@ export const zonasLayers: LayerNode[] = [
     title: 'Zonas Expl',
   },
   {
-    id: 'comarcasagrarias',
-    title: 'Comarcas Agrarias',
+    id: 'meteoalerta',
+    title: 'Zonas Meteoalerta',
   },
 ]
 
@@ -216,6 +216,12 @@ export const efasLayers: LayerNode[] = [
   {
     id: 'alEUD',
     title: 'AIFS Single',
+    opacityEnabled: true,
+    opacity: 1,
+  },
+  {
+    id: 'floodInundationScenarios',
+    title: 'Flood Inundation Scenarios',
     opacityEnabled: true,
     opacity: 1,
   },

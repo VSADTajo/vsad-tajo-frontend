@@ -16,7 +16,11 @@
       <v-card-title class="d-flex justify-space-between align-start pa-6" :style="headerStyle">
         <div>
           <div class="text-h6 font-weight-bold" style="color: white">
-            {{ feature?.properties?.nombre ?? selectedRouteValue }}
+            {{
+              props.kind === 'meteoalerta'
+                ? (feature?.properties?.nom_z ?? selectedRouteValue)
+                : (feature?.properties?.nombre ?? selectedRouteValue)
+            }}
           </div>
           <div
             v-if="feature?.properties?.code"
@@ -183,12 +187,12 @@
     subcuencasStyle,
     sistemas10Style,
     zonasexplStyle,
-    comarcasagrariasStyle,
+    zonasmeteoalertaStyle,
   } from '@/config/styles/layerStyles'
 
   const props = withDefaults(
     defineProps<{
-      kind?: 'subcuenca' | 'sistema' | 'zona' | 'comarca'
+      kind?: 'subcuenca' | 'sistema' | 'zona' | 'meteoalerta'
     }>(),
     {
       kind: 'subcuenca',
@@ -215,7 +219,7 @@
   const routeKey = computed(() => {
     if (props.kind === 'sistema') return 'sistema'
     if (props.kind === 'zona') return 'zona'
-    if (props.kind === 'comarca') return 'comarca'
+    if (props.kind === 'meteoalerta') return 'meteoalerta'
     return 'subcuenca'
   })
   const selectedRouteValue = computed(() => {
@@ -225,21 +229,21 @@
   const kindLabel = computed(() => {
     if (props.kind === 'sistema') return 'Sistema'
     if (props.kind === 'zona') return 'Zona'
-    if (props.kind === 'comarca') return 'Comarca'
+    if (props.kind === 'meteoalerta') return 'Zonas Meteoalerta'
     return 'Subcuenca'
   })
 
   const mapType = computed(() => {
     if (props.kind === 'sistema') return 'sistemas10'
     if (props.kind === 'zona') return 'zonasexpl'
-    if (props.kind === 'comarca') return 'comarcasagrarias'
+    if (props.kind === 'meteoalerta') return 'meteoalerta'
     return 'subcuencas'
   })
 
   const headerBaseColor = computed(() => {
     if (props.kind === 'sistema') return sistemas10Style.normal.fillColor ?? '#000000'
     if (props.kind === 'zona') return zonasexplStyle.normal.fillColor ?? '#000000'
-    if (props.kind === 'comarca') return comarcasagrariasStyle.normal.fillColor ?? '#000000'
+    if (props.kind === 'meteoalerta') return zonasmeteoalertaStyle.normal.fillColor ?? '#000000'
     return subcuencasStyle.normal.fillColor ?? '#000000'
   })
 
@@ -287,7 +291,7 @@
     const idMap: Record<string, string> = {
       sistema: 'sistemas10',
       zona: 'zonasexpl',
-      comarca: 'comarcasagrarias',
+      meteoalerta: 'meteoalerta',
       subcuenca: 'subcuencas',
     }
 
@@ -309,13 +313,8 @@
         featureProps.sistema ?? featureProps.systemName ?? featureProps.name ?? featureProps.nombre
     } else if (props.kind === 'zona') {
       value = featureProps.ogc_fid != null ? String(featureProps.ogc_fid) : ''
-    } else if (props.kind === 'comarca') {
-      value =
-        featureProps.ds_comarca ??
-        featureProps.comarcaName ??
-        featureProps.comarca ??
-        featureProps.name ??
-        featureProps.nombre
+    } else if (props.kind === 'meteoalerta') {
+      value = featureProps.cod_z != null ? String(featureProps.cod_z) : ''
     } else {
       value =
         featureProps.cuencasname ??
@@ -346,8 +345,8 @@
         searchParams = { sistemaName: lookupValue }
       } else if (props.kind === 'zona') {
         searchParams = { zonaExplOgcFid: lookupValue }
-      } else if (props.kind === 'comarca') {
-        searchParams = { comarcaName: lookupValue }
+      } else if (props.kind === 'meteoalerta') {
+        searchParams = { cod_z: lookupValue }
       } else {
         searchParams = { subBasinName: lookupValue }
       }
@@ -379,8 +378,8 @@
       const fieldName =
         props.kind === 'sistema'
           ? 'sistema'
-          : props.kind === 'comarca'
-            ? 'ds_comarca'
+          : props.kind === 'meteoalerta'
+            ? 'cod_z'
             : props.kind === 'zona'
               ? 'ogc_fid'
               : 'code'

@@ -2,7 +2,7 @@ export const SELECTABLE_LAYER_IDS = [
   'subcuencas',
   'sistemas10',
   'zonasexpl',
-  'comarcasagrarias',
+  'meteoalerta',
 ] as const
 
 export type SelectableLayerId = (typeof SELECTABLE_LAYER_IDS)[number]

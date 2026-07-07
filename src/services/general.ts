@@ -8,6 +8,7 @@ export type StationsSearchParams =
   | { subBasinName: string }
   | { comarcaName: string }
   | { zonaExplOgcFid: string }
+  | { cod_z: string }
 
 type PaginatedStationsResponse = {
   items: StationData[]
@@ -91,7 +92,13 @@ export async function getDownstreamStationsService(codes: string[]): Promise<str
 
 type CreateSimulationPayload = {
   modmeteo: 'BOTH'
-  maneuvers: { reservoirCode: string; outputFlowValue: number; startDate: string; endDate: string }[]
+  description?: string
+  maneuvers: {
+    reservoirCode: string
+    outputFlowValue: number
+    startDate: string
+    endDate: string
+  }[]
 }
 
 export type CreateSimulationResponse = {
@@ -111,7 +118,7 @@ export async function getSimulationsService(): Promise<SimulationRecord[]> {
 }
 
 export async function deleteSimulationService(id: string): Promise<void> {
-  await api.delete(`simulations/manual/${encodeURIComponent(id)}`).json()
+  await api.delete(`simulations/${encodeURIComponent(id)}`).json()
 }
 
 type UpdateManeuverPayload = { id: string; startDate: string | null; endDate: string | null }

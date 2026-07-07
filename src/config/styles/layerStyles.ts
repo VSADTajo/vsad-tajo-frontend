@@ -125,7 +125,7 @@ export const zonasexplStyle: LayerStyle = {
   },
 }
 
-export const comarcasagrariasStyle: LayerStyle = {
+export const zonasmeteoalertaStyle: LayerStyle = {
   normal: {
     color: '#aa3c3c',
     weight: 2,

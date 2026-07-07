@@ -1,6 +1,7 @@
 ﻿<template>
   <div v-if="loading || feature" class="saih-sticky-header pa-4" :style="headerStyle">
-    <div class="d-flex align-center justify-space-between gap-4">
+    <div class="d-flex align-center gap-4" style="min-width: 0">
+      <!-- Left: station info -->
       <div class="flex-shrink-0">
         <template v-if="feature">
           <div class="text-h6 font-weight-bold" style="color: white">
@@ -18,7 +19,13 @@
         </template>
       </div>
 
-      <div v-if="feature" class="d-flex align-center gap-2">
+      <!-- Center: slot -->
+      <div class="flex-grow-1 d-flex justify-center">
+        <slot />
+      </div>
+
+      <!-- Right: chips + close -->
+      <div v-if="feature" class="d-flex align-center gap-2 flex-shrink-0">
         <v-chip
           v-if="feature.properties?.zona"
           size="x-small"
