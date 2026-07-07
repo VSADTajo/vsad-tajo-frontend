@@ -61,6 +61,10 @@ export function setSimulationMarkers(codes: string[] | null): void {
   }
 }
 
+export function isDownstreamStation(code: string): boolean {
+  return downstreamCodes.has(code.toUpperCase())
+}
+
 export function setDownstreamMarkers(codes: string[] | null): void {
   downstreamCodes.forEach((code) => {
     registry.get(code)?.getElement()?.firstElementChild?.classList.remove('is-downstream')

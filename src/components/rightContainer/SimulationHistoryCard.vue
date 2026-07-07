@@ -35,6 +35,7 @@
                 size="x-small"
                 elevation="0"
                 class="mr-2"
+                :disabled="isActive"
                 @click.stop="editDialog = true"
               >
                 <v-icon size="16">mdi-pencil-outline</v-icon>
@@ -49,6 +50,7 @@
                 size="x-small"
                 elevation="0"
                 color="error"
+                :disabled="isActive"
                 @click.stop="confirmDelete = true"
               >
                 <v-icon size="16">mdi-trash-can-outline</v-icon>

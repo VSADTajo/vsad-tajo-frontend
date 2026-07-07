@@ -4,7 +4,24 @@
     :loading="loading"
     :header-style="headerStyle"
     @close="close"
-  />
+  >
+    <v-chip
+      v-if="simulationRelation"
+      size="x-small"
+      class="chip-sim-relation ml-2"
+      :prepend-icon="
+        simulationRelation === 'downstream'
+          ? 'mdi-arrow-down-circle-outline'
+          : 'mdi-circle-off-outline'
+      "
+    >
+      {{
+        simulationRelation === 'downstream'
+          ? 'Datos Según Simulación en Curso'
+          : 'Datos Independientes de la Simulación en Curso'
+      }}
+    </v-chip>
+  </StationStickyHeader>
 
   <v-row v-if="station" justify="center" class="px-3 align-stretch">
     <v-col
@@ -250,6 +267,8 @@
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
+  import { useSimulationsStore } from '@/stores/simulationsStore'
+  import { isDownstreamStation } from '@/utils/saihMarkersRegistry'
   import { getSaihTypeColor } from '@/utils/saihStations'
   import { embalsesWithCaudalPredictions } from '@/constants/predictionsAvailableData'
   import { useCaudalPredictions } from '@/composables/useCaudalPredictions'
@@ -277,6 +296,12 @@
 
   const route = useRoute()
   const router = useRouter()
+  const simulationsStore = useSimulationsStore()
+
+  const simulationRelation = computed<'downstream' | 'independent' | null>(() => {
+    if (!simulationsStore.isSimulationActive) return null
+    return isDownstreamStation(normalizedStationCode.value) ? 'downstream' : 'independent'
+  })
 
   // ── Station loading ────────────────────────────────────────────────────────
   const loading = ref(false)
@@ -555,6 +580,14 @@
 </script>
 
 <style scoped>
+  .chip-sim-relation {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+  }
+  .chip-sim-relation :deep(.v-chip__prepend .v-icon) {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
   .summary-container-card {
     min-height: 0;
     overflow: hidden;

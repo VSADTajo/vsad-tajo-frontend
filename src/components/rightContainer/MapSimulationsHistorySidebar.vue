@@ -124,6 +124,7 @@
     getStationByCodeService,
   } from '@/services/general'
   import { center as mapCenter, defaultZoom } from '@/constants/mapConfig'
+  import { AGUAS_ABAJO_POR_SIMULACIONES } from '@/constants/aguasAbajoPorSimulaciones'
   import SimulationHistoryCard from './SimulationHistoryCard.vue'
 
   defineProps<{ open: boolean }>()
@@ -155,6 +156,16 @@
   const noDisponibles = computed(() => simulations.value.filter((s) => s.status !== 'FINALIZED'))
 
   const expandedSim = ref<string | null>(null)
+
+  function getGroupStationsForReservoirs(reservoirCodes: string[]): Set<string> {
+    const result = new Set<string>()
+    for (const stations of Object.values(AGUAS_ABAJO_POR_SIMULACIONES)) {
+      if (reservoirCodes.some((code) => stations.includes(code))) {
+        stations.forEach((s) => result.add(s))
+      }
+    }
+    return result
+  }
 
   function isActive(id: string): boolean {
     return simulationsStore.activeSimulationId === id
@@ -197,8 +208,11 @@
         // flyTo is best-effort
       }
       try {
+        const groupStations = getGroupStationsForReservoirs(codes)
         const downstream = await getDownstreamStationsService(codes)
-        setDownstreamMarkers(downstream)
+        const filtered = downstream.filter((c) => groupStations.has(c))
+        const mc = [...groupStations].filter((s) => s.startsWith('MC'))
+        setDownstreamMarkers([...new Set([...filtered, ...mc])])
       } catch {
         // downstream is best-effort
       }
