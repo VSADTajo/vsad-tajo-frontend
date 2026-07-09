@@ -1,22 +1,12 @@
 <template>
-  <v-card class="bg-background" elevation="0">
-    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
-      <div class="d-flex align-center ga-2">
-        <span class="text-subtitle-1 font-weight-bold pl-4">Estaciones</span>
-        <v-progress-circular
-          v-if="loadingPredictions"
-          size="16"
-          width="2"
-          indeterminate
-          color="primary"
-        />
-      </div>
-
+  <v-card class="bg-surface" elevation="2">
+    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-2">
       <v-btn-toggle
         v-model="selectedSeries"
         mandatory
         density="compact"
         color="primary"
+        divided
         variant="outlined"
       >
         <v-btn value="caudal" size="small">Caudal</v-btn>
@@ -24,18 +14,44 @@
       </v-btn-toggle>
 
       <v-btn-toggle
+        v-if="selectedSeries === 'caudal'"
+        v-model="selectedTypeProvider"
+        mandatory
+        density="compact"
+        color="primary"
+        divided
+        variant="outlined"
+      >
+        <v-btn value="nam" size="small">NAM</v-btn>
+        <v-btn value="mike" size="small">MIKE</v-btn>
+      </v-btn-toggle>
+
+      <v-btn-toggle
         v-model="selectedProvider"
         mandatory
         density="compact"
         color="primary"
+        divided
         variant="outlined"
       >
         <v-btn value="harmonie" size="small">Harmonie</v-btn>
         <v-btn value="eps" size="small">EPS</v-btn>
-        <v-btn value="p10" size="small">P10</v-btn>
+        <v-btn
+          value="p10"
+          size="small"
+          :disabled="selectedSeries === 'caudal' && selectedTypeProvider === 'mike'"
+        >
+          P10
+        </v-btn>
         <v-btn value="p25" size="small">P25</v-btn>
         <v-btn value="p75" size="small">P75</v-btn>
-        <v-btn value="p90" size="small">P90</v-btn>
+        <v-btn
+          value="p90"
+          size="small"
+          :disabled="selectedSeries === 'caudal' && selectedTypeProvider === 'mike'"
+        >
+          P90
+        </v-btn>
       </v-btn-toggle>
     </v-card-title>
 
@@ -52,7 +68,7 @@
       class="stations-table"
       hover
       fixed-header
-      height="380"
+      height="332"
       :row-props="getRowProps"
       @click:row="onRowClick"
     >
@@ -133,6 +149,7 @@
 
   const emit = defineEmits<{
     (e: 'update:selectedStationCode', value: string | null): void
+    (e: 'update:hoveredStationCode', value: string | null): void
   }>()
 
   type DataSeries = 'caudal' | 'precipitacion'
@@ -171,15 +188,18 @@
       stations: StationData[]
       loading?: boolean
       selectedStationCode?: string | null
+      hoveredStationCode?: string | null
     }>(),
     {
       loading: false,
       selectedStationCode: null,
+      hoveredStationCode: null,
     }
   )
 
   const selectedSeries = ref<DataSeries>('caudal')
   const selectedProvider = ref<DataProvider>('eps')
+  const selectedTypeProvider = ref<'nam' | 'mike'>('nam')
   const selectedRowCode = ref<string | null>(null)
   const loadingPredictions = ref(false)
   const predictionsByStation = ref<Record<string, HorizonValues>>({})
@@ -190,6 +210,34 @@
     ...aforosWithCaudalPredictions,
     ...embalsesWithCaudalPredictions,
   ])
+
+  const TIPO_LABELS: Record<string, string> = {
+    AR: 'Aforo en Río',
+    AC: 'Aforo en Canal',
+    E: 'Embalse',
+    I: 'Impulsiones',
+    NV: 'Nivómetro',
+    P: 'Pluviómetro',
+    MC: 'Marco de Control',
+    PN: 'Pluvinimómetro',
+  }
+
+  function deriveTipo(stationCode: string): string {
+    const code = stationCode.trim().toUpperCase()
+    if (code.startsWith('E_')) return 'E'
+    if (code.startsWith('AR')) return 'AR'
+    if (code.startsWith('MC')) return 'MC'
+    if (code.startsWith('AC')) return 'AC'
+    if (code.startsWith('NV')) return 'NV'
+    if (code.startsWith('PN')) return 'PN'
+    if (code.startsWith('I')) return 'I'
+    if (code.startsWith('P')) return 'P'
+    return code.match(/^([A-Z]+)/)?.[1] ?? ''
+  }
+
+  function tipoLabel(tipoCod: string): string {
+    return TIPO_LABELS[tipoCod.toUpperCase()] ?? tipoCod
+  }
 
   function stationHasCaudal(station: StationData): boolean {
     return stationsWithCaudal.has(station.stationCode.trim().toUpperCase())
@@ -318,8 +366,8 @@
     props.stations.map((station) => ({
       nombre: station.name,
       codigo: station.stationCode,
-      tipo: station.tipoCod ?? '',
-      tipoDisplay: station.stationType ?? station.tipoCod ?? '',
+      tipo: station.tipoCod ?? deriveTipo(station.stationCode),
+      tipoDisplay: tipoLabel(station.tipoCod ?? deriveTipo(station.stationCode)),
       hasCaudal: stationHasCaudal(station),
       umbral1: getNumericThreshold(station, ['umbralCaudal1']),
       umbral2: getNumericThreshold(station, ['umbralCaudal2']),
@@ -331,10 +379,16 @@
   )
 
   const rows = computed<StationForecastRow[]>(() =>
-    baseRows.value.map((base) => ({
-      ...base,
-      ...(predictionsByStation.value[base.codigo] ?? emptyHorizons()),
-    }))
+    baseRows.value
+      .filter(
+        (base) =>
+          selectedSeries.value === 'precipitacion' ||
+          ['AR', 'E', 'MC'].includes(base.tipo.toUpperCase())
+      )
+      .map((base) => ({
+        ...base,
+        ...(predictionsByStation.value[base.codigo] ?? emptyHorizons()),
+      }))
   )
 
   const headers = computed(() => [
@@ -372,7 +426,21 @@
       return { type: 'P.ens.forecast', percentile }
     }
 
-    const isEmbalse = (station.tipoCod ?? '').toUpperCase() === 'E'
+    const isEmbalse = (station.tipoCod ?? deriveTipo(station.stationCode)).toUpperCase() === 'E'
+
+    if (selectedTypeProvider.value === 'mike') {
+      if (provider === 'harmonie') {
+        return { type: isEmbalse ? 'I.mk11.forecast' : 'Q.mk11.forecast' }
+      }
+      if (provider === 'p25') {
+        return { type: isEmbalse ? 'I.mk11.EPS25forecast' : 'Q.mk11.EPS25forecast' }
+      }
+      if (provider === 'p75') {
+        return { type: isEmbalse ? 'I.mk11.EPS75forecast' : 'Q.mk11.EPS75forecast' }
+      }
+      return { type: isEmbalse ? 'I.mk11.EPSforecast' : 'Q.mk11.EPSforecast' }
+    }
+
     if (provider === 'harmonie') {
       return { type: isEmbalse ? 'I.NAM.harmonie' : 'Q.NAM.harmonie' }
     }
@@ -518,7 +586,13 @@
     { immediate: true, deep: true }
   )
 
-  watch([selectedSeries, selectedProvider], () => {
+  watch(selectedTypeProvider, (type) => {
+    if (type === 'mike' && (selectedProvider.value === 'p10' || selectedProvider.value === 'p90')) {
+      selectedProvider.value = 'eps'
+    }
+  })
+
+  watch([selectedSeries, selectedProvider, selectedTypeProvider], () => {
     void refreshPredictions()
     if (selectedRowCode.value) {
       const row = rows.value.find((r) => r.codigo === selectedRowCode.value) ?? null
@@ -634,13 +708,21 @@
     emitSelection(willSelect ? row : null)
   }
 
-  function getRowProps(payload: unknown): { class: string; style: string } {
+  function getRowProps(payload: unknown) {
     const row = extractRow(payload)
     const isSelected = row ? selectedRowCode.value === row.codigo : false
+    const isHovered = row ? props.hoveredStationCode === row.codigo : false
 
     return {
-      class: isSelected ? 'stations-table__row--selected' : '',
+      class: [
+        isSelected ? 'stations-table__row--selected' : '',
+        isHovered ? 'stations-table__row--hovered' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
       style: 'cursor: pointer;',
+      onMouseenter: row ? () => emit('update:hoveredStationCode', row.codigo) : undefined,
+      onMouseleave: row ? () => emit('update:hoveredStationCode', null) : undefined,
     }
   }
 
@@ -688,6 +770,10 @@
 
   .stations-table :deep(.stations-table__row--selected td) {
     background: rgba(var(--v-theme-primary), 0.12);
+  }
+
+  .stations-table :deep(.stations-table__row--hovered td) {
+    background: rgba(var(--v-theme-primary), 0.06);
   }
 
   .cell-yellow {

@@ -1,9 +1,26 @@
 <template>
-  <v-card class="pa-2 bg-background" elevation="2">
-    <v-progress-linear v-if="loading" indeterminate />
+  <StationStickyHeader
+    :feature="displayFeature"
+    :loading="loadingFeature"
+    :header-style="topHeaderStyle"
+    @close="closeDrawer"
+  >
+    <v-chip
+      v-if="selectedRouteValue"
+      prepend-icon="mdi-shape"
+      variant="tonal"
+      color="white"
+      size="small"
+      class="font-weight-bold"
+    >
+      {{ kindLabel }}
+    </v-chip>
+  </StationStickyHeader>
 
-    <!-- Skeleton while loading -->
-    <template v-if="loading">
+  <v-card class="pa-2 bg-background" elevation="2">
+    <v-progress-linear v-if="loadingFeature" indeterminate />
+
+    <template v-if="loadingFeature">
       <div class="pa-4">
         <v-skeleton-loader type="heading" height="28" class="mb-2" />
         <v-skeleton-loader type="text" height="18" class="mb-2" />
@@ -12,64 +29,7 @@
     </template>
 
     <template v-else-if="selectedRouteValue">
-      <!-- Header estilo RightContentSaih -->
-      <v-card-title class="d-flex justify-space-between align-start pa-6" :style="headerStyle">
-        <div>
-          <div class="text-h6 font-weight-bold" style="color: white">
-            {{
-              props.kind === 'meteoalerta'
-                ? (feature?.properties?.nom_z ?? selectedRouteValue)
-                : (feature?.properties?.nombre ?? selectedRouteValue)
-            }}
-          </div>
-          <div
-            v-if="feature?.properties?.code"
-            class="text-caption"
-            style="color: rgba(255, 255, 255, 0.9)"
-          >
-            {{ feature.properties.name }}
-          </div>
-        </div>
-
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          style="color: white"
-          @click="closeDrawer"
-        />
-      </v-card-title>
-
       <v-card-text>
-        <!-- Chip tipo -->
-        <div class="d-flex justify-space-between align-center flex-wrap ga-4 w-100">
-          <div class="mb-3 mt-2">
-            <v-chip
-              prepend-icon="mdi-shape"
-              :color="headerBaseColor"
-              variant="tonal"
-              size="small"
-              class="font-weight-bold"
-            >
-              {{ kindLabel }}
-            </v-chip>
-          </div>
-
-          <div
-            v-if="areaValue || perimeterValue"
-            class="mb-3 mt-2 d-flex flex-wrap ga-2 ms-auto justify-end"
-          >
-            <v-chip v-if="areaValue" size="small" variant="outlined">
-              Area: {{ Number(areaValue).toFixed(2) }} km2
-            </v-chip>
-            <v-chip v-if="perimeterValue" size="small" variant="outlined">
-              Perimetro: {{ Number(perimeterValue).toFixed(2) }} km
-            </v-chip>
-          </div>
-        </div>
-
-        <v-divider class="mb-3" />
-
         <v-row>
           <v-col cols="12" sm="4">
             <v-card>
@@ -77,26 +37,55 @@
                 :type="mapType"
                 :stations="stations"
                 :selected-station-code="selectedStationCode"
+                :hovered-station-code="hoveredStationCode"
                 @update:selected-station-code="selectedStationCode = $event"
+                @update:hovered-station-code="hoveredStationCode = $event"
               />
             </v-card>
           </v-col>
+
           <v-col cols="12" sm="8">
-            <v-card>
-              <ByAreaStationsTable
-                :stations="stations"
-                :loading="loadingStations"
-                :selected-station-code="selectedStationCode"
-                @update:selected-station-code="selectedStationCode = $event"
-              />
-            </v-card>
+            <v-tabs v-model="selectedTab" class="bg-surface">
+              <v-tab value="precipitacion">Precipitación Areal</v-tab>
+              <v-tab value="estaciones">Estaciones</v-tab>
+            </v-tabs>
+
+            <v-window v-model="selectedTab">
+              <v-window-item value="precipitacion">
+                <div
+                  class="d-flex align-center justify-center text-medium-emphasis pa-8"
+                  style="min-height: 350px"
+                >
+                  Próximamente
+                </div>
+              </v-window-item>
+
+              <v-window-item value="estaciones">
+                <v-card>
+                  <ByAreaStationsTable
+                    :stations="stations"
+                    :loading="loadingStations"
+                    :selected-station-code="selectedStationCode"
+                    :hovered-station-code="hoveredStationCode"
+                    @update:selected-station-code="selectedStationCode = $event"
+                    @update:hovered-station-code="hoveredStationCode = $event"
+                  />
+                </v-card>
+              </v-window-item>
+            </v-window>
           </v-col>
         </v-row>
 
-        <v-row class="mt-2">
+        <v-row v-if="selectedTab === 'estaciones'" class="mt-2">
           <v-col cols="12">
             <v-card class="pa-2 bg-background" elevation="2">
-              <template v-if="loadingChart || selectedChartData">
+              <template
+                v-if="
+                  (selectedSeries === 'caudal' && !!selectedStationCode) ||
+                  loadingChart ||
+                  selectedChartData
+                "
+              >
                 <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
                   {{
                     selectedSeries === 'caudal'
@@ -106,14 +95,158 @@
                 </v-card-title>
 
                 <v-card-text class="bg-surface mt-2 border-radius-4" elevation="2">
-                  <ForecastChartNew
-                    v-if="selectedSeries === 'caudal'"
-                    :data="selectedChartData ?? {}"
-                    :loading="loadingChart"
-                    :height="500"
-                    :toolbar="false"
-                    :thresholds="currentStationThresholds"
-                  />
+                  <template v-if="selectedSeries === 'caudal'">
+                    <template v-if="isEmbalseForChart">
+                      <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
+                        <v-tab value="caudalNAM">Caudal NAM</v-tab>
+                        <v-tab value="caudalMIKE">Caudal MIKE</v-tab>
+                        <v-tab value="volumenNAM">Volumen NAM</v-tab>
+                        <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
+                      </v-tabs>
+
+                      <div class="chart-tab-root">
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalNAM' },
+                          ]"
+                        >
+                          <ForecastChartNew
+                            v-if="mountedTabs.has('caudalNAM')"
+                            :data="caudalOnlyChartData"
+                            :is-embalse="true"
+                            :height="470"
+                            :loading="loadingCaudales"
+                            :thresholds="currentStationThresholds"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            'chart-tab-overlay',
+                            { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalMIKE' },
+                          ]"
+                        >
+                          <ForecastChartNew
+                            v-if="mountedTabs.has('caudalMIKE')"
+                            :data="mikeChartData"
+                            :is-embalse="true"
+                            :height="470"
+                            :loading="loadingCaudales"
+                            :thresholds="currentStationThresholds"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            'chart-tab-overlay',
+                            { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenNAM' },
+                          ]"
+                        >
+                          <ForecastChartNew
+                            v-if="mountedTabs.has('volumenNAM')"
+                            :data="volumenOnlyChartData"
+                            :is-embalse="true"
+                            :height="470"
+                            :loading="loadingCaudales"
+                            :thresholds="currentStationThresholds"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            'chart-tab-overlay',
+                            {
+                              'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenMIKE',
+                            },
+                          ]"
+                        >
+                          <ForecastChartNew
+                            v-if="mountedTabs.has('volumenMIKE')"
+                            :data="mikeVolumenChartData"
+                            :is-embalse="true"
+                            :height="470"
+                            :loading="loadingCaudales"
+                            :thresholds="currentStationThresholds"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                      </div>
+                    </template>
+
+                    <template v-else>
+                      <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
+                        <v-tab value="nam">NAM</v-tab>
+                        <v-tab value="mike">MIKE</v-tab>
+                        <v-tab value="combined">NAM + MIKE</v-tab>
+                      </v-tabs>
+                      <div class="chart-tab-root">
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'nam' },
+                          ]"
+                        >
+                          <ForecastChartNew
+                            v-if="mountedTabs.has('nam')"
+                            :data="caudalChartData"
+                            :loading="loadingCaudales"
+                            :thresholds="currentStationThresholds"
+                            :height="470"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            'chart-tab-overlay',
+                            { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'mike' },
+                          ]"
+                        >
+                          <ForecastChartNew
+                            v-if="mountedTabs.has('mike')"
+                            :data="mikeChartData"
+                            :loading="loadingCaudales"
+                            :thresholds="currentStationThresholds"
+                            :height="470"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                        <div
+                          :class="[
+                            'chart-tab-panel',
+                            'chart-tab-overlay',
+                            {
+                              'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'combined',
+                            },
+                          ]"
+                        >
+                          <CombinedNamMikeChart
+                            v-if="mountedTabs.has('combined')"
+                            :historical="caudalHistorical"
+                            :nam-harmonie="caudalForecastHarmonie"
+                            :nam-eps="caudalForecastEpstat"
+                            :mike-harmonie="mikeForecastHarmonie"
+                            :mike-eps="mikeForecastEpsat"
+                            :thresholds="currentStationThresholds"
+                            :loading="loadingCaudales"
+                            :height="470"
+                            :focus-threshold-request="thresholdFocusRequest"
+                            @focus-threshold-complete="handleThresholdFocusComplete"
+                          />
+                        </div>
+                      </div>
+                    </template>
+                  </template>
 
                   <div v-else>
                     <v-tabs v-model="selectedPrecipChartTab" class="bg-surface px-2">
@@ -126,6 +259,7 @@
                         <v-sheet class="pa-2 h-100 d-flex flex-column">
                           <PrecipitationsChart
                             :data="selectedChartData ?? {}"
+                            :height="450"
                             :loading="loadingChart"
                             mode="precipitations"
                           />
@@ -134,10 +268,12 @@
 
                       <v-window-item value="acumuladas" class="h-100">
                         <v-sheet class="pa-2 h-100 d-flex flex-column">
-                          <PrecipitationsChart
-                            :data="selectedChartData ?? {}"
+                          <PrecipAccumulatedTimeSeriesChart
+                            :precipitations-historical="selectedChartData?.historical"
+                            :precipitations-forecast-harmonie="selectedChartData?.forecastHarmonie"
+                            :precipitations-forecast-epstat="selectedChartData?.forecastEpsat"
+                            :height="450"
                             :loading="loadingChart"
-                            mode="accumulated"
                           />
                         </v-sheet>
                       </v-window-item>
@@ -162,7 +298,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onBeforeUnmount, ref, watch } from 'vue'
+  import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import type { DataStationPrediction, PredictionTypeName } from '@/types/Predictions'
   import {
@@ -171,8 +307,12 @@
   } from '@/composables/useSubcuencaSelectionBus'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
+  import PrecipAccumulatedTimeSeriesChart from '../charts/PrecipAccumulatedTimeSeriesChart.vue'
+  import CombinedNamMikeChart from '../charts/CombinedNamMikeChart.vue'
+  import { useCaudalPredictions } from '@/composables/useCaudalPredictions'
   import MapDetail from './MapDetail.vue'
   import ByAreaStationsTable from './ByAreaStationsTable.vue'
+  import StationStickyHeader from './StationStickyHeader.vue'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
@@ -203,16 +343,24 @@
   const router = useRouter()
   const selectionBus = useSubcuencaSelectionBus()
 
-  const loading = ref(false)
+  const loadingFeature = ref(false)
   const loadingStations = ref(false)
   const loadingChart = ref(false)
   const feature = ref<GeoJSON.Feature | null>(null)
   const stations = ref<StationData[]>([])
   const selectedStationCode = ref<string | null>(null)
+  const hoveredStationCode = ref<string | null>(null)
   const selectedChartData = ref<DataStationPrediction | null>(null)
+  const selectedTab = ref<'precipitacion' | 'estaciones'>('precipitacion')
   const selectedSeries = ref<SubcuencaSeriesMode>('caudal')
   const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
   const selectedStationName = ref('')
+  const selectedEmbalseChartTab = ref<'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE'>(
+    'caudalNAM'
+  )
+  const selectedCaudalTypeChartTab = ref<'nam' | 'mike' | 'combined'>('nam')
+  const mountedTabs = reactive(new Set<string>(['caudalNAM', 'nam']))
+  const thresholdFocusRequest = ref<null>(null)
   let stationsRequestId = 0
   let chartFetchId = 0
 
@@ -270,21 +418,32 @@
 
   const headerDarkColor = computed(() => darkenHex(headerBaseColor.value ?? '#000000', 0.72))
 
-  const headerStyle = computed(() => ({
+  const topHeaderStyle = computed(() => ({
     background: `linear-gradient(135deg, ${headerBaseColor.value} 0%, ${headerDarkColor.value} 100%)`,
-    margin: '-8px -8px 0 -8px',
   }))
 
-  const areaValue = computed(() => {
-    const props = feature.value?.properties
-    if (!props?.area) return ''
-    return String(props.area)
-  })
-
-  const perimeterValue = computed(() => {
-    const props = feature.value?.properties
-    if (!props?.perimetro) return ''
-    return String(props.perimetro)
+  const displayFeature = computed<GeoJSON.Feature | null>(() => {
+    if (!feature.value) return null
+    const p = (feature.value.properties ?? {}) as Record<string, unknown>
+    let codigo: string
+    let nombre: string
+    if (props.kind === 'sistema') {
+      codigo = String(p.fid ?? selectedRouteValue.value ?? '')
+      nombre = String(p.sistema ?? '')
+    } else if (props.kind === 'zona') {
+      codigo = String(p.nombre ?? selectedRouteValue.value ?? '')
+      nombre = ''
+    } else if (props.kind === 'meteoalerta') {
+      codigo = String(p.nom_z ?? selectedRouteValue.value ?? '')
+      nombre = ''
+    } else {
+      codigo = String(p.code ?? selectedRouteValue.value ?? '')
+      nombre = String(p.name ?? '')
+    }
+    return {
+      ...feature.value,
+      properties: { ...p, codigo, nombre },
+    }
   })
 
   const layerConfig = computed(() => {
@@ -304,6 +463,91 @@
 
     return (station?.threshold ?? null) as Record<string, unknown> | undefined
   })
+
+  // ── Caudal chart (useCaudalPredictions) ────────────────────────────────────
+
+  watch(selectedEmbalseChartTab, (tab) => mountedTabs.add(tab))
+  watch(selectedCaudalTypeChartTab, (tab) => mountedTabs.add(tab))
+
+  watch(selectedStationCode, () => {
+    selectedEmbalseChartTab.value = 'caudalNAM'
+    selectedCaudalTypeChartTab.value = 'nam'
+    mountedTabs.clear()
+    mountedTabs.add('caudalNAM')
+    mountedTabs.add('nam')
+  })
+
+  const isEmbalseForChart = computed(
+    () =>
+      (
+        stations.value.find((s) => s.stationCode === selectedStationCode.value)?.tipoCod ?? ''
+      ).toUpperCase() === 'E'
+  )
+
+  const codeTypeForChart = computed(
+    () =>
+      stations.value.find((s) => s.stationCode === selectedStationCode.value)?.tipoCod ?? undefined
+  )
+
+  const {
+    caudalHistorical,
+    caudalForecastHarmonie,
+    caudalForecastEpstat,
+    caudalForecastEnsP10,
+    caudalForecastEnsP25,
+    caudalForecastEnsP75,
+    caudalForecastEnsP90,
+    caudalOutflowHistorical,
+    embalseVolumeHistorical,
+    mikeForecastHarmonie,
+    mikeForecastEpsat,
+    mikeChartData,
+    mikeVolumeHarmonie,
+    mikeVolumeEpsat,
+    mikeVolumeEnsP25,
+    mikeVolumeEnsP75,
+    loading: loadingCaudales,
+  } = useCaudalPredictions(
+    computed(() => selectedStationCode.value ?? ''),
+    isEmbalseForChart,
+    codeTypeForChart
+  )
+
+  const caudalChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  const caudalOnlyChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    historicalOutflow: caudalOutflowHistorical.value,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  const volumenOnlyChartData = computed(() => ({
+    historicalVolume: embalseVolumeHistorical.value,
+  }))
+
+  const mikeVolumenChartData = computed(() => ({
+    historicalVolume: embalseVolumeHistorical.value,
+    forecastHarmonie: mikeVolumeHarmonie.value,
+    forecastEpsat: mikeVolumeEpsat.value,
+    forecastEnsP25: mikeVolumeEnsP25.value,
+    forecastEnsP75: mikeVolumeEnsP75.value,
+  }))
+
+  function handleThresholdFocusComplete(): void {}
 
   function getStationsLookupValueFromFeature(targetFeature: GeoJSON.Feature | null): string {
     const featureProps = (targetFeature?.properties ?? {}) as Record<string, unknown>
@@ -373,7 +617,7 @@
 
   async function loadFeature(code: string) {
     if (!layerConfig.value) return
-    loading.value = true
+    loadingFeature.value = true
     try {
       const fieldName =
         props.kind === 'sistema'
@@ -390,7 +634,7 @@
       feature.value = null
       stations.value = []
     } finally {
-      loading.value = false
+      loadingFeature.value = false
     }
   }
 
@@ -408,26 +652,15 @@
   )
 
   async function fetchChartData(stationCode: string, series: SubcuencaSeriesMode): Promise<void> {
+    if (series === 'caudal') return
+
     const requestId = ++chartFetchId
     loadingChart.value = true
     selectedChartData.value = null
 
-    const station = stations.value.find((s) => s.stationCode === stationCode)
-    const isEmbalse = (station?.tipoCod ?? '').toUpperCase() === 'E'
-
-    let historicalType: PredictionTypeName
-    let harmonieType: PredictionTypeName
-    let epsType: PredictionTypeName
-
-    if (series === 'caudal') {
-      historicalType = 'FICT98.historical'
-      harmonieType = isEmbalse ? 'I.NAM.harmonie' : 'Q.NAM.harmonie'
-      epsType = isEmbalse ? 'I.NAM.ens.medio' : 'Q.NAM.ens'
-    } else {
-      historicalType = 'WI__01.historical'
-      harmonieType = 'P.harmonie.forecast'
-      epsType = 'P.ens.forecast'
-    }
+    const historicalType: PredictionTypeName = 'WI__01.historical'
+    const harmonieType: PredictionTypeName = 'P.harmonie.forecast'
+    const epsType: PredictionTypeName = 'P.ens.forecast'
 
     function latestDate(
       resp: Awaited<ReturnType<typeof getAvailablePredictionsService>>
@@ -437,11 +670,8 @@
         .sort((a, b) => b.localeCompare(a))[0]
     }
 
-    const HISTORICAL_RANGE_DAYS = 30
     const historicalEndDate = new Date().toISOString()
-    const historicalStartDate = new Date(
-      Date.now() - HISTORICAL_RANGE_DAYS * 24 * 60 * 60 * 1000
-    ).toISOString()
+    const historicalStartDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
 
     try {
       const [harmonieDates, epsDates] = await Promise.all([
@@ -468,26 +698,18 @@
             historicalStartDate,
             historicalEndDate
           ),
-          epsDateStr && series === 'caudal'
+          epsDateStr
             ? getPredictionsService(stationCode, epsType, epsDateStr, '10')
-            : epsDateStr
-              ? getPredictionsService(stationCode, epsType, epsDateStr, '10')
-              : Promise.resolve(undefined),
-          epsDateStr && series === 'caudal'
+            : Promise.resolve(undefined),
+          epsDateStr
             ? getPredictionsService(stationCode, epsType, epsDateStr, '25')
-            : epsDateStr
-              ? getPredictionsService(stationCode, epsType, epsDateStr, '25')
-              : Promise.resolve(undefined),
-          epsDateStr && series === 'caudal'
+            : Promise.resolve(undefined),
+          epsDateStr
             ? getPredictionsService(stationCode, epsType, epsDateStr, '75')
-            : epsDateStr
-              ? getPredictionsService(stationCode, epsType, epsDateStr, '75')
-              : Promise.resolve(undefined),
-          epsDateStr && series === 'caudal'
+            : Promise.resolve(undefined),
+          epsDateStr
             ? getPredictionsService(stationCode, epsType, epsDateStr, '90')
-            : epsDateStr
-              ? getPredictionsService(stationCode, epsType, epsDateStr, '90')
-              : Promise.resolve(undefined),
+            : Promise.resolve(undefined),
         ])
 
       if (requestId !== chartFetchId) return
@@ -518,7 +740,9 @@
       return
     }
 
-    void fetchChartData(payload.station.codigo, payload.series)
+    if (payload.series === 'precipitacion') {
+      void fetchChartData(payload.station.codigo, payload.series)
+    }
   })
 
   onBeforeUnmount(() => {
@@ -534,3 +758,19 @@
     router.replace({ query })
   }
 </script>
+
+<style scoped>
+  .chart-tab-root {
+    position: relative;
+  }
+
+  .chart-tab-overlay {
+    position: absolute;
+    inset: 0;
+  }
+
+  .chart-tab-panel--hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+</style>
