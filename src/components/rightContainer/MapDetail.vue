@@ -28,10 +28,12 @@
     type: 'subcuencas' | 'sistemas10' | 'zonasexpl' | 'meteoalerta'
     stations?: StationData[]
     selectedStationCode?: string | null
+    hoveredStationCode?: string | null
   }>()
 
   const emit = defineEmits<{
     (e: 'update:selectedStationCode', value: string | null): void
+    (e: 'update:hoveredStationCode', value: string | null): void
   }>()
 
   const route = useRoute()
@@ -40,6 +42,7 @@
   const map = shallowRef<L.Map | null>(null)
   let polygonLayer: L.GeoJSON | null = null
   let stationsLayer: L.GeoJSON | null = null
+  const markersByCode = new Map<string, L.Marker>()
 
   const { selectedBasemap } = useBasemap()
 
@@ -48,6 +51,7 @@
 
     map.value.removeLayer(stationsLayer)
     stationsLayer = null
+    markersByCode.clear()
   }
 
   function renderStationsLayer() {
@@ -68,6 +72,7 @@
         const featureCode = String(
           (feature.properties as Record<string, unknown>)?.stationCode ?? ''
         )
+        if (featureCode) markersByCode.set(featureCode, marker)
         if (selectedCode && featureCode === selectedCode) {
           marker.on('add', () => {
             marker
@@ -89,17 +94,23 @@
           })
 
           if (layer instanceof L.Marker) {
+            const featureCode = String(
+              (feature.properties as Record<string, unknown>)?.stationCode ?? ''
+            )
             layer.on({
               click: (e: L.LeafletMouseEvent) => {
                 L.DomEvent.stopPropagation(e)
-                const featureCode = String(
-                  (feature.properties as Record<string, unknown>)?.stationCode ?? ''
-                )
                 const willSelect = props.selectedStationCode !== featureCode
                 emit('update:selectedStationCode', willSelect ? featureCode : null)
               },
-              mouseover: () => layer.openPopup(),
-              mouseout: () => layer.closePopup(),
+              mouseover: () => {
+                layer.openPopup()
+                if (featureCode) emit('update:hoveredStationCode', featureCode)
+              },
+              mouseout: () => {
+                layer.closePopup()
+                emit('update:hoveredStationCode', null)
+              },
             })
           }
         }
@@ -211,6 +222,26 @@
   })
 
   watch(
+    () => props.hoveredStationCode,
+    (newCode, oldCode) => {
+      if (oldCode) {
+        markersByCode
+          .get(oldCode)
+          ?.getElement()
+          ?.querySelector('.saih-marker')
+          ?.classList.remove('saih-marker--hover')
+      }
+      if (newCode) {
+        markersByCode
+          .get(newCode)
+          ?.getElement()
+          ?.querySelector('.saih-marker')
+          ?.classList.add('saih-marker--hover')
+      }
+    }
+  )
+
+  watch(
     [() => props.stations, () => props.selectedStationCode],
     ([, newCode]) => {
       renderStationsLayer()
@@ -246,5 +277,12 @@
     box-shadow: 0 0 0 4px currentColor;
     z-index: 9999 !important;
     transform: scale(1.18);
+  }
+
+  .map-container :deep(.saih-marker--hover) {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 0 0 3px currentColor;
+    z-index: 9998 !important;
+    transform: scale(1.1);
   }
 </style>
