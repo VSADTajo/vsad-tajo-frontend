@@ -60,11 +60,29 @@
         </v-chip>
 
         <v-chip
+          v-if="feature.properties?.stationType"
           :prepend-icon="feature.properties?.tipo === 'SAIH' ? 'mdi-water' : 'mdi-map-marker'"
           size="x-small"
           class="chip-type font-weight-bold ml-2"
         >
-          {{ feature.properties?.stationType }}
+          {{ feature.properties.stationType }}
+        </v-chip>
+
+        <v-chip
+          v-if="feature.properties?.area"
+          size="x-small"
+          prepend-icon="mdi-vector-square"
+          class="chip-geo ml-2"
+        >
+          Area: {{ Number(feature.properties.area).toFixed(2) }} km²
+        </v-chip>
+        <v-chip
+          v-if="feature.properties?.perimetro"
+          size="x-small"
+          prepend-icon="mdi-ruler"
+          class="chip-geo ml-2"
+        >
+          Perimetro: {{ Number(feature.properties.perimetro).toFixed(2) }} km
         </v-chip>
 
         <v-btn
@@ -144,6 +162,14 @@
     color: white !important;
   }
   .chip-type :deep(.v-chip__prepend .v-icon) {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .chip-geo {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+  }
+  .chip-geo :deep(.v-chip__prepend .v-icon) {
     color: rgba(255, 255, 255, 0.8);
   }
 </style>

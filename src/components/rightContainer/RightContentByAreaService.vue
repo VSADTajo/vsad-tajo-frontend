@@ -1,9 +1,26 @@
 <template>
-  <v-card class="pa-2 bg-background" elevation="2">
-    <v-progress-linear v-if="loading" indeterminate />
+  <StationStickyHeader
+    :feature="displayFeature"
+    :loading="loadingFeature"
+    :header-style="topHeaderStyle"
+    @close="closeDrawer"
+  >
+    <v-chip
+      v-if="selectedRouteValue"
+      prepend-icon="mdi-shape"
+      variant="tonal"
+      color="white"
+      size="small"
+      class="font-weight-bold"
+    >
+      {{ kindLabel }}
+    </v-chip>
+  </StationStickyHeader>
 
-    <!-- Skeleton while loading -->
-    <template v-if="loading">
+  <v-card class="pa-2 bg-background" elevation="2">
+    <v-progress-linear v-if="loadingFeature" indeterminate />
+
+    <template v-if="loadingFeature">
       <div class="pa-4">
         <v-skeleton-loader type="heading" height="28" class="mb-2" />
         <v-skeleton-loader type="text" height="18" class="mb-2" />
@@ -12,64 +29,7 @@
     </template>
 
     <template v-else-if="selectedRouteValue">
-      <!-- Header estilo RightContentSaih -->
-      <v-card-title class="d-flex justify-space-between align-start pa-6" :style="headerStyle">
-        <div>
-          <div class="text-h6 font-weight-bold" style="color: white">
-            {{
-              props.kind === 'meteoalerta'
-                ? (feature?.properties?.nom_z ?? selectedRouteValue)
-                : (feature?.properties?.nombre ?? selectedRouteValue)
-            }}
-          </div>
-          <div
-            v-if="feature?.properties?.code"
-            class="text-caption"
-            style="color: rgba(255, 255, 255, 0.9)"
-          >
-            {{ feature.properties.name }}
-          </div>
-        </div>
-
-        <v-btn
-          icon="mdi-close"
-          variant="text"
-          size="small"
-          style="color: white"
-          @click="closeDrawer"
-        />
-      </v-card-title>
-
       <v-card-text>
-        <!-- Chip tipo -->
-        <div class="d-flex justify-space-between align-center flex-wrap ga-4 w-100">
-          <div class="mb-3 mt-2">
-            <v-chip
-              prepend-icon="mdi-shape"
-              :color="headerBaseColor"
-              variant="tonal"
-              size="small"
-              class="font-weight-bold"
-            >
-              {{ kindLabel }}
-            </v-chip>
-          </div>
-
-          <div
-            v-if="areaValue || perimeterValue"
-            class="mb-3 mt-2 d-flex flex-wrap ga-2 ms-auto justify-end"
-          >
-            <v-chip v-if="areaValue" size="small" variant="outlined">
-              Area: {{ Number(areaValue).toFixed(2) }} km2
-            </v-chip>
-            <v-chip v-if="perimeterValue" size="small" variant="outlined">
-              Perimetro: {{ Number(perimeterValue).toFixed(2) }} km
-            </v-chip>
-          </div>
-        </div>
-
-        <v-divider class="mb-3" />
-
         <v-row>
           <v-col cols="12" sm="4">
             <v-card>
@@ -81,19 +41,38 @@
               />
             </v-card>
           </v-col>
+
           <v-col cols="12" sm="8">
-            <v-card>
-              <ByAreaStationsTable
-                :stations="stations"
-                :loading="loadingStations"
-                :selected-station-code="selectedStationCode"
-                @update:selected-station-code="selectedStationCode = $event"
-              />
-            </v-card>
+            <v-tabs v-model="selectedTab" class="bg-surface">
+              <v-tab value="precipitacion">Precipitación Areal</v-tab>
+              <v-tab value="estaciones">Estaciones</v-tab>
+            </v-tabs>
+
+            <v-window v-model="selectedTab">
+              <v-window-item value="precipitacion">
+                <div
+                  class="d-flex align-center justify-center text-medium-emphasis pa-8"
+                  style="min-height: 350px"
+                >
+                  Próximamente
+                </div>
+              </v-window-item>
+
+              <v-window-item value="estaciones">
+                <v-card>
+                  <ByAreaStationsTable
+                    :stations="stations"
+                    :loading="loadingStations"
+                    :selected-station-code="selectedStationCode"
+                    @update:selected-station-code="selectedStationCode = $event"
+                  />
+                </v-card>
+              </v-window-item>
+            </v-window>
           </v-col>
         </v-row>
 
-        <v-row class="mt-2">
+        <v-row v-if="selectedTab === 'estaciones'" class="mt-2">
           <v-col cols="12">
             <v-card class="pa-2 bg-background" elevation="2">
               <template v-if="loadingChart || selectedChartData">
@@ -173,6 +152,7 @@
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import MapDetail from './MapDetail.vue'
   import ByAreaStationsTable from './ByAreaStationsTable.vue'
+  import StationStickyHeader from './StationStickyHeader.vue'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
@@ -203,13 +183,14 @@
   const router = useRouter()
   const selectionBus = useSubcuencaSelectionBus()
 
-  const loading = ref(false)
+  const loadingFeature = ref(false)
   const loadingStations = ref(false)
   const loadingChart = ref(false)
   const feature = ref<GeoJSON.Feature | null>(null)
   const stations = ref<StationData[]>([])
   const selectedStationCode = ref<string | null>(null)
   const selectedChartData = ref<DataStationPrediction | null>(null)
+  const selectedTab = ref<'precipitacion' | 'estaciones'>('precipitacion')
   const selectedSeries = ref<SubcuencaSeriesMode>('caudal')
   const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
   const selectedStationName = ref('')
@@ -270,21 +251,32 @@
 
   const headerDarkColor = computed(() => darkenHex(headerBaseColor.value ?? '#000000', 0.72))
 
-  const headerStyle = computed(() => ({
+  const topHeaderStyle = computed(() => ({
     background: `linear-gradient(135deg, ${headerBaseColor.value} 0%, ${headerDarkColor.value} 100%)`,
-    margin: '-8px -8px 0 -8px',
   }))
 
-  const areaValue = computed(() => {
-    const props = feature.value?.properties
-    if (!props?.area) return ''
-    return String(props.area)
-  })
-
-  const perimeterValue = computed(() => {
-    const props = feature.value?.properties
-    if (!props?.perimetro) return ''
-    return String(props.perimetro)
+  const displayFeature = computed<GeoJSON.Feature | null>(() => {
+    if (!feature.value) return null
+    const p = (feature.value.properties ?? {}) as Record<string, unknown>
+    let codigo: string
+    let nombre: string
+    if (props.kind === 'sistema') {
+      codigo = String(p.fid ?? selectedRouteValue.value ?? '')
+      nombre = String(p.sistema ?? '')
+    } else if (props.kind === 'zona') {
+      codigo = String(p.nombre ?? selectedRouteValue.value ?? '')
+      nombre = ''
+    } else if (props.kind === 'meteoalerta') {
+      codigo = String(p.nom_z ?? selectedRouteValue.value ?? '')
+      nombre = ''
+    } else {
+      codigo = String(p.code ?? selectedRouteValue.value ?? '')
+      nombre = String(p.name ?? '')
+    }
+    return {
+      ...feature.value,
+      properties: { ...p, codigo, nombre },
+    }
   })
 
   const layerConfig = computed(() => {
@@ -373,7 +365,7 @@
 
   async function loadFeature(code: string) {
     if (!layerConfig.value) return
-    loading.value = true
+    loadingFeature.value = true
     try {
       const fieldName =
         props.kind === 'sistema'
@@ -390,7 +382,7 @@
       feature.value = null
       stations.value = []
     } finally {
-      loading.value = false
+      loadingFeature.value = false
     }
   }
 

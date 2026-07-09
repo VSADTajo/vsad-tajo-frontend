@@ -1,22 +1,12 @@
 <template>
-  <v-card class="bg-background" elevation="0">
-    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-0">
-      <div class="d-flex align-center ga-2">
-        <span class="text-subtitle-1 font-weight-bold pl-4">Estaciones</span>
-        <v-progress-circular
-          v-if="loadingPredictions"
-          size="16"
-          width="2"
-          indeterminate
-          color="primary"
-        />
-      </div>
-
+  <v-card class="bg-surface" elevation="2">
+    <v-card-title class="d-flex flex-wrap align-center justify-space-between ga-2 py-2 px-2">
       <v-btn-toggle
         v-model="selectedSeries"
         mandatory
         density="compact"
         color="primary"
+        divided
         variant="outlined"
       >
         <v-btn value="caudal" size="small">Caudal</v-btn>
@@ -24,10 +14,24 @@
       </v-btn-toggle>
 
       <v-btn-toggle
+        v-if="selectedSeries === 'caudal'"
+        v-model="selectedTypeProvider"
+        mandatory
+        density="compact"
+        color="primary"
+        divided
+        variant="outlined"
+      >
+        <v-btn value="nam" size="small">NAM</v-btn>
+        <v-btn value="mike" size="small">MIKE</v-btn>
+      </v-btn-toggle>
+
+      <v-btn-toggle
         v-model="selectedProvider"
         mandatory
         density="compact"
         color="primary"
+        divided
         variant="outlined"
       >
         <v-btn value="harmonie" size="small">Harmonie</v-btn>
@@ -52,7 +56,7 @@
       class="stations-table"
       hover
       fixed-header
-      height="380"
+      height="332"
       :row-props="getRowProps"
       @click:row="onRowClick"
     >
@@ -180,6 +184,7 @@
 
   const selectedSeries = ref<DataSeries>('caudal')
   const selectedProvider = ref<DataProvider>('eps')
+  const selectedTypeProvider = ref<'nam' | 'mike'>('nam')
   const selectedRowCode = ref<string | null>(null)
   const loadingPredictions = ref(false)
   const predictionsByStation = ref<Record<string, HorizonValues>>({})
@@ -331,10 +336,16 @@
   )
 
   const rows = computed<StationForecastRow[]>(() =>
-    baseRows.value.map((base) => ({
-      ...base,
-      ...(predictionsByStation.value[base.codigo] ?? emptyHorizons()),
-    }))
+    baseRows.value
+      .filter(
+        (base) =>
+          selectedSeries.value === 'precipitacion' ||
+          ['AR', 'E', 'MC'].includes(base.tipo.toUpperCase())
+      )
+      .map((base) => ({
+        ...base,
+        ...(predictionsByStation.value[base.codigo] ?? emptyHorizons()),
+      }))
   )
 
   const headers = computed(() => [
