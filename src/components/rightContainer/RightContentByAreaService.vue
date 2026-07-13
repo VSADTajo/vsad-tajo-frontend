@@ -45,38 +45,52 @@
           </v-col>
 
           <v-col cols="12" sm="8">
-            <v-tabs v-model="selectedTab" class="bg-surface">
-              <v-tab value="precipitacion">Precipitación Areal</v-tab>
-              <v-tab value="estaciones">Estaciones</v-tab>
-            </v-tabs>
+            <template v-if="hasPrecipAreal">
+              <v-tabs v-model="selectedTab" class="bg-surface">
+                <v-tab value="precipitacion">Precipitación Areal</v-tab>
+                <v-tab value="estaciones">Estaciones</v-tab>
+              </v-tabs>
 
-            <v-window v-model="selectedTab">
-              <v-window-item value="precipitacion">
-                <div
-                  class="d-flex align-center justify-center text-medium-emphasis pa-8"
-                  style="min-height: 350px"
-                >
-                  Próximamente
-                </div>
-              </v-window-item>
-
-              <v-window-item value="estaciones">
-                <v-card>
-                  <ByAreaStationsTable
-                    :stations="stations"
-                    :loading="loadingStations"
-                    :selected-station-code="selectedStationCode"
-                    :hovered-station-code="hoveredStationCode"
-                    @update:selected-station-code="selectedStationCode = $event"
-                    @update:hovered-station-code="hoveredStationCode = $event"
+              <v-window v-model="selectedTab">
+                <v-window-item value="precipitacion">
+                  <PrecipitationsChart
+                    :data="{}"
+                    :height="380"
+                    :loading="false"
+                    mode="precipitations"
                   />
-                </v-card>
-              </v-window-item>
-            </v-window>
+                </v-window-item>
+
+                <v-window-item value="estaciones">
+                  <v-card>
+                    <ByAreaStationsTable
+                      :stations="stations"
+                      :loading="loadingStations"
+                      :selected-station-code="selectedStationCode"
+                      :hovered-station-code="hoveredStationCode"
+                      @update:selected-station-code="selectedStationCode = $event"
+                      @update:hovered-station-code="hoveredStationCode = $event"
+                    />
+                  </v-card>
+                </v-window-item>
+              </v-window>
+            </template>
+
+            <v-card v-else>
+              <ByAreaStationsTable
+                :stations="stations"
+                :loading="loadingStations"
+                :height="380"
+                :selected-station-code="selectedStationCode"
+                :hovered-station-code="hoveredStationCode"
+                @update:selected-station-code="selectedStationCode = $event"
+                @update:hovered-station-code="hoveredStationCode = $event"
+              />
+            </v-card>
           </v-col>
         </v-row>
 
-        <v-row v-if="selectedTab === 'estaciones'" class="mt-2">
+        <v-row v-if="!hasPrecipAreal || selectedTab === 'estaciones'" class="mt-2">
           <v-col cols="12">
             <v-card class="pa-2 bg-background" elevation="2">
               <template
@@ -113,7 +127,7 @@
                         >
                           <ForecastChartNew
                             v-if="mountedTabs.has('caudalNAM')"
-                            :data="caudalOnlyChartData"
+                            :data="caudalChartData"
                             :is-embalse="true"
                             :height="470"
                             :loading="loadingCaudales"
@@ -334,23 +348,26 @@
     defineProps<{
       kind?: 'subcuenca' | 'sistema' | 'zona' | 'meteoalerta'
     }>(),
-    {
-      kind: 'subcuenca',
-    }
+    { kind: 'subcuenca' }
   )
 
   const route = useRoute()
   const router = useRouter()
   const selectionBus = useSubcuencaSelectionBus()
 
+  // ── State ─────────────────────────────────────────────────────────────────
+
   const loadingFeature = ref(false)
   const loadingStations = ref(false)
   const loadingChart = ref(false)
+
   const feature = ref<GeoJSON.Feature | null>(null)
   const stations = ref<StationData[]>([])
+
   const selectedStationCode = ref<string | null>(null)
   const hoveredStationCode = ref<string | null>(null)
   const selectedChartData = ref<DataStationPrediction | null>(null)
+
   const selectedTab = ref<'precipitacion' | 'estaciones'>('precipitacion')
   const selectedSeries = ref<SubcuencaSeriesMode>('caudal')
   const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
@@ -361,8 +378,11 @@
   const selectedCaudalTypeChartTab = ref<'nam' | 'mike' | 'combined'>('nam')
   const mountedTabs = reactive(new Set<string>(['caudalNAM', 'nam']))
   const thresholdFocusRequest = ref<null>(null)
+
   let stationsRequestId = 0
   let chartFetchId = 0
+
+  // ── Computeds ─────────────────────────────────────────────────────────────
 
   const routeKey = computed(() => {
     if (props.kind === 'sistema') return 'sistema'
@@ -370,10 +390,14 @@
     if (props.kind === 'meteoalerta') return 'meteoalerta'
     return 'subcuenca'
   })
+
   const selectedRouteValue = computed(() => {
     const value = route.query[routeKey.value]
     return typeof value === 'string' ? value : undefined
   })
+
+  const hasPrecipAreal = computed(() => props.kind === 'subcuenca' || props.kind === 'sistema')
+
   const kindLabel = computed(() => {
     if (props.kind === 'sistema') return 'Sistema'
     if (props.kind === 'zona') return 'Zona'
@@ -386,6 +410,23 @@
     if (props.kind === 'zona') return 'zonasexpl'
     if (props.kind === 'meteoalerta') return 'meteoalerta'
     return 'subcuencas'
+  })
+
+  const wfsFieldName = computed(() => {
+    if (props.kind === 'sistema') return 'sistema'
+    if (props.kind === 'meteoalerta') return 'cod_z'
+    if (props.kind === 'zona') return 'ogc_fid'
+    return 'code'
+  })
+
+  const layerConfig = computed(() => {
+    const idMap: Record<string, string> = {
+      sistema: 'sistemas10',
+      zona: 'zonasexpl',
+      meteoalerta: 'meteoalerta',
+      subcuenca: 'subcuencas',
+    }
+    return dynamicLayersConfig.find((l) => l.id === idMap[props.kind]) as WFSLayerConfig | undefined
   })
 
   const headerBaseColor = computed(() => {
@@ -405,22 +446,20 @@
             .join('')
         : value
     const num = Number.parseInt(full, 16)
-
     return [(num >> 16) & 255, (num >> 8) & 255, num & 255]
   }
 
   function darkenHex(hex: string, factor: number): string {
     const [r, g, b] = hexToRgb(hex)
     const clamp = (n: number) => Math.max(0, Math.min(255, Math.round(n)))
-
     return `rgb(${clamp(r * factor)}, ${clamp(g * factor)}, ${clamp(b * factor)})`
   }
 
-  const headerDarkColor = computed(() => darkenHex(headerBaseColor.value ?? '#000000', 0.72))
-
-  const topHeaderStyle = computed(() => ({
-    background: `linear-gradient(135deg, ${headerBaseColor.value} 0%, ${headerDarkColor.value} 100%)`,
-  }))
+  const topHeaderStyle = computed(() => {
+    const base = headerBaseColor.value
+    const dark = darkenHex(base, 0.72)
+    return { background: `linear-gradient(135deg, ${base} 0%, ${dark} 100%)` }
+  })
 
   const displayFeature = computed<GeoJSON.Feature | null>(() => {
     if (!feature.value) return null
@@ -440,42 +479,16 @@
       codigo = String(p.code ?? selectedRouteValue.value ?? '')
       nombre = String(p.name ?? '')
     }
-    return {
-      ...feature.value,
-      properties: { ...p, codigo, nombre },
-    }
-  })
-
-  const layerConfig = computed(() => {
-    const idMap: Record<string, string> = {
-      sistema: 'sistemas10',
-      zona: 'zonasexpl',
-      meteoalerta: 'meteoalerta',
-      subcuenca: 'subcuencas',
-    }
-
-    return dynamicLayersConfig.find((l) => l.id === idMap[props.kind]) as WFSLayerConfig | undefined
+    return { ...feature.value, properties: { ...p, codigo, nombre } }
   })
 
   const currentStationThresholds = computed<Record<string, unknown> | undefined>(() => {
     if (!selectedStationCode.value) return undefined
     const station = stations.value.find((s) => s.stationCode === selectedStationCode.value)
-
     return (station?.threshold ?? null) as Record<string, unknown> | undefined
   })
 
-  // ── Caudal chart (useCaudalPredictions) ────────────────────────────────────
-
-  watch(selectedEmbalseChartTab, (tab) => mountedTabs.add(tab))
-  watch(selectedCaudalTypeChartTab, (tab) => mountedTabs.add(tab))
-
-  watch(selectedStationCode, () => {
-    selectedEmbalseChartTab.value = 'caudalNAM'
-    selectedCaudalTypeChartTab.value = 'nam'
-    mountedTabs.clear()
-    mountedTabs.add('caudalNAM')
-    mountedTabs.add('nam')
-  })
+  // ── Caudal predictions ────────────────────────────────────────────────────
 
   const isEmbalseForChart = computed(
     () =>
@@ -524,17 +537,6 @@
     forecastEnsP75: caudalForecastEnsP75.value,
   }))
 
-  const caudalOnlyChartData = computed(() => ({
-    historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
-    forecastHarmonie: caudalForecastHarmonie.value,
-    forecastEpsat: caudalForecastEpstat.value,
-    forecastEnsP10: caudalForecastEnsP10.value,
-    forecastEnsP25: caudalForecastEnsP25.value,
-    forecastEnsP90: caudalForecastEnsP90.value,
-    forecastEnsP75: caudalForecastEnsP75.value,
-  }))
-
   const volumenOnlyChartData = computed(() => ({
     historicalVolume: embalseVolumeHistorical.value,
   }))
@@ -549,111 +551,96 @@
 
   function handleThresholdFocusComplete(): void {}
 
-  function getStationsLookupValueFromFeature(targetFeature: GeoJSON.Feature | null): string {
-    const featureProps = (targetFeature?.properties ?? {}) as Record<string, unknown>
-    let value: unknown
-    if (props.kind === 'sistema') {
-      value =
-        featureProps.sistema ?? featureProps.systemName ?? featureProps.name ?? featureProps.nombre
-    } else if (props.kind === 'zona') {
-      value = featureProps.ogc_fid != null ? String(featureProps.ogc_fid) : ''
-    } else if (props.kind === 'meteoalerta') {
-      value = featureProps.cod_z != null ? String(featureProps.cod_z) : ''
-    } else {
-      value =
-        featureProps.cuencasname ??
-        featureProps.cuencasName ??
-        featureProps.name ??
-        featureProps.nombre
+  // ── Watchers ──────────────────────────────────────────────────────────────
+
+  watch(selectedEmbalseChartTab, (tab) => mountedTabs.add(tab))
+  watch(selectedCaudalTypeChartTab, (tab) => mountedTabs.add(tab))
+
+  watch(selectedStationCode, () => {
+    selectedEmbalseChartTab.value = 'caudalNAM'
+    selectedCaudalTypeChartTab.value = 'nam'
+    mountedTabs.clear()
+    mountedTabs.add('caudalNAM')
+    mountedTabs.add('nam')
+  })
+
+  watch(
+    selectedRouteValue,
+    (code) => {
+      selectedStationCode.value = null
+      selectedChartData.value = null
+      if (code) {
+        void loadFeature(code)
+      } else {
+        feature.value = null
+        stations.value = []
+        loadingStations.value = false
+      }
+    },
+    { immediate: true }
+  )
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+
+  function stationsSearchParams(
+    feat: GeoJSON.Feature | null
+  ): Parameters<typeof getStationsByAreaService>[0] | null {
+    const p = (feat?.properties ?? {}) as Record<string, unknown>
+    if (props.kind === 'subcuenca') {
+      const name = String(p.cuencasname ?? p.cuencasName ?? p.name ?? p.nombre ?? '').trim()
+      return name ? { subBasinName: name } : null
     }
-
-    if (typeof value !== 'string') return ''
-
-    return value.trim()
+    if (props.kind === 'sistema') {
+      const name = String(p.sistema ?? p.systemName ?? p.name ?? p.nombre ?? '').trim()
+      return name ? { sistemaName: name } : null
+    }
+    if (props.kind === 'zona') {
+      const id = p.ogc_fid != null ? String(p.ogc_fid).trim() : ''
+      return id ? { zonaExplOgcFid: id } : null
+    }
+    const id = p.cod_z != null ? String(p.cod_z).trim() : ''
+    return id ? { cod_z: id } : null
   }
 
-  async function loadStations(lookupValue: string): Promise<void> {
+  async function loadStations(feat: GeoJSON.Feature | null): Promise<void> {
     const requestId = ++stationsRequestId
+    const params = stationsSearchParams(feat)
 
-    if (!lookupValue) {
-      loadingStations.value = false
+    if (!params) {
       stations.value = []
+      loadingStations.value = false
       return
     }
 
     loadingStations.value = true
-
     try {
-      let searchParams: Parameters<typeof getStationsByAreaService>[0]
-      if (props.kind === 'sistema') {
-        searchParams = { sistemaName: lookupValue }
-      } else if (props.kind === 'zona') {
-        searchParams = { zonaExplOgcFid: lookupValue }
-      } else if (props.kind === 'meteoalerta') {
-        searchParams = { cod_z: lookupValue }
-      } else {
-        searchParams = { subBasinName: lookupValue }
-      }
-
-      const items = await getStationsByAreaService(searchParams)
-
-      if (requestId !== stationsRequestId) {
-        return
-      }
-
+      const items = await getStationsByAreaService(params)
+      if (requestId !== stationsRequestId) return
       stations.value = items
     } catch {
-      if (requestId !== stationsRequestId) {
-        return
-      }
-
+      if (requestId !== stationsRequestId) return
       stations.value = []
     } finally {
-      if (requestId === stationsRequestId) {
-        loadingStations.value = false
-      }
+      if (requestId === stationsRequestId) loadingStations.value = false
     }
   }
 
-  async function loadFeature(code: string) {
+  async function loadFeature(code: string): Promise<void> {
     if (!layerConfig.value) return
+    feature.value = null
+    stations.value = []
     loadingFeature.value = true
     try {
-      const fieldName =
-        props.kind === 'sistema'
-          ? 'sistema'
-          : props.kind === 'meteoalerta'
-            ? 'cod_z'
-            : props.kind === 'zona'
-              ? 'ogc_fid'
-              : 'code'
-
-      feature.value = await getWFSFeatureById(layerConfig.value, fieldName, code)
-      await loadStations(getStationsLookupValueFromFeature(feature.value))
+      feature.value = await getWFSFeatureById(layerConfig.value, wfsFieldName.value, code)
+      await loadStations(feature.value)
     } catch {
-      feature.value = null
-      stations.value = []
+      // feature.value and stations.value already reset above
     } finally {
       loadingFeature.value = false
     }
   }
 
-  watch(
-    selectedRouteValue,
-    (code) => {
-      feature.value = null
-      stations.value = []
-      loadingStations.value = false
-      selectedStationCode.value = null
-      selectedChartData.value = null
-      if (code) loadFeature(code)
-    },
-    { immediate: true }
-  )
-
-  async function fetchChartData(stationCode: string, series: SubcuencaSeriesMode): Promise<void> {
-    if (series === 'caudal') return
-
+  async function fetchChartData(stationCode: string): Promise<void> {
     const requestId = ++chartFetchId
     loadingChart.value = true
     selectedChartData.value = null
@@ -670,8 +657,9 @@
         .sort((a, b) => b.localeCompare(a))[0]
     }
 
-    const historicalEndDate = new Date().toISOString()
-    const historicalStartDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    const now = new Date()
+    const historicalEndDate = now.toISOString()
+    const historicalStartDate = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString()
 
     try {
       const [harmonieDates, epsDates] = await Promise.all([
@@ -730,6 +718,8 @@
     }
   }
 
+  // ── Bus & lifecycle ───────────────────────────────────────────────────────
+
   const stopBusListener = selectionBus.on((payload) => {
     selectedSeries.value = payload.series
     selectedStationName.value = payload.station?.nombre ?? ''
@@ -741,22 +731,20 @@
     }
 
     if (payload.series === 'precipitacion') {
-      void fetchChartData(payload.station.codigo, payload.series)
+      void fetchChartData(payload.station.codigo)
     }
-  })
-
-  onBeforeUnmount(() => {
-    stopBusListener()
   })
 
   function closeDrawer() {
     if (!selectedRouteValue.value) return
-
     const query = { ...route.query }
     delete query[routeKey.value]
-
     router.replace({ query })
   }
+
+  onBeforeUnmount(() => {
+    stopBusListener()
+  })
 </script>
 
 <style scoped>

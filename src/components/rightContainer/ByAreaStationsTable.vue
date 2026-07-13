@@ -68,7 +68,7 @@
       class="stations-table"
       hover
       fixed-header
-      height="332"
+      :height="height"
       :row-props="getRowProps"
       @click:row="onRowClick"
     >
@@ -189,11 +189,13 @@
       loading?: boolean
       selectedStationCode?: string | null
       hoveredStationCode?: string | null
+      height?: number
     }>(),
     {
       loading: false,
       selectedStationCode: null,
       hoveredStationCode: null,
+      height: 332,
     }
   )
 
