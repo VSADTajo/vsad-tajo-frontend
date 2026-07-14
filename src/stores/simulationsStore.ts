@@ -1,8 +1,12 @@
-﻿import { defineStore } from 'pinia'
+import { defineStore } from 'pinia'
+import { getSimulationResultsService } from '@/services/simulations'
+import type { SimulationResultsResponse } from '@/types/Simulations'
 
 export const useSimulationsStore = defineStore('simulations', {
   state: () => ({
     activeSimulationId: null as string | null,
+    simulationResults: null as SimulationResultsResponse | null,
+    loadingResults: false,
     historyOpen: false,
     panelActive: false,
     mapClickedStationCode: null as string | null,
@@ -14,8 +18,23 @@ export const useSimulationsStore = defineStore('simulations', {
     },
   },
   actions: {
-    setActiveSimulation(id: string | null) {
+    async setActiveSimulation(id: string | null) {
       this.activeSimulationId = id
+      this.simulationResults = null
+
+      if (!id) {
+        this.loadingResults = false
+        return
+      }
+
+      this.loadingResults = true
+      try {
+        this.simulationResults = await getSimulationResultsService(id)
+      } catch {
+        this.simulationResults = null
+      } finally {
+        this.loadingResults = false
+      }
     },
     toggleHistory() {
       this.historyOpen = !this.historyOpen

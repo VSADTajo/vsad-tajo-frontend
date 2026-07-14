@@ -396,7 +396,9 @@
     return typeof value === 'string' ? value : undefined
   })
 
-  const hasPrecipAreal = computed(() => props.kind === 'subcuenca' || props.kind === 'sistema')
+  const hasPrecipAreal = computed(
+    () => props.kind === 'subcuenca' || props.kind === 'sistema' || props.kind === 'meteoalerta'
+  )
 
   const kindLabel = computed(() => {
     if (props.kind === 'sistema') return 'Sistema'
@@ -599,7 +601,7 @@
       return id ? { zonaExplOgcFid: id } : null
     }
     const id = p.cod_z != null ? String(p.cod_z).trim() : ''
-    return id ? { cod_z: id } : null
+    return id ? { meteoalertaZonaCode: id } : null
   }
 
   async function loadStations(feat: GeoJSON.Feature | null): Promise<void> {

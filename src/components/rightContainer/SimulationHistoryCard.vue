@@ -1,5 +1,6 @@
 ﻿<template>
   <v-card
+    v-bind="$attrs"
     variant="outlined"
     class="sim-card bg-surface mt-2"
     :class="{
@@ -109,6 +110,7 @@
 
 <script lang="ts" setup>
   import { ref, watch, nextTick, computed } from 'vue'
+  defineOptions({ inheritAttrs: false })
   import type { SimulationRecord } from '@/types/Simulations'
   import { formatDateDDMMYYYY, formatDateDDMM } from '@/utils/dates'
   import { deleteSimulationService } from '@/services/general'
