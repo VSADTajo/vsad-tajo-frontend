@@ -136,7 +136,7 @@
 
         <v-row v-if="totalObservedPrecipMm !== null">
           <v-col cols="6" class="text-caption text-medium-emphasis align-center">
-            Acumulado 10d
+            Acumulado {{ accumDays }}d
           </v-col>
 
           <v-col cols="6" class="text-right font-weight-medium pr-2 align-center">
@@ -183,6 +183,7 @@
       embalseVolumeHistorical?: StationPrediction
       precipitationsHistorical?: StationPrediction
       thresholds?: Record<string, unknown>
+      accumDays?: number
     }>(),
 
     {
@@ -194,6 +195,7 @@
       embalseVolumeHistorical: undefined,
       precipitationsHistorical: undefined,
       thresholds: undefined,
+      accumDays: 10,
     }
   )
 
@@ -365,7 +367,11 @@
 
     if (!results?.length) return null
 
-    const vals = results.map((r) => Number(r.value)).filter((v) => Number.isFinite(v))
+    const cutoff = Date.now() - props.accumDays * 24 * 60 * 60 * 1000
+    const vals = results
+      .filter((r) => new Date(r.date).getTime() >= cutoff)
+      .map((r) => Number(r.value))
+      .filter((v) => Number.isFinite(v))
 
     return vals.length ? vals.reduce((a, b) => a + b, 0) : null
   })

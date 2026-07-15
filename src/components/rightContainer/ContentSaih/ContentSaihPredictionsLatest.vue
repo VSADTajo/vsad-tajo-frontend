@@ -47,7 +47,7 @@
       <div v-if="selectedModel === 'harmonie'">
         <div class="text-caption font-weight-bold text-primary mb-1 mt-2 pl-2">Harmonie</div>
 
-        <v-row>
+        <v-row v-if="!hideDateSelector">
           <v-col cols="12" class="text-caption text-medium-emphasis pl-4">Fecha simulacion</v-col>
 
           <v-col cols="12" class="text-right font-weight-medium rounded px-4 pt-0">
@@ -137,7 +137,7 @@
       <div v-else>
         <div class="text-caption font-weight-bold text-primary mb-1 mt-2 pl-2">EPS Medio</div>
 
-        <v-row>
+        <v-row v-if="!hideDateSelector">
           <v-col cols="12" class="text-caption text-medium-emphasis pl-4">Fecha simulacion</v-col>
 
           <v-col cols="12" class="text-right font-weight-medium rounded px-4 pt-0">
@@ -254,6 +254,8 @@
     loadingHarmonie?: boolean
 
     loadingEps?: boolean
+
+    hideDateSelector?: boolean
 
     caudalForecastHarmonie?: StationPrediction
 

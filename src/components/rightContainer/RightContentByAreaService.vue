@@ -54,10 +54,11 @@
               <v-window v-model="selectedTab">
                 <v-window-item value="precipitacion">
                   <PrecipitationsChart
-                    :data="{}"
-                    :height="380"
+                    :data="precipArealData"
+                    :height="415"
                     :loading="false"
                     mode="precipitations"
+                    class="bg-surface border-radius-4"
                   />
                 </v-window-item>
 
@@ -87,6 +88,46 @@
                 @update:hovered-station-code="hoveredStationCode = $event"
               />
             </v-card>
+          </v-col>
+        </v-row>
+
+        <v-row
+          v-if="hasPrecipAreal && selectedTab === 'precipitacion'"
+          class="mt-2"
+          align="stretch"
+        >
+          <v-col cols="12" sm="3" class="d-flex flex-column">
+            <ContentObservedData
+              class="flex-grow-1"
+              active-tab="precipitaciones"
+              :loading="false"
+              :precipitations-historical="precipArealData.historical"
+              :accum-days="3"
+            />
+          </v-col>
+          <v-col cols="12" sm="6" class="d-flex flex-column">
+            <ContentSaihCaudalMatrix
+              class="flex-grow-1"
+              :forecast-harmonie="precipArealData.forecastHarmonie"
+              :forecast-epsat="precipArealData.forecastEpsat"
+              :observed="precipArealData.historical"
+              :days="6"
+              :loading="false"
+              :no-thresholds="true"
+              title="Matriz de precipitación (6 dias / 6h)"
+            />
+          </v-col>
+          <v-col cols="12" sm="3" class="d-flex flex-column">
+            <ContentSaihPredictionsLatest
+              class="flex-grow-1"
+              active-tab="precipitaciones"
+              :loading="false"
+              :loading-harmonie="false"
+              :loading-eps="false"
+              :hide-date-selector="true"
+              :precipitations-forecast-harmonie="precipArealData.forecastHarmonie"
+              :precipitations-forecast-epstat="precipArealData.forecastEpsat"
+            />
           </v-col>
         </v-row>
 
@@ -327,6 +368,9 @@
   import MapDetail from './MapDetail.vue'
   import ByAreaStationsTable from './ByAreaStationsTable.vue'
   import StationStickyHeader from './StationStickyHeader.vue'
+  import ContentObservedData from './ContentSaih/ContentObservedData.vue'
+  import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
+  import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
@@ -337,6 +381,10 @@
     getPredictionsService,
   } from '@/services/predictions'
   import { getStationsByAreaService } from '@/services/general'
+  import type { PredictionResult } from '@/types/Predictions'
+  import epsJson from '@/MOCKUPS/json/tagus_eps_Pareal_202607140000.json'
+  import harmonieJson from '@/MOCKUPS/json/tagus_harmonie_Pareal_202607140000.json'
+  import saihJson from '@/MOCKUPS/json/tagus_saih_Pareal_202607140000.json'
   import {
     subcuencasStyle,
     sistemas10Style,
@@ -552,6 +600,75 @@
   }))
 
   function handleThresholdFocusComplete(): void {}
+
+  // ── Precipitación Areal (mockup FEWS data) ────────────────────────────────
+
+  type FewsEvent = { date: string; time: string; value: string; flag: string }
+  type FewsTimeSeries = {
+    header: { locationId: string; parameterId: string; missVal: string }
+    events: FewsEvent[]
+  }
+  type FewsFile = { timeSeries: FewsTimeSeries[] }
+
+  const precipArealLocationId = computed<string | null>(() => {
+    if (!feature.value) return null
+    const p = (feature.value.properties ?? {}) as Record<string, unknown>
+    if (props.kind === 'sistema') {
+      const fid = p.fid ?? p.id
+      return fid != null ? `Sistema.Tajo.${fid}` : null
+    }
+    const code = p.code ?? p.cuencasname ?? p.name
+    return code != null ? `Cuenca.NAM.${code}` : null
+  })
+
+  function fewsToStationPrediction(
+    file: FewsFile,
+    locationId: string,
+    parameterId: string
+  ): import('@/types/Predictions').StationPrediction | undefined {
+    const series = file.timeSeries.find(
+      (s) => s.header.locationId === locationId && s.header.parameterId === parameterId
+    )
+    if (!series) return undefined
+
+    const missVal = series.header.missVal
+    const results: PredictionResult[] = series.events
+      .filter((e) => e.value !== missVal)
+      .map((e, i) => ({
+        id: i,
+        date: `${e.date}T${e.time}Z`,
+        value: parseFloat(e.value),
+        flag: parseInt(e.flag),
+      }))
+
+    return {
+      id: `${locationId}-${parameterId}`,
+      stationId: locationId,
+      stationName: locationId,
+      predictionTypeName: parameterId,
+      simulationDate: new Date().toISOString(),
+      predictionDate: new Date().toISOString(),
+      predictionProvider: 'FEWS',
+      predictedBy: 'mockup',
+      results,
+    }
+  }
+
+  const precipArealData = computed<DataStationPrediction>(() => {
+    const locId = precipArealLocationId.value
+    if (!locId) return {}
+
+    const suffix = props.kind === 'sistema' ? 'sis10' : 'subcNAM'
+    const saihFile = saihJson as unknown as FewsFile
+    const harmonieFile = harmonieJson as unknown as FewsFile
+    const epsFile = epsJson as unknown as FewsFile
+
+    return {
+      historical: fewsToStationPrediction(saihFile, locId, `P.areal.obs.${suffix}.1h.v`),
+      forecastHarmonie: fewsToStationPrediction(harmonieFile, locId, `P.areal.harmonie.${suffix}`),
+      forecastEpsat: fewsToStationPrediction(epsFile, locId, `P.areal.ens.${suffix}.Med`),
+    }
+  })
 
   // ── Watchers ──────────────────────────────────────────────────────────────
 
