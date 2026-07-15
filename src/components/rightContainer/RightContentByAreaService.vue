@@ -394,7 +394,7 @@
 
   const props = withDefaults(
     defineProps<{
-      kind?: 'subcuenca' | 'sistema' | 'zona' | 'meteoalerta'
+      kind?: 'subcuenca' | 'sistema' | 'zona' | 'meteoalerta' | 'comarca'
     }>(),
     { kind: 'subcuenca' }
   )
@@ -436,6 +436,7 @@
     if (props.kind === 'sistema') return 'sistema'
     if (props.kind === 'zona') return 'zona'
     if (props.kind === 'meteoalerta') return 'meteoalerta'
+    if (props.kind === 'comarca') return 'comarca'
     return 'subcuenca'
   })
 
