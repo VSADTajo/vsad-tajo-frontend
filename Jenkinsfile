@@ -66,9 +66,22 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
+                    // docker rm is async: it can return "removal already in
+                    // progress" while a previous cleanup is still running, and
+                    // the immediate `docker run` then fails with "name already
+                    // in use". Force-remove and wait until the container is
+                    // actually gone before recreating it.
                     sh """
-                        docker stop ${APP_NAME} || true
-                        docker rm ${APP_NAME} || true
+                        docker rm -f ${APP_NAME} 2>/dev/null || true
+                        for i in \$(seq 1 30); do
+                            docker inspect ${APP_NAME} >/dev/null 2>&1 || break
+                            echo "Waiting for ${APP_NAME} to be fully removed..."
+                            sleep 1
+                        done
+                        if docker inspect ${APP_NAME} >/dev/null 2>&1; then
+                            echo "Container ${APP_NAME} still present after 30s — aborting deploy" >&2
+                            exit 1
+                        fi
                         docker run -d \
                             --name ${APP_NAME} \
                             --network infra-network \
