@@ -1,4 +1,33 @@
-﻿export type SimulationOperation = {
+﻿export type SimulationResultPrediction = {
+  id: string
+  stationId: string
+  stationName: string
+  predictionTypeId: string
+  predictionTypeName: string
+  predictionTypeUnit: string
+  percentile: number | null
+  predictionProvider: string
+  predictedBy: string
+  predictionDate: string
+  predictionStartDate: string
+  predictionEndDate: string
+  results: Array<{ date: string; value: number; flag: number }>
+}
+
+export type SimulationResultsResponse = {
+  simulation: {
+    id: string
+    simulationDate: string
+    status: SimulationStatus
+    type: string
+    dataOrigin: string
+    createdAt: string
+    updatedAt: string
+  }
+  predictions: SimulationResultPrediction[]
+}
+
+export type SimulationOperation = {
   caudalSalida: number
   fechaInicio: Date
   fechaFin: Date

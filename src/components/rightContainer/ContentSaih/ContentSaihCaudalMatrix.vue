@@ -80,10 +80,12 @@
     forecastEnsP90?: StationPrediction
     forecastMikeHarmonie?: StationPrediction
     forecastMikeEpsat?: StationPrediction
+    observed?: StationPrediction
     thresholds?: Record<string, unknown>
     loading?: boolean
     title?: string
     noThresholds?: boolean
+    days?: number
   }>()
 
   const valueMode = ref<ValueMode>('medio')
@@ -100,8 +102,12 @@
   const isCombinedMode = computed(() => !!(props.forecastMikeHarmonie || props.forecastMikeEpsat))
 
   const rowDefinitions = computed<RowDefinition[]>(() => {
+    const observedRow: RowDefinition[] = props.observed
+      ? [{ id: 'observed', label: 'Observado', prediction: props.observed }]
+      : []
     if (isCombinedMode.value) {
       return [
+        ...observedRow,
         { id: 'namHarmonie', label: 'NAM Harmonie', prediction: props.forecastHarmonie },
         { id: 'namEps', label: 'NAM EPS Medio', prediction: props.forecastEpsat },
         { id: 'mikeHarmonie', label: 'MIKE Harmonie', prediction: props.forecastMikeHarmonie },
@@ -109,6 +115,7 @@
       ]
     }
     return [
+      ...observedRow,
       { id: 'harmonie', label: 'Harmonie', prediction: props.forecastHarmonie },
       { id: 'eps', label: 'EPS medio', prediction: props.forecastEpsat },
       { id: 'p10', label: 'EPS P10', prediction: props.forecastEnsP10 },
@@ -184,7 +191,7 @@
   })
 
   const timeColumns = computed(() => {
-    return allDates.value.slice(0, 28)
+    return allDates.value.slice(0, (props.days ?? 7) * 4)
   })
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {

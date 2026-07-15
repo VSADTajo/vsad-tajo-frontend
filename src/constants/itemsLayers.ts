@@ -7,11 +7,11 @@ export const zonasLayers: LayerNode[] = [
   },
   {
     id: 'sistemas10',
-    title: 'Sistemas 10',
+    title: 'Sistemas Explotación',
   },
   {
     id: 'zonasexpl',
-    title: 'Zonas Expl',
+    title: 'Zonas Explotación',
   },
   {
     id: 'meteoalerta',
