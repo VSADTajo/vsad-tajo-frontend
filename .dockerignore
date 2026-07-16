@@ -14,3 +14,6 @@
 !nginx.conf
 !eslint.config.js
 !env.d.ts
+
+# Runtime config entrypoint (envsubst)
+!docker-entrypoint.sh

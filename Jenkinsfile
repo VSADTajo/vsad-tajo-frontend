@@ -4,8 +4,6 @@ pipeline {
     environment {
         APP_NAME     = 'vsad-tajo-frontend'
         APP_PORT     = '8080'
-        VITE_GEOSERVER_URL='http://65.21.97.113:443/geoserver'
-        VITE_API_URL='http://65.21.97.113'
         NODE_VERSION = '22'
     }
 
@@ -50,31 +48,33 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                script {
-                    sh """
-                        docker build \
-                            --target prod \
-                            --build-arg VITE_GEOSERVER_URL=${VITE_GEOSERVER_URL} \
-                            --build-arg VITE_API_URL=${VITE_API_URL} \
-                            -t ${APP_NAME}:${IMAGE_TAG} \
-                            .
-                    """
-                }
+                // No --build-arg for URLs: the image bakes runtime placeholders
+                // (see Dockerfile + docker-entrypoint.sh) so one image works on any
+                // host. Real URLs are injected at start via API_URL / GEOSERVER_URL.
+                sh """
+                    DOCKER_BUILDKIT=1 docker build \
+                        --target prod \
+                        -t ${APP_NAME}:${IMAGE_TAG} \
+                        .
+                """
             }
         }
 
-        stage('Deploy') {
+        // Publish the image to GHCR, then redeploy it in place with the live
+        // container's exact config (verbatim, auto-rollback). Replaces the old
+        // local `docker run`. Deploy scripts live in the Jenkins home
+        // (/var/jenkins_home/deploy) — see docs/jenkins-ghcr-deploy.md.
+        stage('Publish & Deploy') {
+            when { branch 'main' }
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: 'ghcr',
+                                  usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')]) {
                     sh """
-                        docker stop ${APP_NAME} || true
-                        docker rm ${APP_NAME} || true
-                        docker run -d \
-                            --name ${APP_NAME} \
-                            --network infra-network \
-                            --restart unless-stopped \
-                            -p ${APP_PORT}:80 \
-                            ${APP_NAME}:${IMAGE_TAG}
+                        SERVICE=${APP_NAME} \
+                        LOCAL_IMAGE=${APP_NAME}:${IMAGE_TAG} \
+                        REGISTRY=ghcr.io/vsadtajo \
+                        TAG=${IMAGE_TAG} \
+                        bash /var/jenkins_home/deploy/publish-and-deploy.sh
                     """
                 }
             }
