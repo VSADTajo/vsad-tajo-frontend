@@ -530,7 +530,17 @@
       codigo = String(p.code ?? selectedRouteValue.value ?? '')
       nombre = String(p.name ?? '')
     }
-    return { ...feature.value, properties: { ...p, codigo, nombre } }
+    let extraProps: Record<string, unknown> = {}
+    if (props.kind === 'sistema' || props.kind === 'zona') {
+      extraProps = { area: p.areakm2 ?? undefined, perimetro: p.perkm ?? undefined }
+    } else if (props.kind === 'meteoalerta') {
+      extraProps = {
+        area: p.area_km2 ?? undefined,
+        ccaa: p.nom_ccaa ?? undefined,
+        provincia: p.nom_prov ?? undefined,
+      }
+    }
+    return { ...feature.value, properties: { ...p, codigo, nombre, ...extraProps } }
   })
 
   const currentStationThresholds = computed<Record<string, unknown> | undefined>(() => {
@@ -752,6 +762,7 @@
     loadingFeature.value = true
     try {
       feature.value = await getWFSFeatureById(layerConfig.value, wfsFieldName.value, code)
+      console.log('[feature properties]', feature.value?.properties)
       await loadStations(feature.value)
     } catch {
       // feature.value and stations.value already reset above
