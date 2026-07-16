@@ -1,6 +1,5 @@
 ﻿import type { SearchResponse, SearchResult } from '@/types/Search'
 import type { StationData, StationsApiResponse } from '@/utils/stationsToGeoJSON'
-import type { SimulationRecord } from '@/types/Simulations'
 import { api } from './api'
 
 export type StationsSearchParams =
@@ -88,46 +87,6 @@ export async function getDownstreamStationsService(codes: string[]): Promise<str
     .get('stations/downstream', { searchParams: params })
     .json<{ items: DownstreamStation[]; count: number }>()
   return result.items.map((s) => s.codigoDestino)
-}
-
-type CreateSimulationPayload = {
-  modmeteo: 'BOTH'
-  description?: string
-  maneuvers: {
-    reservoirCode: string
-    outputFlowValue: number
-    startDate: string
-    endDate: string
-  }[]
-}
-
-export type CreateSimulationResponse = {
-  id: string
-  [key: string]: unknown
-}
-
-export async function createSimulationService(
-  payload: CreateSimulationPayload
-): Promise<CreateSimulationResponse> {
-  return api.post('simulations/manual', { json: payload }).json<CreateSimulationResponse>()
-}
-
-export async function getSimulationsService(): Promise<SimulationRecord[]> {
-  const result = await api.get('simulations/manual').json<{ data: SimulationRecord[] }>()
-  return result.data
-}
-
-export async function deleteSimulationService(id: string): Promise<void> {
-  await api.delete(`simulations/${encodeURIComponent(id)}`).json()
-}
-
-type UpdateManeuverPayload = { id: string; startDate: string | null; endDate: string | null }
-
-export async function updateSimulationService(
-  id: string,
-  maneuvers: UpdateManeuverPayload[]
-): Promise<void> {
-  await api.patch(`simulations/manual/${encodeURIComponent(id)}`, { json: { maneuvers } }).json()
 }
 
 export async function searchService(query: string): Promise<SearchResult[]> {

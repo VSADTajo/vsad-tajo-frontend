@@ -55,3 +55,21 @@ export type SimulationRecord = {
   maneuvers: ApiSimulationManeuver[]
   createdAt: string
 }
+
+export type CreateSimulationPayload = {
+  modmeteo: 'BOTH'
+  description?: string
+  maneuvers: {
+    reservoirCode: string
+    outputFlowValue: number
+    startDate: string
+    endDate: string
+  }[]
+}
+
+export type CreateSimulationResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export type UpdateManeuverPayload = { id: string; startDate: string | null; endDate: string | null }

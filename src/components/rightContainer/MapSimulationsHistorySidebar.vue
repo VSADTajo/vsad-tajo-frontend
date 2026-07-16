@@ -118,11 +118,8 @@
   import { useSimulationsStore } from '@/stores/simulationsStore'
   import { useMapStore } from '@/stores/mapStore'
   import { setSimulationMarkers, setDownstreamMarkers } from '@/utils/saihMarkersRegistry'
-  import {
-    getSimulationsService,
-    getDownstreamStationsService,
-    getStationByCodeService,
-  } from '@/services/general'
+  import { getDownstreamStationsService, getStationByCodeService } from '@/services/general'
+  import { getSimulationsService } from '@/services/simulations'
   import { center as mapCenter, defaultZoom } from '@/constants/mapConfig'
   import { AGUAS_ABAJO_POR_SIMULACIONES } from '@/constants/aguasAbajoPorSimulaciones'
   import SimulationHistoryCard from './SimulationHistoryCard.vue'

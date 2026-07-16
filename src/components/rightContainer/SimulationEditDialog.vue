@@ -81,7 +81,7 @@
   import '@vuepic/vue-datepicker/dist/main.css'
   import { es } from 'date-fns/locale'
   import type { SimulationRecord } from '@/types/Simulations'
-  import { createSimulationService, deleteSimulationService } from '@/services/general'
+  import { createSimulationService, deleteSimulationService } from '@/services/simulations'
   import { formatDateDDMMYYYY } from '@/utils/dates'
 
   const props = defineProps<{
