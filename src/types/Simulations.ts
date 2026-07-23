@@ -1,7 +1,19 @@
-﻿export type SimulationResultPrediction = {
+﻿export type SimulationResultPoint = {
+  date: string
+  value: number
+  flag: number
+}
+
+export type SimulationResultPrediction = {
   id: string
   stationId: string
   stationName: string
+  station?: {
+    id: string
+    name: string
+    stationCode: string
+    [key: string]: unknown
+  }
   predictionTypeId: string
   predictionTypeName: string
   predictionTypeUnit: string
@@ -11,7 +23,8 @@
   predictionDate: string
   predictionStartDate: string
   predictionEndDate: string
-  results: Array<{ date: string; value: number; flag: number }>
+  max: SimulationResultPoint
+  last: SimulationResultPoint
 }
 
 export type SimulationResultsResponse = {
