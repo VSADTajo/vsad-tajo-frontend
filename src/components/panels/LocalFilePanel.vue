@@ -44,6 +44,7 @@
           <v-col cols="12" class="d-flex align-center justify-space-between pt-2">
             <p class="pl-4 font-weight-medium mb-0">
               {{ localFileStore.fileName }} — {{ localFileStore.validStationCount }} estación(es)
+              con predicciones
             </p>
             <v-btn
               icon="mdi-close-circle-outline"
@@ -55,10 +56,16 @@
             />
           </v-col>
 
-          <v-col cols="12" class="pt-0 pb-0">
+          <v-col v-if="localFileStore.stationsWithPredictions.length === 0" cols="12" class="pt-0">
+            <v-alert type="info" variant="tonal" density="compact" class="mx-3">
+              El archivo no contiene ninguna estación con predicciones.
+            </v-alert>
+          </v-col>
+
+          <v-col v-else cols="12" class="pt-0 pb-0">
             <v-list class="local-file-list" density="compact">
               <v-list-item
-                v-for="station in localFileStore.stations"
+                v-for="station in localFileStore.stationsWithPredictions"
                 :key="station.id ?? station.stationCode"
                 :active="localFileStore.selectedStationCode === station.stationCode"
                 @click="openDetail(station)"
@@ -93,11 +100,12 @@
 </template>
 
 <script lang="ts" setup>
-  import { onUnmounted, ref } from 'vue'
+  import { onMounted, onUnmounted, ref } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import { useLocalFileStore } from '@/stores/localFileStore'
   import { useMapStore } from '@/stores/mapStore'
+  import { useLayersStore } from '@/stores/layersStore'
   import type { LocalFileStation } from '@/types/LocalStationsFile'
 
   const { mdAndUp } = useDisplay()
@@ -105,6 +113,7 @@
   const router = useRouter()
   const localFileStore = useLocalFileStore()
   const mapStore = useMapStore()
+  const layersStore = useLayersStore()
 
   const selectedFile = ref<File | null>(null)
   const loading = ref(false)
@@ -146,7 +155,13 @@
     router.push('/')
   }
 
+  onMounted(() => {
+    layersStore.applyLocalFilePreset()
+  })
+
   onUnmounted(() => {
+    layersStore.resetStationLayers()
+
     if (route.query.localStation) {
       const query = { ...route.query }
       delete query.localStation

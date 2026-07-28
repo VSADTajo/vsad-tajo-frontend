@@ -2,8 +2,7 @@ import { watch } from 'vue'
 import L from 'leaflet'
 import { useLocalFileStore } from '@/stores/localFileStore'
 import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
-import { localFilePointStyle } from '@/config/styles/layerStyles'
-import { MAP_PANES } from '@/config/panes/mapPanes'
+import { saihPointStyle } from '@/config/styles/layerStyles'
 import router from '@/router'
 
 function escapeHtml(value: unknown): string {
@@ -52,13 +51,12 @@ export function useLocalFileLayer(map: L.Map) {
   function buildLayer(): void {
     clearLayer()
 
-    if (!isActiveRoute() || localFileStore.stations.length === 0) return
+    if (!isActiveRoute() || localFileStore.stationsWithPredictions.length === 0) return
 
-    const geojson = stationsToGeoJSON(localFileStore.stations)
+    const geojson = stationsToGeoJSON(localFileStore.stationsWithPredictions)
 
     layer = L.geoJSON(geojson, {
-      pane: MAP_PANES.LOCAL_FILE,
-      pointToLayer: localFilePointStyle,
+      pointToLayer: saihPointStyle,
       onEachFeature: (feature, featureLayer) => {
         if (!(featureLayer instanceof L.Marker)) return
 
@@ -101,7 +99,7 @@ export function useLocalFileLayer(map: L.Map) {
     }
   }
 
-  watch(() => localFileStore.stations, buildLayer, { deep: true })
+  watch(() => localFileStore.stationsWithPredictions, buildLayer, { deep: true })
   watch(() => router.currentRoute.value.name, buildLayer)
 
   return {

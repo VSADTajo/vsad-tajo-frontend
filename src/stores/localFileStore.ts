@@ -3,6 +3,16 @@ import { computed, ref } from 'vue'
 import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
 
+function hasValidCoordinates(station: LocalFileStation): boolean {
+  return Number.isFinite(station.latitude) && Number.isFinite(station.longitude)
+}
+
+function hasPredictions(station: LocalFileStation): boolean {
+  const predictions = station.predictions
+  if (!predictions) return false
+  return Object.values(predictions).some((p) => (p?.results?.length ?? 0) > 0)
+}
+
 export const useLocalFileStore = defineStore('localFile', () => {
   const fileName = ref<string | null>(null)
   const stations = ref<LocalFileStation[]>([])
@@ -11,10 +21,12 @@ export const useLocalFileStore = defineStore('localFile', () => {
 
   const hasStations = computed(() => stations.value.length > 0)
 
+  // Only stations carrying predictions are shown on the map / panel list —
+  // a station without predictions has nothing useful to display.
+  const stationsWithPredictions = computed(() => stations.value.filter(hasPredictions))
+
   const validStationCount = computed(
-    () =>
-      stations.value.filter((s) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
-        .length
+    () => stationsWithPredictions.value.filter(hasValidCoordinates).length
   )
 
   async function loadFromFile(file: File): Promise<void> {
@@ -57,6 +69,7 @@ export const useLocalFileStore = defineStore('localFile', () => {
     error,
     selectedStationCode,
     hasStations,
+    stationsWithPredictions,
     validStationCount,
     loadFromFile,
     clear,

@@ -12,7 +12,6 @@ export const MAP_PANES = {
   REPORTING: 'reportingPane',
   AVISOS: 'avisosPane',
   HIGHLIGHT: 'highlightPane',
-  LOCAL_FILE: 'localFilePane',
 } as const
 
 export function createMapPanes(map: L.Map) {
@@ -28,7 +27,6 @@ export function createMapPanes(map: L.Map) {
     { name: MAP_PANES.SAIH, zIndex: 650 },
     { name: MAP_PANES.REPORTING, zIndex: 650 },
     { name: MAP_PANES.AVISOS, zIndex: 300 },
-    { name: MAP_PANES.LOCAL_FILE, zIndex: 660 },
   ]
 
   panes.forEach(({ name, zIndex }) => {

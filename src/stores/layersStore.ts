@@ -91,6 +91,12 @@ export const useLayersStore = defineStore('layers', {
       }
     },
 
+    applyLocalFilePreset() {
+      for (const id of Object.keys(this.layers)) {
+        this.layers[id].visible = false
+      }
+    },
+
     resetStationLayers() {
       const defaultState = buildInitialState()
       for (const [id, state] of Object.entries(defaultState)) {
