@@ -14,6 +14,12 @@
           :active="activeSection === 'simulaciones'"
           @click="toggleSection('simulaciones')"
         />
+
+        <v-list-item
+          prepend-icon="mdi-file-upload-outline"
+          :active="activeSection === 'archivo-local'"
+          @click="toggleSection('archivo-local')"
+        />
       </v-list>
 
       <!-- PARTE INFERIOR -->

@@ -21,6 +21,7 @@ const router = createRouter({
         { path: 'capas', component: MapView, name: 'capas' },
         { path: 'avisos', component: MapView, name: 'avisos' },
         { path: 'simulaciones', component: MapView, name: 'simulaciones' },
+        { path: 'archivo-local', component: MapView, name: 'archivo-local' },
         { path: 'informes', component: MapView, name: 'informes' },
         { path: 'mapasbase', component: MapView, name: 'mapasbase' },
         { path: 'ajustes', component: MapView, name: 'ajustes' },

@@ -221,6 +221,40 @@ html {
   opacity: 0.85;
 }
 
+.local-file-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.local-file-marker {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 3px dashed var(--saih-color);
+  background: color-mix(in srgb, var(--saih-color) 20%, white);
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  color: var(--saih-color);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.2px;
+  box-sizing: border-box;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.local-file-marker:hover,
+.local-file-marker.is-selected {
+  transform: scale(1.18);
+  background: color-mix(in srgb, var(--saih-color) 55%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--saih-color) 34%, transparent);
+}
+
 .leaflet-popup.feature-hover-popup,
 .leaflet-tooltip.feature-hover-tooltip {
   pointer-events: none;

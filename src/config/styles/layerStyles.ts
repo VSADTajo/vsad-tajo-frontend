@@ -47,6 +47,26 @@ export const saihPointStyle = (feature: Feature, latlng: L.LatLng) => {
   return marker
 }
 
+export const localFilePointStyle = (feature: Feature, latlng: L.LatLng) => {
+  const props = (feature.properties ?? {}) as Record<string, unknown>
+  const tipo = String(props.tipoCod ?? props.tipo_cod ?? '').toUpperCase()
+  const color = getSaihTypeColor(tipo)
+  const safeTipo = tipo.replace(/[^A-Z0-9]/g, '') || 'NA'
+
+  const marker = L.marker(latlng, {
+    icon: L.divIcon({
+      className: 'local-file-marker-wrapper',
+      html: `<div class="local-file-marker" style="--saih-color:${color}">${safeTipo}</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+    }),
+    pane: MAP_PANES.LOCAL_FILE,
+    riseOnHover: true,
+  })
+
+  return marker
+}
+
 export const contornoStyle: LayerStyle = {
   normal: {
     color: '#203d1c',

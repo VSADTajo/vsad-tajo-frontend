@@ -11,6 +11,7 @@
   >
     <RightContentSimulationEmbalse v-if="station && route.name === 'simulaciones'" />
     <RightContentSaih v-else-if="station" />
+    <RightContentLocalFileStation v-if="localStation" />
     <RightContentReporting v-if="reporting" />
     <RightContentByAreaService v-if="subcuenca" kind="subcuenca" />
     <RightContentByAreaService v-if="sistema" kind="sistema" />
@@ -32,12 +33,15 @@
   import RightContentByAreaService from './RightContentByAreaService.vue'
   import RightContentPrecipitacion from './RightContentPrecipitacion.vue'
   import RightContentAviso from './RightContentAviso.vue'
+  import RightContentLocalFileStation from './RightContentLocalFileStation.vue'
 
   const route = useRoute()
   const router = useRouter()
   const { mdAndUp, width } = useDisplay()
 
   const station = computed(() => route.query.station as string | undefined)
+
+  const localStation = computed(() => route.query.localStation as string | undefined)
 
   const reporting = computed(() => route.query.reportingPoint as string | undefined)
 
@@ -59,6 +63,7 @@
   const drawerOpen = computed(
     () =>
       !!station.value ||
+      !!localStation.value ||
       !!reporting.value ||
       !!subcuenca.value ||
       !!sistema.value ||
@@ -79,6 +84,13 @@
     }
   })
 
+  watch(localStation, (val, oldVal) => {
+    if (val && !oldVal) {
+      ignoreNextClose = true
+      setTimeout(() => (ignoreNextClose = false), 150)
+    }
+  })
+
   watch(aviso, (val, oldVal) => {
     if (val && !oldVal) {
       ignoreNextClose = true
@@ -90,6 +102,7 @@
     if (!val && !ignoreNextClose) {
       const queryObj = { ...route.query }
       delete queryObj.station
+      delete queryObj.localStation
       delete queryObj.aviso
       router.replace({ query: queryObj })
     }
