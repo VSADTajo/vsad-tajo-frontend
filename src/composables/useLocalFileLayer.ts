@@ -3,6 +3,7 @@ import L from 'leaflet'
 import { useLocalFileStore } from '@/stores/localFileStore'
 import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
 import { saihPointStyle } from '@/config/styles/layerStyles'
+import { registerSaihMarker, setSaihMarkerHighlight } from '@/utils/saihMarkersRegistry'
 import router from '@/router'
 
 function escapeHtml(value: unknown): string {
@@ -64,6 +65,8 @@ export function useLocalFileLayer(map: L.Map) {
           (feature.properties as Record<string, unknown>)?.stationCode ?? ''
         )
 
+        registerSaihMarker(stationCode, featureLayer)
+
         featureLayer.bindPopup(buildPopupContent(feature), {
           closeButton: false,
           autoClose: false,
@@ -81,26 +84,26 @@ export function useLocalFileLayer(map: L.Map) {
           },
           mouseover: () => {
             featureLayer.openPopup()
-            featureLayer.getElement()?.firstElementChild?.classList.add('is-selected')
+            setSaihMarkerHighlight(stationCode)
           },
           mouseout: () => {
             featureLayer.closePopup()
-            featureLayer.getElement()?.firstElementChild?.classList.remove('is-selected')
+            setSaihMarkerHighlight(null)
           },
         })
       },
     })
 
     layer.addTo(map)
-
-    const bounds = layer.getBounds()
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 13 })
-    }
   }
 
   watch(() => localFileStore.stationsWithPredictions, buildLayer, { deep: true })
   watch(() => router.currentRoute.value.name, buildLayer)
+
+  // Data can already be present (persisted from a previous session) and the
+  // route can already be active at mount time, in which case neither watcher
+  // above fires on its own — build once eagerly so it isn't left blank.
+  buildLayer()
 
   return {
     clearLayer,

@@ -20,7 +20,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed } from 'vue'
+  import { computed, onUnmounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useLocalFileStore } from '@/stores/localFileStore'
   import { getSaihTypeColor } from '@/utils/saihStations'
@@ -51,10 +51,16 @@
   })
 
   function closeDrawer(): void {
+    localFileStore.selectStation(null)
+
     if (!route.query.localStation) return
 
     const query = { ...route.query }
     delete query.localStation
     router.replace({ query })
   }
+
+  onUnmounted(() => {
+    localFileStore.selectStation(null)
+  })
 </script>

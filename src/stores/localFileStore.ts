@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useStorage } from '@vueuse/core'
 import { computed, ref } from 'vue'
 import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
@@ -14,8 +15,10 @@ function hasPredictions(station: LocalFileStation): boolean {
 }
 
 export const useLocalFileStore = defineStore('localFile', () => {
-  const fileName = ref<string | null>(null)
-  const stations = ref<LocalFileStation[]>([])
+  // Persisted to localStorage so a reload / new session on the same browser
+  // keeps showing the last file loaded, without needing to re-upload it.
+  const fileName = useStorage<string | null>('localFile:fileName', null)
+  const stations = useStorage<LocalFileStation[]>('localFile:stations', [])
   const error = ref<string | null>(null)
   const selectedStationCode = ref<string | null>(null)
 
