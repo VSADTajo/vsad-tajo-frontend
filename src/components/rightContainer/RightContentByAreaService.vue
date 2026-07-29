@@ -56,7 +56,7 @@
                   <PrecipitationsChart
                     :data="precipArealData"
                     :height="415"
-                    :loading="false"
+                    :loading="loadingPrecipAreal"
                     mode="precipitations"
                     class="bg-surface border-radius-4"
                   />
@@ -100,7 +100,7 @@
             <ContentObservedData
               class="flex-grow-1"
               active-tab="precipitaciones"
-              :loading="false"
+              :loading="loadingPrecipAreal"
               :precipitations-historical="precipArealData.historical"
               :accum-days="3"
             />
@@ -112,7 +112,7 @@
               :forecast-epsat="precipArealData.forecastEpsat"
               :observed="precipArealData.historical"
               :days="6"
-              :loading="false"
+              :loading="loadingPrecipAreal"
               :no-thresholds="true"
               title="Matriz de precipitación (6 dias / 6h)"
             />
@@ -121,9 +121,9 @@
             <ContentSaihPredictionsLatest
               class="flex-grow-1"
               active-tab="precipitaciones"
-              :loading="false"
-              :loading-harmonie="false"
-              :loading-eps="false"
+              :loading="loadingPrecipAreal"
+              :loading-harmonie="loadingPrecipAreal"
+              :loading-eps="loadingPrecipAreal"
               :hide-date-selector="true"
               :precipitations-forecast-harmonie="precipArealData.forecastHarmonie"
               :precipitations-forecast-epstat="precipArealData.forecastEpsat"
@@ -355,7 +355,11 @@
 <script lang="ts" setup>
   import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
-  import type { DataStationPrediction, PredictionTypeName } from '@/types/Predictions'
+  import type {
+    DataStationPrediction,
+    PredictionTypeName,
+    StationPrediction,
+  } from '@/types/Predictions'
   import {
     useSubcuencaSelectionBus,
     type SubcuencaSeriesMode,
@@ -382,9 +386,8 @@
   } from '@/services/predictions'
   import { getStationsByAreaService } from '@/services/general'
   import type { PredictionResult } from '@/types/Predictions'
-  import epsJson from '@/MOCKUPS/json/tagus_eps_Pareal_202607140000.json'
-  import harmonieJson from '@/MOCKUPS/json/tagus_harmonie_Pareal_202607140000.json'
-  import saihJson from '@/MOCKUPS/json/tagus_saih_Pareal_202607140000.json'
+  import { getArealPrecipitationService } from '@/services/arealPrecipitation'
+  import type { ArealPrecipResponse, ArealPrecipSeries } from '@/types/ArealPrecipitation'
   import {
     subcuencasStyle,
     sistemas10Style,
@@ -612,74 +615,105 @@
 
   function handleThresholdFocusComplete(): void {}
 
-  // ── Precipitación Areal (mockup FEWS data) ────────────────────────────────
+  // ── Precipitación Areal ────────────────────────────────────────────────────
 
-  type FewsEvent = { date: string; time: string; value: string; flag: string }
-  type FewsTimeSeries = {
-    header: { locationId: string; parameterId: string; missVal: string }
-    events: FewsEvent[]
-  }
-  type FewsFile = { timeSeries: FewsTimeSeries[] }
-
+  // Expected locationId prefix: Sistema., Cuenca.NAM., or Cuenca.AEMET.,
+  // depending on whether the selected area is a sistema, subcuenca or zona AEMET.
   const precipArealLocationId = computed<string | null>(() => {
-    if (!feature.value) return null
-    const p = (feature.value.properties ?? {}) as Record<string, unknown>
-    if (props.kind === 'sistema') {
-      const fid = p.fid ?? p.id
-      return fid != null ? `Sistema.Tajo.${fid}` : null
-    }
-    const code = p.code ?? p.cuencasname ?? p.name
-    return code != null ? `Cuenca.NAM.${code}` : null
+    const code = selectedRouteValue.value
+    if (!code) return null
+    if (props.kind === 'sistema') return `Sistema.${code}`
+    if (props.kind === 'meteoalerta') return `Cuenca.AEMET.${code}`
+    if (props.kind === 'subcuenca') return `Cuenca.NAM.${code}`
+    return null
   })
 
-  function fewsToStationPrediction(
-    file: FewsFile,
-    locationId: string,
-    parameterId: string
-  ): import('@/types/Predictions').StationPrediction | undefined {
-    const series = file.timeSeries.find(
-      (s) => s.header.locationId === locationId && s.header.parameterId === parameterId
-    )
+  const loadingPrecipAreal = ref(false)
+  const precipArealData = ref<DataStationPrediction>({})
+
+  function toForecastDateParam(date: Date): string {
+    return date.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  }
+
+  function pickArealSeries(response?: ArealPrecipResponse): ArealPrecipSeries | undefined {
+    if (!response) return undefined
+    const medGroup = response.groups.find((g) => g.stat === 'Med')
+    return (medGroup ?? response.groups[0])?.series[0]
+  }
+
+  function arealSeriesToStationPrediction(
+    series?: ArealPrecipSeries
+  ): StationPrediction | undefined {
     if (!series) return undefined
 
-    const missVal = series.header.missVal
-    const results: PredictionResult[] = series.events
-      .filter((e) => e.value !== missVal)
-      .map((e, i) => ({
-        id: i,
-        date: `${e.date}T${e.time}Z`,
-        value: parseFloat(e.value),
-        flag: parseInt(e.flag),
-      }))
+    const results: PredictionResult[] = series.events.map((e, i) => ({
+      id: i,
+      date: e.eventDate,
+      value: e.value,
+      flag: e.flag,
+    }))
 
     return {
-      id: `${locationId}-${parameterId}`,
-      stationId: locationId,
-      stationName: locationId,
-      predictionTypeName: parameterId,
-      simulationDate: new Date().toISOString(),
-      predictionDate: new Date().toISOString(),
-      predictionProvider: 'FEWS',
-      predictedBy: 'mockup',
+      id: series.id,
+      stationId: series.locationId,
+      stationName: series.stationName,
+      predictionTypeName: series.parameterId,
+      simulationDate: series.forecastDate,
+      predictionDate: series.forecastDate,
+      predictionProvider: series.provider,
+      predictedBy: series.moduleInstanceId,
       results,
     }
   }
 
-  const precipArealData = computed<DataStationPrediction>(() => {
-    const locId = precipArealLocationId.value
-    if (!locId) return {}
+  let precipArealRequestId = 0
 
-    const suffix = props.kind === 'sistema' ? 'sis10' : 'subcNAM'
-    const saihFile = saihJson as unknown as FewsFile
-    const harmonieFile = harmonieJson as unknown as FewsFile
-    const epsFile = epsJson as unknown as FewsFile
+  async function loadPrecipArealData(locationId: string): Promise<void> {
+    const requestId = ++precipArealRequestId
+    loadingPrecipAreal.value = true
 
-    return {
-      historical: fewsToStationPrediction(saihFile, locId, `P.areal.obs.${suffix}.1h.v`),
-      forecastHarmonie: fewsToStationPrediction(harmonieFile, locId, `P.areal.harmonie.${suffix}`),
-      forecastEpsat: fewsToStationPrediction(epsFile, locId, `P.areal.ens.${suffix}.Med`),
+    const now = new Date()
+    const forecastFrom = toForecastDateParam(now)
+    const forecastTo = toForecastDateParam(new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000))
+    const observedFrom = toForecastDateParam(new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000))
+    const observedTo = forecastFrom
+
+    try {
+      const [obsRes, harmonieRes, ensRes] = await Promise.all([
+        getArealPrecipitationService(locationId, 'obs', observedFrom, observedTo).catch(
+          () => undefined
+        ),
+        getArealPrecipitationService(locationId, 'harmonie', forecastFrom, forecastTo).catch(
+          () => undefined
+        ),
+        getArealPrecipitationService(locationId, 'ens', forecastFrom, forecastTo).catch(
+          () => undefined
+        ),
+      ])
+
+      if (requestId !== precipArealRequestId) return
+
+      precipArealData.value = {
+        historical: arealSeriesToStationPrediction(pickArealSeries(obsRes)),
+        forecastHarmonie: arealSeriesToStationPrediction(pickArealSeries(harmonieRes)),
+        forecastEpsat: arealSeriesToStationPrediction(pickArealSeries(ensRes)),
+      }
+    } finally {
+      if (requestId === precipArealRequestId) loadingPrecipAreal.value = false
     }
-  })
+  }
+
+  watch(
+    precipArealLocationId,
+    (locationId) => {
+      if (locationId) {
+        void loadPrecipArealData(locationId)
+      } else {
+        precipArealData.value = {}
+      }
+    },
+    { immediate: true }
+  )
 
   // ── Watchers ──────────────────────────────────────────────────────────────
 

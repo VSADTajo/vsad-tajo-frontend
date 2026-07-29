@@ -7,7 +7,7 @@
       <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
-      <div v-if="!isSimulationsRoute" class="map-data-source-toggle">
+      <div v-if="!isSimulationsRoute && !isLocalFileRoute" class="map-data-source-toggle">
         <v-tooltip
           text="No aplica para datos observados"
           location="bottom"
@@ -96,6 +96,7 @@
   import { useBaseLayers } from '@/composables/useBaseLayers'
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
   import { useAvisosLayers } from '@/composables/useAvisosLayers'
+  import { useLocalFileLayer } from '@/composables/useLocalFileLayer'
   import { center, defaultZoom, defaultZoomForMobile, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
   import MapAvisosTimeControls from '@/components/map/MapAvisosTimeControls.vue'
@@ -123,6 +124,7 @@
   const { mdAndUp } = useDisplay()
 
   const isSimulationsRoute = computed(() => route.name === 'simulaciones')
+  const isLocalFileRoute = computed(() => route.name === 'archivo-local')
   const selectedDataSource = computed({
     get: () => dataSourceStore.selectedDataSource,
     set: (v) => {
@@ -220,6 +222,7 @@
 
     useDynamicLayers(map)
     useAvisosLayers(map)
+    useLocalFileLayer(map)
     await initBaseLayers()
 
     const resizeObserver = new ResizeObserver(() => map.invalidateSize())
