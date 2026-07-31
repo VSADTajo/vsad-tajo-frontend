@@ -617,15 +617,11 @@
 
   // ── Precipitación Areal ────────────────────────────────────────────────────
 
-  // Expected locationId prefix: Sistema., Cuenca.NAM., or Cuenca.AEMET.,
-  // depending on whether the selected area is a sistema, subcuenca or zona AEMET.
+  // The sistema, subcuenca and meteoalerta WFS features all expose the
+  // ready-made locationId (e.g. "Cuenca.AEMET.17") in the `fews` property.
   const precipArealLocationId = computed<string | null>(() => {
-    const code = selectedRouteValue.value
-    if (!code) return null
-    if (props.kind === 'sistema') return `Sistema.${code}`
-    if (props.kind === 'meteoalerta') return `Cuenca.AEMET.${code}`
-    if (props.kind === 'subcuenca') return `Cuenca.NAM.${code}`
-    return null
+    const fews = (feature.value?.properties as Record<string, unknown> | undefined)?.fews
+    return typeof fews === 'string' && fews ? fews : null
   })
 
   const loadingPrecipAreal = ref(false)
