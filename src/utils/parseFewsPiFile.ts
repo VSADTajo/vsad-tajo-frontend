@@ -65,6 +65,20 @@ function stationTypeFromLocationId(locationId: string): string {
   return (match?.[0] ?? '').toUpperCase()
 }
 
+// A station's own precipitation sensor is filed under `<TIPO><numero>P`
+// (e.g. caudal "AR01" vs its colocated precip sensor "AR01P") — same
+// physical station, so both must resolve to the same stationCode. This
+// doesn't collide with standalone precip stations like "P_06" (underscore
+// form, no trailing digits+P).
+function baseStationCode(locationId: string): string {
+  const match = /^([A-Za-z]+\d+)P$/.exec(locationId)
+  return match ? match[1] : locationId
+}
+
+function isPrecipitationParameter(parameterId: string): boolean {
+  return parameterId.startsWith('P.')
+}
+
 function toPredictionResults(events: FewsPiEvent[], missVal: number): PredictionResult[] {
   const results: PredictionResult[] = []
 
@@ -100,35 +114,47 @@ function toStationPrediction(series: FewsPiTimeSeries): StationPrediction {
   }
 }
 
-function toLocalFileStation(locationId: string, seriesList: FewsPiTimeSeries[]): LocalFileStation {
-  const first = seriesList[0].header
-  const predictions: DataStationPrediction = {}
+function toLocalFileStation(stationCode: string, seriesList: FewsPiTimeSeries[]): LocalFileStation {
+  // Prefer the caudal/nivel series for the station's identity (name, coords);
+  // fall back to the precip sensor's header if that's all there is.
+  const primary =
+    seriesList.find((s) => !isPrecipitationParameter(s.header.parameterId))?.header ??
+    seriesList[0].header
+
+  const predictionsCaudal: DataStationPrediction = {}
+  const predictionsPrecipitacion: DataStationPrediction = {}
 
   for (const series of seriesList) {
     const key = resolvePredictionKey(series.header.parameterId)
     if (!key) continue
-    predictions[key] = toStationPrediction(series)
+
+    const target = isPrecipitationParameter(series.header.parameterId)
+      ? predictionsPrecipitacion
+      : predictionsCaudal
+    target[key] = toStationPrediction(series)
   }
 
-  const latitude = parseNumber(first.lat)
-  const longitude = parseNumber(first.lon)
-  const tipoCod = stationTypeFromLocationId(locationId)
+  const latitude = parseNumber(primary.lat)
+  const longitude = parseNumber(primary.lon)
+  const tipoCod = stationTypeFromLocationId(stationCode)
 
   return {
-    id: locationId,
-    name: first.stationName ?? locationId,
-    stationCode: locationId,
+    id: stationCode,
+    name: primary.stationName ?? stationCode,
+    stationCode,
     stationType: tipoCod,
     tipoCod,
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
-    predictions,
+    predictionsCaudal: Object.keys(predictionsCaudal).length > 0 ? predictionsCaudal : undefined,
+    predictionsPrecipitacion:
+      Object.keys(predictionsPrecipitacion).length > 0 ? predictionsPrecipitacion : undefined,
   }
 }
 
-// Groups the file's flat timeSeries list by station (locationId), merging
-// every variable (harmonie, eps...) present for that station into a single
-// LocalFileStation with one DataStationPrediction.
+// Groups the file's flat timeSeries list by station, normalizing away the
+// "P" precip-sensor suffix so a caudal series ("AR01") and its colocated
+// precip series ("AR01P") land on the same LocalFileStation.
 export function fewsPiFileToStations(file: FewsPiFile): LocalFileStation[] {
   const byLocation = new Map<string, FewsPiTimeSeries[]>()
 
@@ -136,12 +162,11 @@ export function fewsPiFileToStations(file: FewsPiFile): LocalFileStation[] {
     const locationId = series.header?.locationId
     if (!locationId) continue
 
-    const list = byLocation.get(locationId) ?? []
+    const code = baseStationCode(locationId)
+    const list = byLocation.get(code) ?? []
     list.push(series)
-    byLocation.set(locationId, list)
+    byLocation.set(code, list)
   }
 
-  return [...byLocation.entries()].map(([locationId, seriesList]) =>
-    toLocalFileStation(locationId, seriesList)
-  )
+  return [...byLocation.entries()].map(([code, seriesList]) => toLocalFileStation(code, seriesList))
 }

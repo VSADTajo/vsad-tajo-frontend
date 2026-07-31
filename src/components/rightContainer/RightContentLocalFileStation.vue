@@ -11,10 +11,10 @@
   </v-alert>
 
   <template v-else>
-    <v-sheet v-if="hasCaudal && hasPrecipitacion" elevation="2" class="mt-2">
+    <v-sheet v-if="hasCaudal || hasPrecipitacion" elevation="2" class="mt-2">
       <v-tabs v-model="tab" color="primary">
-        <v-tab value="caudal">Hidrogramas</v-tab>
-        <v-tab value="precipitaciones">Precipitaciones</v-tab>
+        <v-tab v-if="hasCaudal" value="caudal">Hidrogramas</v-tab>
+        <v-tab v-if="hasPrecipitacion" value="precipitaciones">Precipitaciones</v-tab>
       </v-tabs>
     </v-sheet>
 
@@ -22,14 +22,14 @@
       <ContentLocalFileHidrograma
         :is-embalse="isEmbalse"
         :thresholds="feature?.properties as Record<string, unknown>"
-        :predictions="station.predictions"
+        :predictions="station.predictionsCaudal"
       />
     </div>
 
     <div v-else class="bg-surface">
       <ContentLocalFilePrecipitaciones
         :thresholds="feature?.properties as Record<string, unknown>"
-        :predictions="station.predictions"
+        :predictions="station.predictionsPrecipitacion"
       />
     </div>
   </template>
@@ -80,15 +80,13 @@
     return { background: `linear-gradient(135deg, ${base} 0%, #455a64 100%)` }
   })
 
-  // A station's own predictions decide which tabs make sense — a precip
-  // station (P_xx) will only ever carry P.* series, an aforo/embalse only
-  // Q./I./V.*, so this stays correct as later phases add more files.
-  const predictionTypeNames = computed(() =>
-    Object.values(station.value?.predictions ?? {}).map((p) => p?.predictionTypeName ?? '')
-  )
-  const hasCaudal = computed(() => predictionTypeNames.value.some((name) => /^[QIV]\./.test(name)))
-  const hasPrecipitacion = computed(() =>
-    predictionTypeNames.value.some((name) => name.startsWith('P.'))
+  // A tab only shows if the station actually carries that kind of prediction
+  // (loading a caudal-only file shouldn't surface an empty Precipitaciones
+  // tab, and vice versa) — a series with every value masked as missVal still
+  // counts, since localFileStore keeps it precisely so this tab stays visible.
+  const hasCaudal = computed(() => Object.keys(station.value?.predictionsCaudal ?? {}).length > 0)
+  const hasPrecipitacion = computed(
+    () => Object.keys(station.value?.predictionsPrecipitacion ?? {}).length > 0
   )
 
   const tab = ref<'caudal' | 'precipitaciones'>('caudal')

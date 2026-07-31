@@ -17,10 +17,14 @@ function hasValidCoordinates(station: LocalFileStation): boolean {
   return Number.isFinite(station.latitude) && Number.isFinite(station.longitude)
 }
 
+// A series with every event masked out as missVal (e.g. an EPS run that
+// never produced valid data for that station) still has a prediction slot —
+// it should keep the station visible with an empty chart, not hide it.
 function hasPredictions(station: LocalFileStation): boolean {
-  const predictions = station.predictions
-  if (!predictions) return false
-  return Object.values(predictions).some((p) => (p?.results?.length ?? 0) > 0)
+  return (
+    Object.keys(station.predictionsCaudal ?? {}).length > 0 ||
+    Object.keys(station.predictionsPrecipitacion ?? {}).length > 0
+  )
 }
 
 function generateFileId(): string {
@@ -39,13 +43,22 @@ function mergeStationsByCode(files: LoadedLocalFile[]): LocalFileStation[] {
       const existing = byCode.get(station.stationCode)
 
       if (!existing) {
-        byCode.set(station.stationCode, { ...station, predictions: { ...station.predictions } })
+        byCode.set(station.stationCode, {
+          ...station,
+          predictionsCaudal: { ...station.predictionsCaudal },
+          predictionsPrecipitacion: { ...station.predictionsPrecipitacion },
+        })
         continue
       }
 
-      existing.predictions = {
-        ...existing.predictions,
-        ...station.predictions,
+      existing.predictionsCaudal = {
+        ...existing.predictionsCaudal,
+        ...station.predictionsCaudal,
+      } as DataStationPrediction
+
+      existing.predictionsPrecipitacion = {
+        ...existing.predictionsPrecipitacion,
+        ...station.predictionsPrecipitacion,
       } as DataStationPrediction
 
       if (existing.latitude == null && station.latitude != null) {
