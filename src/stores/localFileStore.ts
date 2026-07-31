@@ -5,6 +5,7 @@ import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
 import { isFewsPiFile } from '@/types/FewsPiFile'
 import { fewsPiFileToStations } from '@/utils/parseFewsPiFile'
+import { isObservedCsvFileName, parseObservedCsvFile } from '@/utils/parseObservedCsvFile'
 import type { DataStationPrediction } from '@/types/Predictions'
 
 export interface LoadedLocalFile {
@@ -29,6 +30,19 @@ function hasPredictions(station: LocalFileStation): boolean {
 
 function generateFileId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+// These station exports sometimes come out as Windows-1252/ISO-8859-1
+// instead of UTF-8 — File.text() always assumes UTF-8, which silently
+// mangles "ó"/"ñ"/"í" and breaks the accented header keys the CSV parser
+// matches against. Detect that case and re-decode with the legacy codepage.
+async function readFileText(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    return new TextDecoder('windows-1252').decode(buffer)
+  }
 }
 
 // Different files can each bring one variable (harmonie precip, eps precip,
@@ -97,9 +111,20 @@ export const useLocalFileStore = defineStore('localFile', () => {
     const newFiles: LoadedLocalFile[] = []
 
     for (const file of fileList) {
+      const text = await readFileText(file)
+
+      if (isObservedCsvFileName(file.name)) {
+        const stations = parseObservedCsvFile(text)
+        if (stations.length === 0) {
+          errors.push(`"${file.name}" no contiene ningún bloque de estación reconocible.`)
+          continue
+        }
+        newFiles.push({ id: generateFileId(), fileName: file.name, stations })
+        continue
+      }
+
       let parsed: unknown
       try {
-        const text = await file.text()
         parsed = JSON.parse(text)
       } catch {
         errors.push(`"${file.name}" no es un JSON válido.`)

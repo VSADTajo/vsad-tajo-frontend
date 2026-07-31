@@ -5,6 +5,7 @@ import type {
   PredictionResult,
   StationPrediction,
 } from '@/types/Predictions'
+import { baseStationCode, stationTypeFromCode } from '@/utils/localStationCode'
 
 // Maps a FEWS parameterId to the DataStationPrediction slot it feeds.
 // Extend this as later phases bring caudal/volumen files (Q.NAM.*, V.MIKE11.*, ...).
@@ -56,23 +57,6 @@ function combineDateTime(dt?: { date: string; time: string }): string {
 function parseNumber(value: string | undefined): number {
   const parsed = Number.parseFloat(value ?? '')
   return Number.isFinite(parsed) ? parsed : Number.NaN
-}
-
-// Station codes follow a `<TIPO><numero>` convention (P_06, AR50, MC12...);
-// the leading letters identify the SAIH type used for marker color/shape.
-function stationTypeFromLocationId(locationId: string): string {
-  const match = /^[A-Za-z]+/.exec(locationId)
-  return (match?.[0] ?? '').toUpperCase()
-}
-
-// A station's own precipitation sensor is filed under `<TIPO><numero>P`
-// (e.g. caudal "AR01" vs its colocated precip sensor "AR01P") — same
-// physical station, so both must resolve to the same stationCode. This
-// doesn't collide with standalone precip stations like "P_06" (underscore
-// form, no trailing digits+P).
-function baseStationCode(locationId: string): string {
-  const match = /^([A-Za-z]+\d+)P$/.exec(locationId)
-  return match ? match[1] : locationId
 }
 
 function isPrecipitationParameter(parameterId: string): boolean {
@@ -136,7 +120,7 @@ function toLocalFileStation(stationCode: string, seriesList: FewsPiTimeSeries[])
 
   const latitude = parseNumber(primary.lat)
   const longitude = parseNumber(primary.lon)
-  const tipoCod = stationTypeFromLocationId(stationCode)
+  const tipoCod = stationTypeFromCode(stationCode)
 
   return {
     id: stationCode,
