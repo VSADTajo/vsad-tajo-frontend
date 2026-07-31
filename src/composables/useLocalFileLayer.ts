@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import L from 'leaflet'
 import { useLocalFileStore } from '@/stores/localFileStore'
+import { useLayersStore } from '@/stores/layersStore'
 import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
 import { saihPointStyle } from '@/config/styles/layerStyles'
 import { registerSaihMarker, setSaihMarkerHighlight } from '@/utils/saihMarkersRegistry'
@@ -35,6 +36,7 @@ function buildPopupContent(feature: GeoJSON.Feature): string {
 
 export function useLocalFileLayer(map: L.Map) {
   const localFileStore = useLocalFileStore()
+  const layersStore = useLayersStore()
 
   let layer: L.GeoJSON | null = null
 
@@ -45,14 +47,16 @@ export function useLocalFileLayer(map: L.Map) {
     }
   }
 
-  function isActiveRoute(): boolean {
-    return router.currentRoute.value.name === 'archivo-local'
-  }
-
   function buildLayer(): void {
     clearLayer()
 
-    if (!isActiveRoute() || localFileStore.stationsWithPredictions.length === 0) return
+    if (localFileStore.stationsWithPredictions.length === 0) {
+      layersStore.restoreStationLayersVisibility()
+      return
+    }
+
+    // Only the file's own stations should be visible while it's loaded.
+    layersStore.hideAllStationLayers()
 
     const geojson = stationsToGeoJSON(localFileStore.stationsWithPredictions)
 
@@ -98,11 +102,10 @@ export function useLocalFileLayer(map: L.Map) {
   }
 
   watch(() => localFileStore.stationsWithPredictions, buildLayer, { deep: true })
-  watch(() => router.currentRoute.value.name, buildLayer)
 
-  // Data can already be present (persisted from a previous session) and the
-  // route can already be active at mount time, in which case neither watcher
-  // above fires on its own — build once eagerly so it isn't left blank.
+  // Data can already be present (persisted from a previous session) at mount
+  // time, in which case the watcher above never fires on its own — build once
+  // eagerly so it isn't left blank.
   buildLayer()
 
   return {

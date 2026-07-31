@@ -7,7 +7,7 @@
       <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
-      <div v-if="!isSimulationsRoute && !isLocalFileRoute" class="map-data-source-toggle">
+      <div v-if="!isSimulationsRoute && !hasLocalFileStations" class="map-data-source-toggle">
         <v-tooltip
           text="No aplica para datos observados"
           location="bottom"
@@ -113,6 +113,7 @@
   import { useRoute } from 'vue-router'
   import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
   import { useMapModelStore } from '@/stores/mapModelStore'
+  import { useLocalFileStore } from '@/stores/localFileStore'
 
   const route = useRoute()
   const layersStore = useLayersStore()
@@ -121,10 +122,11 @@
   const simulationsStore = useSimulationsStore()
   const dataSourceStore = useMapDataSourceStore()
   const modelStore = useMapModelStore()
+  const localFileStore = useLocalFileStore()
   const { mdAndUp } = useDisplay()
 
   const isSimulationsRoute = computed(() => route.name === 'simulaciones')
-  const isLocalFileRoute = computed(() => route.name === 'archivo-local')
+  const hasLocalFileStations = computed(() => localFileStore.stationsWithPredictions.length > 0)
   const selectedDataSource = computed({
     get: () => dataSourceStore.selectedDataSource,
     set: (v) => {

@@ -4,6 +4,12 @@ import { computed, ref } from 'vue'
 import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
 
+export interface LoadedLocalFile {
+  id: string
+  fileName: string
+  stations: LocalFileStation[]
+}
+
 function hasValidCoordinates(station: LocalFileStation): boolean {
   return Number.isFinite(station.latitude) && Number.isFinite(station.longitude)
 }
@@ -14,15 +20,20 @@ function hasPredictions(station: LocalFileStation): boolean {
   return Object.values(predictions).some((p) => (p?.results?.length ?? 0) > 0)
 }
 
+function generateFileId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
 export const useLocalFileStore = defineStore('localFile', () => {
   // Persisted to localStorage so a reload / new session on the same browser
-  // keeps showing the last file loaded, without needing to re-upload it.
-  const fileName = useStorage<string | null>('localFile:fileName', null)
-  const stations = useStorage<LocalFileStation[]>('localFile:stations', [])
+  // keeps showing the last files loaded, without needing to re-upload them.
+  const files = useStorage<LoadedLocalFile[]>('localFile:files', [])
   const error = ref<string | null>(null)
   const selectedStationCode = ref<string | null>(null)
 
-  const hasStations = computed(() => stations.value.length > 0)
+  const stations = computed<LocalFileStation[]>(() => files.value.flatMap((f) => f.stations))
+
+  const hasStations = computed(() => files.value.length > 0)
 
   // Only stations carrying predictions are shown on the map / panel list —
   // a station without predictions has nothing useful to display.
@@ -32,32 +43,44 @@ export const useLocalFileStore = defineStore('localFile', () => {
     () => stationsWithPredictions.value.filter(hasValidCoordinates).length
   )
 
-  async function loadFromFile(file: File): Promise<void> {
-    error.value = null
+  async function loadFromFiles(fileList: File[]): Promise<void> {
+    const errors: string[] = []
+    const newFiles: LoadedLocalFile[] = []
 
-    let parsed: unknown
-    try {
-      const text = await file.text()
-      parsed = JSON.parse(text)
-    } catch {
-      error.value = 'El archivo no es un JSON válido.'
-      return
+    for (const file of fileList) {
+      let parsed: unknown
+      try {
+        const text = await file.text()
+        parsed = JSON.parse(text)
+      } catch {
+        errors.push(`"${file.name}" no es un JSON válido.`)
+        continue
+      }
+
+      if (!isLocalStationsFileResponse(parsed)) {
+        errors.push(
+          `"${file.name}" no tiene el formato esperado: se requiere un objeto { items: [...] }.`
+        )
+        continue
+      }
+
+      newFiles.push({ id: generateFileId(), fileName: file.name, stations: parsed.items })
     }
 
-    if (!isLocalStationsFileResponse(parsed)) {
-      error.value =
-        'El archivo no tiene el formato esperado: se requiere un objeto { items: [...] }.'
-      return
+    if (newFiles.length > 0) {
+      files.value = [...files.value, ...newFiles]
+      selectedStationCode.value = null
     }
 
-    fileName.value = file.name
-    stations.value = parsed.items
-    selectedStationCode.value = null
+    error.value = errors.length > 0 ? errors.join(' ') : null
+  }
+
+  function removeFile(id: string): void {
+    files.value = files.value.filter((f) => f.id !== id)
   }
 
   function clear(): void {
-    fileName.value = null
-    stations.value = []
+    files.value = []
     error.value = null
     selectedStationCode.value = null
   }
@@ -67,14 +90,15 @@ export const useLocalFileStore = defineStore('localFile', () => {
   }
 
   return {
-    fileName,
+    files,
     stations,
     error,
     selectedStationCode,
     hasStations,
     stationsWithPredictions,
     validStationCount,
-    loadFromFile,
+    loadFromFiles,
+    removeFile,
     clear,
     selectStation,
   }

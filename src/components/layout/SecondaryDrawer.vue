@@ -14,7 +14,6 @@
   import ReportsPanel from '../panels/ReportsPanel.vue'
   import BasemapsPanel from '../panels/BasemapsPanel.vue'
   import SimulationsPanel from '../panels/SimulationsPanel.vue'
-  import LocalFilePanel from '../panels/LocalFilePanel.vue'
 
   const { drawerOpen, activeSection } = useNavigation()
 
@@ -26,8 +25,6 @@
         return AlertsPanel
       case 'simulaciones':
         return SimulationsPanel
-      case 'archivo-local':
-        return LocalFilePanel
       case 'informes':
         return ReportsPanel
       case 'mapasbase':

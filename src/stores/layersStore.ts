@@ -50,6 +50,7 @@ function buildInitialState(): Record<string, LayerState> {
 export const useLayersStore = defineStore('layers', {
   state: () => ({
     layers: buildInitialState(),
+    savedStationVisibility: null as Record<string, boolean> | null,
   }),
 
   actions: {
@@ -91,10 +92,28 @@ export const useLayersStore = defineStore('layers', {
       }
     },
 
-    applyLocalFilePreset() {
-      for (const id of Object.keys(this.layers)) {
-        this.layers[id].visible = false
+    // Hides the SAIH station layers while a local file is loaded, remembering
+    // each one's visibility so it can be restored exactly as the user left it.
+    hideAllStationLayers() {
+      if (this.savedStationVisibility) return
+
+      const saved: Record<string, boolean> = {}
+      for (const [id, state] of Object.entries(this.layers)) {
+        if (state.parentLayer === 'saih') {
+          saved[id] = state.visible
+          state.visible = false
+        }
       }
+      this.savedStationVisibility = saved
+    },
+
+    restoreStationLayersVisibility() {
+      if (!this.savedStationVisibility) return
+
+      for (const [id, visible] of Object.entries(this.savedStationVisibility)) {
+        if (this.layers[id]) this.layers[id].visible = visible
+      }
+      this.savedStationVisibility = null
     },
 
     resetStationLayers() {
