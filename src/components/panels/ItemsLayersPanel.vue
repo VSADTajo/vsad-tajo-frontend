@@ -330,14 +330,19 @@
   }
 
   .local-file-list-wrapper {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
+    max-height: 30vh;
     overflow-y: auto;
     overflow-x: hidden;
   }
 
+  // margin-top: auto absorbs all free space above this item, so the input
+  // stays pinned to the bottom whether the list above is empty, small, or
+  // capped at max-height.
   .local-file-input-row {
     flex: 0 0 auto;
+    margin-top: auto;
   }
 
   .local-file-list {

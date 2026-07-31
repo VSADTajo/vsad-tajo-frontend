@@ -3,6 +3,9 @@ import { useStorage } from '@vueuse/core'
 import { computed, ref } from 'vue'
 import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
+import { isFewsPiFile } from '@/types/FewsPiFile'
+import { fewsPiFileToStations } from '@/utils/parseFewsPiFile'
+import type { DataStationPrediction } from '@/types/Predictions'
 
 export interface LoadedLocalFile {
   id: string
@@ -24,6 +27,39 @@ function generateFileId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+// Different files can each bring one variable (harmonie precip, eps precip,
+// caudal, ...) for the same set of stations. Merge them by stationCode so a
+// station shows up once on the map with every prediction it has, instead of
+// once per file.
+function mergeStationsByCode(files: LoadedLocalFile[]): LocalFileStation[] {
+  const byCode = new Map<string, LocalFileStation>()
+
+  for (const file of files) {
+    for (const station of file.stations) {
+      const existing = byCode.get(station.stationCode)
+
+      if (!existing) {
+        byCode.set(station.stationCode, { ...station, predictions: { ...station.predictions } })
+        continue
+      }
+
+      existing.predictions = {
+        ...existing.predictions,
+        ...station.predictions,
+      } as DataStationPrediction
+
+      if (existing.latitude == null && station.latitude != null) {
+        existing.latitude = station.latitude
+      }
+      if (existing.longitude == null && station.longitude != null) {
+        existing.longitude = station.longitude
+      }
+    }
+  }
+
+  return [...byCode.values()]
+}
+
 export const useLocalFileStore = defineStore('localFile', () => {
   // Persisted to localStorage so a reload / new session on the same browser
   // keeps showing the last files loaded, without needing to re-upload them.
@@ -31,7 +67,7 @@ export const useLocalFileStore = defineStore('localFile', () => {
   const error = ref<string | null>(null)
   const selectedStationCode = ref<string | null>(null)
 
-  const stations = computed<LocalFileStation[]>(() => files.value.flatMap((f) => f.stations))
+  const stations = computed<LocalFileStation[]>(() => mergeStationsByCode(files.value))
 
   const hasStations = computed(() => files.value.length > 0)
 
@@ -57,14 +93,23 @@ export const useLocalFileStore = defineStore('localFile', () => {
         continue
       }
 
-      if (!isLocalStationsFileResponse(parsed)) {
-        errors.push(
-          `"${file.name}" no tiene el formato esperado: se requiere un objeto { items: [...] }.`
-        )
+      if (isFewsPiFile(parsed)) {
+        newFiles.push({
+          id: generateFileId(),
+          fileName: file.name,
+          stations: fewsPiFileToStations(parsed),
+        })
         continue
       }
 
-      newFiles.push({ id: generateFileId(), fileName: file.name, stations: parsed.items })
+      if (isLocalStationsFileResponse(parsed)) {
+        newFiles.push({ id: generateFileId(), fileName: file.name, stations: parsed.items })
+        continue
+      }
+
+      errors.push(
+        `"${file.name}" no tiene un formato reconocido (se esperaba un archivo FEWS con "timeSeries" o un objeto { items: [...] }).`
+      )
     }
 
     if (newFiles.length > 0) {
