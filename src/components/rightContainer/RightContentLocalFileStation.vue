@@ -23,6 +23,7 @@
         :is-embalse="isEmbalse"
         :thresholds="feature?.properties as Record<string, unknown>"
         :predictions="station.predictionsCaudal"
+        :volumen-predictions="station.predictionsVolumen"
       />
     </div>
 
@@ -84,7 +85,14 @@
   // (loading a caudal-only file shouldn't surface an empty Precipitaciones
   // tab, and vice versa) — a series with every value masked as missVal still
   // counts, since localFileStore keeps it precisely so this tab stays visible.
-  const hasCaudal = computed(() => Object.keys(station.value?.predictionsCaudal ?? {}).length > 0)
+  // Volumen lives inside the same "Hidrogramas" tab as caudal (mirrors the
+  // live app, where an embalse's caudal and volumen are just two views under
+  // one tab), so either one is enough to show it.
+  const hasCaudal = computed(
+    () =>
+      Object.keys(station.value?.predictionsCaudal ?? {}).length > 0 ||
+      Object.keys(station.value?.predictionsVolumen ?? {}).length > 0
+  )
   const hasPrecipitacion = computed(
     () => Object.keys(station.value?.predictionsPrecipitacion ?? {}).length > 0
   )

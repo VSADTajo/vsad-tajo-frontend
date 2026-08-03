@@ -52,6 +52,11 @@
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
             <v-sheet class="pa-2">
+              <v-tabs v-if="hasVolumen" v-model="selectedVariant" density="compact" class="mb-3">
+                <v-tab value="caudal">Caudal</v-tab>
+                <v-tab value="volumen">Volumen</v-tab>
+              </v-tabs>
+
               <ForecastChartNew
                 :data="chartData"
                 :is-embalse="isEmbalse"
@@ -66,7 +71,7 @@
 
         <v-card class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            active-tab="caudalNAM"
+            :active-tab="selectedVariant === 'volumen' ? 'volumenNAM' : 'caudalNAM'"
             :is-embalse="isEmbalse"
             :thresholds="thresholds"
             :selected-threshold="selectedThreshold"
@@ -169,15 +174,40 @@
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
     predictions?: DataStationPrediction
+    volumenPredictions?: DataStationPrediction
   }>()
 
-  const historical = computed(() => props.predictions?.historical)
-  const forecastHarmonie = computed(() => props.predictions?.forecastHarmonie)
-  const forecastEpsat = computed(() => props.predictions?.forecastEpsat)
-  const forecastEnsP10 = computed(() => props.predictions?.forecastEnsP10)
-  const forecastEnsP25 = computed(() => props.predictions?.forecastEnsP25)
-  const forecastEnsP75 = computed(() => props.predictions?.forecastEnsP75)
-  const forecastEnsP90 = computed(() => props.predictions?.forecastEnsP90)
+  // Caudal and volumen are kept as separate DataStationPrediction objects
+  // (same reasoning as the store split) — an embalse with both shows a small
+  // Caudal/Volumen switch, mirroring how the live app treats them as
+  // distinct views rather than merging them into one series.
+  const hasVolumen = computed(() => Object.keys(props.volumenPredictions ?? {}).length > 0)
+  const hasCaudalData = computed(() => Object.keys(props.predictions ?? {}).length > 0)
+  const selectedVariant = ref<'caudal' | 'volumen'>('caudal')
+
+  // Reset the default variant whenever the underlying station's data changes
+  // (this component is reused across station navigation) — otherwise a
+  // station without caudal data could be stuck showing an empty caudal view
+  // while its actual volumen data sits one tab away.
+  watch(
+    [hasCaudalData, hasVolumen],
+    ([caudal, volumen]) => {
+      selectedVariant.value = caudal ? 'caudal' : volumen ? 'volumen' : 'caudal'
+    },
+    { immediate: true }
+  )
+
+  const activePredictions = computed(() =>
+    selectedVariant.value === 'volumen' ? props.volumenPredictions : props.predictions
+  )
+
+  const historical = computed(() => activePredictions.value?.historical)
+  const forecastHarmonie = computed(() => activePredictions.value?.forecastHarmonie)
+  const forecastEpsat = computed(() => activePredictions.value?.forecastEpsat)
+  const forecastEnsP10 = computed(() => activePredictions.value?.forecastEnsP10)
+  const forecastEnsP25 = computed(() => activePredictions.value?.forecastEnsP25)
+  const forecastEnsP75 = computed(() => activePredictions.value?.forecastEnsP75)
+  const forecastEnsP90 = computed(() => activePredictions.value?.forecastEnsP90)
 
   const chartData = computed(() => ({
     historical: historical.value,

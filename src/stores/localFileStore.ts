@@ -24,6 +24,7 @@ function hasValidCoordinates(station: LocalFileStation): boolean {
 function hasPredictions(station: LocalFileStation): boolean {
   return (
     Object.keys(station.predictionsCaudal ?? {}).length > 0 ||
+    Object.keys(station.predictionsVolumen ?? {}).length > 0 ||
     Object.keys(station.predictionsPrecipitacion ?? {}).length > 0
   )
 }
@@ -60,6 +61,7 @@ function mergeStationsByCode(files: LoadedLocalFile[]): LocalFileStation[] {
         byCode.set(station.stationCode, {
           ...station,
           predictionsCaudal: { ...station.predictionsCaudal },
+          predictionsVolumen: { ...station.predictionsVolumen },
           predictionsPrecipitacion: { ...station.predictionsPrecipitacion },
         })
         continue
@@ -68,6 +70,11 @@ function mergeStationsByCode(files: LoadedLocalFile[]): LocalFileStation[] {
       existing.predictionsCaudal = {
         ...existing.predictionsCaudal,
         ...station.predictionsCaudal,
+      } as DataStationPrediction
+
+      existing.predictionsVolumen = {
+        ...existing.predictionsVolumen,
+        ...station.predictionsVolumen,
       } as DataStationPrediction
 
       existing.predictionsPrecipitacion = {

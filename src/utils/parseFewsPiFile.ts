@@ -29,17 +29,21 @@ const PARAMETER_TO_PREDICTION_KEY: Record<string, keyof DataStationPrediction> =
   'V.MIKE11.ens.medio_acum': 'forecastEpsat',
   'V.MIKE11.25.medio_acum': 'forecastEnsP25',
   'V.MIKE11.75.medio_acum': 'forecastEnsP75',
+  'V.NAM.harmonie_acum': 'forecastHarmonie',
 }
 
 // EPS/ENS series sometimes carry a suffix on top of the base parameterId
-// (observed so far: "P.ens.forecast.Med" for the mean series) instead of a
-// clean match against PARAMETER_TO_PREDICTION_KEY. Resolve those generically
-// so any future ".P10"/".P25"/... suffix also lands on the right percentile.
+// (observed so far: "P.ens.forecast.Med" for the mean series, "Q.NAM.ens.Med")
+// instead of a clean match against PARAMETER_TO_PREDICTION_KEY. Resolve those
+// generically so any future ".P10"/".P25"/... suffix also lands on the right
+// percentile — including the volume EPS ("V.NAM.ens_acum[.Med]"), guessed by
+// analogy with "V.NAM.harmonie_acum" until a real sample confirms it.
 function resolvePredictionKey(parameterId: string): keyof DataStationPrediction | undefined {
   const direct = PARAMETER_TO_PREDICTION_KEY[parameterId]
   if (direct) return direct
 
-  const ensMatch = /^(?:P\.ens\.forecast|Q\.NAM\.ens|I\.NAM\.ens)(?:\.(\w+))?$/.exec(parameterId)
+  const ensMatch =
+    /^(?:P\.ens\.forecast|Q\.NAM\.ens|I\.NAM\.ens|V\.NAM\.ens_acum)(?:\.(\w+))?$/.exec(parameterId)
   if (!ensMatch) return undefined
 
   const suffix = (ensMatch[1] ?? '').toUpperCase()
@@ -61,6 +65,27 @@ function parseNumber(value: string | undefined): number {
 
 function isPrecipitationParameter(parameterId: string): boolean {
   return parameterId.startsWith('P.')
+}
+
+function isVolumeParameter(parameterId: string): boolean {
+  return parameterId.startsWith('V.')
+}
+
+// Same reasoning as predictionsCaudal vs predictionsPrecipitacion: an embalse
+// can carry both caudal/nivel (Q./I.) and volumen (V.) at once, and the live
+// app already keeps those as separate composables/refs — merging them here
+// would make one overwrite the other on keys like forecastHarmonie.
+function predictionTarget(
+  parameterId: string,
+  buckets: {
+    caudal: DataStationPrediction
+    volumen: DataStationPrediction
+    precipitacion: DataStationPrediction
+  }
+): DataStationPrediction {
+  if (isPrecipitationParameter(parameterId)) return buckets.precipitacion
+  if (isVolumeParameter(parameterId)) return buckets.volumen
+  return buckets.caudal
 }
 
 function toPredictionResults(events: FewsPiEvent[], missVal: number): PredictionResult[] {
@@ -106,15 +131,18 @@ function toLocalFileStation(stationCode: string, seriesList: FewsPiTimeSeries[])
     seriesList[0].header
 
   const predictionsCaudal: DataStationPrediction = {}
+  const predictionsVolumen: DataStationPrediction = {}
   const predictionsPrecipitacion: DataStationPrediction = {}
 
   for (const series of seriesList) {
     const key = resolvePredictionKey(series.header.parameterId)
     if (!key) continue
 
-    const target = isPrecipitationParameter(series.header.parameterId)
-      ? predictionsPrecipitacion
-      : predictionsCaudal
+    const target = predictionTarget(series.header.parameterId, {
+      caudal: predictionsCaudal,
+      volumen: predictionsVolumen,
+      precipitacion: predictionsPrecipitacion,
+    })
     target[key] = toStationPrediction(series)
   }
 
@@ -131,6 +159,7 @@ function toLocalFileStation(stationCode: string, seriesList: FewsPiTimeSeries[])
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
     predictionsCaudal: Object.keys(predictionsCaudal).length > 0 ? predictionsCaudal : undefined,
+    predictionsVolumen: Object.keys(predictionsVolumen).length > 0 ? predictionsVolumen : undefined,
     predictionsPrecipitacion:
       Object.keys(predictionsPrecipitacion).length > 0 ? predictionsPrecipitacion : undefined,
   }

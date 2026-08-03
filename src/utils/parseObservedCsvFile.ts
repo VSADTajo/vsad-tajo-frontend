@@ -84,10 +84,9 @@ function blockToStation(block: ObservedBlock): LocalFileStation | null {
   if (!rawCode) return null
 
   const stationCode = baseStationCode(rawCode)
-  const isPrecipitation = (block.header[PARAMETER_TYPE_KEY] ?? '')
-    .trim()
-    .toUpperCase()
-    .startsWith('PRECIP')
+  const parameterType = (block.header[PARAMETER_TYPE_KEY] ?? '').trim().toUpperCase()
+  const isPrecipitation = parameterType.startsWith('PRECIP')
+  const isVolumen = !isPrecipitation && parameterType.startsWith('VOL')
 
   const latitude = Number.parseFloat(block.header[LATITUDE_KEY] ?? '')
   const longitude = Number.parseFloat(block.header[LONGITUDE_KEY] ?? '')
@@ -116,7 +115,8 @@ function blockToStation(block: ObservedBlock): LocalFileStation | null {
     tipoCod,
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
-    predictionsCaudal: isPrecipitation ? undefined : predictions,
+    predictionsCaudal: !isPrecipitation && !isVolumen ? predictions : undefined,
+    predictionsVolumen: isVolumen ? predictions : undefined,
     predictionsPrecipitacion: isPrecipitation ? predictions : undefined,
   }
 }
