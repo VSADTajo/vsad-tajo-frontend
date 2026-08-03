@@ -174,7 +174,7 @@
 
         <v-file-input
           v-model="selectedFiles"
-          label="Cargar archivos JSON o CSV"
+          label="Cargar Escenario"
           accept="application/json,.json,.csv,text/csv"
           variant="outlined"
           color="primary"
