@@ -395,6 +395,7 @@
   import { getArealPrecipitationService } from '@/services/arealPrecipitation'
   import type { ArealPrecipResponse, ArealPrecipSeries } from '@/types/ArealPrecipitation'
   import { useLocalArealFileStore } from '@/stores/localArealFileStore'
+  import { useLocalFileStore } from '@/stores/localFileStore'
   import {
     subcuencasStyle,
     sistemas10Style,
@@ -413,6 +414,7 @@
   const router = useRouter()
   const selectionBus = useSubcuencaSelectionBus()
   const localArealFileStore = useLocalArealFileStore()
+  const localFileStore = useLocalFileStore()
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -428,6 +430,12 @@
   const mapDetailStations = computed<StationData[]>(() =>
     hasPrecipAreal.value && selectedTab.value === 'precipitacion' ? [] : stations.value
   )
+
+  // Any local file loaded (stations or areal) puts the whole app in
+  // "reading from file" mode — this area's station table/map shouldn't fall
+  // back to live data either: show the file's own stations if there are
+  // any, otherwise none at all (never the live API).
+  const isFileMode = computed(() => localFileStore.hasStations || localArealFileStore.hasAreas)
 
   const selectedStationCode = ref<string | null>(null)
   const hoveredStationCode = ref<string | null>(null)
@@ -774,6 +782,12 @@
     { immediate: true }
   )
 
+  // Loading/removing a local file while this panel is already open should
+  // switch its station source immediately, not just on the next area click.
+  watch([isFileMode, () => localFileStore.stationsWithPredictions], () => {
+    if (feature.value) void loadStations(feature.value)
+  })
+
   // ── Data loading ──────────────────────────────────────────────────────────
 
   function stationsSearchParams(
@@ -798,6 +812,15 @@
 
   async function loadStations(feat: GeoJSON.Feature | null): Promise<void> {
     const requestId = ++stationsRequestId
+
+    // Reading-from-file mode never hits the live stations API — show the
+    // loaded file's stations (whatever they are) or none at all.
+    if (isFileMode.value) {
+      stations.value = localFileStore.stationsWithPredictions
+      loadingStations.value = false
+      return
+    }
+
     const params = stationsSearchParams(feat)
 
     if (!params) {

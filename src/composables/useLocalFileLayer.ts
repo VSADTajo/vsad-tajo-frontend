@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import L from 'leaflet'
 import { useLocalFileStore } from '@/stores/localFileStore'
+import { useLocalArealFileStore } from '@/stores/localArealFileStore'
 import { useLayersStore } from '@/stores/layersStore'
 import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
 import { saihPointStyle } from '@/config/styles/layerStyles'
@@ -36,6 +37,7 @@ function buildPopupContent(feature: GeoJSON.Feature): string {
 
 export function useLocalFileLayer(map: L.Map) {
   const localFileStore = useLocalFileStore()
+  const arealFileStore = useLocalArealFileStore()
   const layersStore = useLayersStore()
 
   let layer: L.GeoJSON | null = null
@@ -50,13 +52,19 @@ export function useLocalFileLayer(map: L.Map) {
   function buildLayer(): void {
     clearLayer()
 
-    if (localFileStore.stationsWithPredictions.length === 0) {
+    // Loading *any* local file — even an areal-precipitation-only one with
+    // no stations of its own — means "reading from file" mode: live SAIH
+    // stations shouldn't clutter the map while the user is working offline.
+    const isFileMode = localFileStore.stationsWithPredictions.length > 0 || arealFileStore.hasAreas
+
+    if (!isFileMode) {
       layersStore.restoreStationLayersVisibility()
       return
     }
 
-    // Only the file's own stations should be visible while it's loaded.
     layersStore.hideAllStationLayers()
+
+    if (localFileStore.stationsWithPredictions.length === 0) return
 
     const geojson = stationsToGeoJSON(localFileStore.stationsWithPredictions)
 
@@ -102,6 +110,7 @@ export function useLocalFileLayer(map: L.Map) {
   }
 
   watch(() => localFileStore.stationsWithPredictions, buildLayer, { deep: true })
+  watch(() => arealFileStore.hasAreas, buildLayer)
 
   // Data can already be present (persisted from a previous session) at mount
   // time, in which case the watcher above never fires on its own — build once
