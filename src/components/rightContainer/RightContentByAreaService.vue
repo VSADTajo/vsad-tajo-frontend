@@ -396,6 +396,7 @@
   import type { ArealPrecipResponse, ArealPrecipSeries } from '@/types/ArealPrecipitation'
   import { useLocalArealFileStore } from '@/stores/localArealFileStore'
   import { useLocalFileStore } from '@/stores/localFileStore'
+  import { filterStationsInsideFeature } from '@/utils/filterStationsInArea'
   import {
     subcuencasStyle,
     sistemas10Style,
@@ -813,10 +814,11 @@
   async function loadStations(feat: GeoJSON.Feature | null): Promise<void> {
     const requestId = ++stationsRequestId
 
-    // Reading-from-file mode never hits the live stations API — show the
-    // loaded file's stations (whatever they are) or none at all.
+    // Reading-from-file mode never hits the live stations API — instead
+    // filter the file's stations down to whichever fall inside this area's
+    // own polygon (the file has no area membership of its own to key off).
     if (isFileMode.value) {
-      stations.value = localFileStore.stationsWithPredictions
+      stations.value = filterStationsInsideFeature(localFileStore.stationsWithPredictions, feat)
       loadingStations.value = false
       return
     }
