@@ -44,7 +44,7 @@
             <v-card>
               <MapDetail
                 :type="mapType"
-                :stations="stations"
+                :stations="mapDetailStations"
                 :selected-station-code="selectedStationCode"
                 :hovered-station-code="hoveredStationCode"
                 @update:selected-station-code="selectedStationCode = $event"
@@ -422,6 +422,12 @@
 
   const feature = ref<GeoJSON.Feature | null>(null)
   const stations = ref<StationData[]>([])
+
+  // MapDetail only shows station markers on the "Estaciones" tab — while
+  // viewing "Precipitación Areal" the mini-map should show just the polygon.
+  const mapDetailStations = computed<StationData[]>(() =>
+    hasPrecipAreal.value && selectedTab.value === 'precipitacion' ? [] : stations.value
+  )
 
   const selectedStationCode = ref<string | null>(null)
   const hoveredStationCode = ref<string | null>(null)
