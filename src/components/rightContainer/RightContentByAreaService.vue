@@ -143,6 +143,7 @@
               <template
                 v-if="
                   (selectedSeries === 'caudal' && !!selectedStationCode) ||
+                  (isFileMode && !!selectedStationCode) ||
                   loadingChart ||
                   selectedChartData
                 "
@@ -156,190 +157,217 @@
                 </v-card-title>
 
                 <v-card-text class="bg-surface mt-2 border-radius-4" elevation="2">
-                  <template v-if="selectedSeries === 'caudal'">
-                    <template v-if="isEmbalseForChart">
-                      <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
-                        <v-tab value="caudalNAM">Caudal NAM</v-tab>
-                        <v-tab value="caudalMIKE">Caudal MIKE</v-tab>
-                        <v-tab value="volumenNAM">Volumen NAM</v-tab>
-                        <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
-                      </v-tabs>
-
-                      <div class="chart-tab-root">
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalNAM' },
-                          ]"
-                        >
-                          <ForecastChartNew
-                            v-if="mountedTabs.has('caudalNAM')"
-                            :data="caudalChartData"
-                            :is-embalse="true"
-                            :height="470"
-                            :loading="loadingCaudales"
-                            :thresholds="currentStationThresholds"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            'chart-tab-overlay',
-                            { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalMIKE' },
-                          ]"
-                        >
-                          <ForecastChartNew
-                            v-if="mountedTabs.has('caudalMIKE')"
-                            :data="mikeChartData"
-                            :is-embalse="true"
-                            :height="470"
-                            :loading="loadingCaudales"
-                            :thresholds="currentStationThresholds"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            'chart-tab-overlay',
-                            { 'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenNAM' },
-                          ]"
-                        >
-                          <ForecastChartNew
-                            v-if="mountedTabs.has('volumenNAM')"
-                            :data="volumenOnlyChartData"
-                            :is-embalse="true"
-                            :height="470"
-                            :loading="loadingCaudales"
-                            :thresholds="currentStationThresholds"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            'chart-tab-overlay',
-                            {
-                              'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenMIKE',
-                            },
-                          ]"
-                        >
-                          <ForecastChartNew
-                            v-if="mountedTabs.has('volumenMIKE')"
-                            :data="mikeVolumenChartData"
-                            :is-embalse="true"
-                            :height="470"
-                            :loading="loadingCaudales"
-                            :thresholds="currentStationThresholds"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                      </div>
-                    </template>
-
-                    <template v-else>
-                      <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
-                        <v-tab value="nam">NAM</v-tab>
-                        <v-tab value="mike">MIKE</v-tab>
-                        <v-tab value="combined">NAM + MIKE</v-tab>
-                      </v-tabs>
-                      <div class="chart-tab-root">
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'nam' },
-                          ]"
-                        >
-                          <ForecastChartNew
-                            v-if="mountedTabs.has('nam')"
-                            :data="caudalChartData"
-                            :loading="loadingCaudales"
-                            :thresholds="currentStationThresholds"
-                            :height="470"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            'chart-tab-overlay',
-                            { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'mike' },
-                          ]"
-                        >
-                          <ForecastChartNew
-                            v-if="mountedTabs.has('mike')"
-                            :data="mikeChartData"
-                            :loading="loadingCaudales"
-                            :thresholds="currentStationThresholds"
-                            :height="470"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                        <div
-                          :class="[
-                            'chart-tab-panel',
-                            'chart-tab-overlay',
-                            {
-                              'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'combined',
-                            },
-                          ]"
-                        >
-                          <CombinedNamMikeChart
-                            v-if="mountedTabs.has('combined')"
-                            :historical="caudalHistorical"
-                            :nam-harmonie="caudalForecastHarmonie"
-                            :nam-eps="caudalForecastEpstat"
-                            :mike-harmonie="mikeForecastHarmonie"
-                            :mike-eps="mikeForecastEpsat"
-                            :thresholds="currentStationThresholds"
-                            :loading="loadingCaudales"
-                            :height="470"
-                            :focus-threshold-request="thresholdFocusRequest"
-                            @focus-threshold-complete="handleThresholdFocusComplete"
-                          />
-                        </div>
-                      </div>
-                    </template>
+                  <template v-if="isFileMode">
+                    <ContentLocalFileHidrograma
+                      v-if="selectedSeries === 'caudal'"
+                      :is-embalse="isEmbalseForChart"
+                      :thresholds="currentStationThresholds"
+                      :predictions="localSelectedStation?.predictionsCaudal"
+                      :volumen-predictions="localSelectedStation?.predictionsVolumen"
+                    />
+                    <ContentLocalFilePrecipitaciones
+                      v-else
+                      :thresholds="currentStationThresholds"
+                      :predictions="localSelectedStation?.predictionsPrecipitacion"
+                    />
                   </template>
 
-                  <div v-else>
-                    <v-tabs v-model="selectedPrecipChartTab" class="bg-surface px-2">
-                      <v-tab value="precipitaciones">Precipitaciones</v-tab>
-                      <v-tab value="acumuladas">Acumuladas</v-tab>
-                    </v-tabs>
+                  <template v-else>
+                    <template v-if="selectedSeries === 'caudal'">
+                      <template v-if="isEmbalseForChart">
+                        <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
+                          <v-tab value="caudalNAM">Caudal NAM</v-tab>
+                          <v-tab value="caudalMIKE">Caudal MIKE</v-tab>
+                          <v-tab value="volumenNAM">Volumen NAM</v-tab>
+                          <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
+                        </v-tabs>
 
-                    <v-window v-model="selectedPrecipChartTab" class="flex-grow-1">
-                      <v-window-item value="precipitaciones" class="h-100">
-                        <v-sheet class="pa-2 h-100 d-flex flex-column">
-                          <PrecipitationsChart
-                            :data="selectedChartData ?? {}"
-                            :height="450"
-                            :loading="loadingChart"
-                            mode="precipitations"
-                          />
-                        </v-sheet>
-                      </v-window-item>
+                        <div class="chart-tab-root">
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              {
+                                'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalNAM',
+                              },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('caudalNAM')"
+                              :data="caudalChartData"
+                              :is-embalse="true"
+                              :height="470"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              {
+                                'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalMIKE',
+                              },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('caudalMIKE')"
+                              :data="mikeChartData"
+                              :is-embalse="true"
+                              :height="470"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              {
+                                'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'volumenNAM',
+                              },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('volumenNAM')"
+                              :data="volumenOnlyChartData"
+                              :is-embalse="true"
+                              :height="470"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              {
+                                'chart-tab-panel--hidden':
+                                  selectedEmbalseChartTab !== 'volumenMIKE',
+                              },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('volumenMIKE')"
+                              :data="mikeVolumenChartData"
+                              :is-embalse="true"
+                              :height="470"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                        </div>
+                      </template>
 
-                      <v-window-item value="acumuladas" class="h-100">
-                        <v-sheet class="pa-2 h-100 d-flex flex-column">
-                          <PrecipAccumulatedTimeSeriesChart
-                            :precipitations-historical="selectedChartData?.historical"
-                            :precipitations-forecast-harmonie="selectedChartData?.forecastHarmonie"
-                            :precipitations-forecast-epstat="selectedChartData?.forecastEpsat"
-                            :height="450"
-                            :loading="loadingChart"
-                          />
-                        </v-sheet>
-                      </v-window-item>
-                    </v-window>
-                  </div>
+                      <template v-else>
+                        <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
+                          <v-tab value="nam">NAM</v-tab>
+                          <v-tab value="mike">MIKE</v-tab>
+                          <v-tab value="combined">NAM + MIKE</v-tab>
+                        </v-tabs>
+                        <div class="chart-tab-root">
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'nam' },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('nam')"
+                              :data="caudalChartData"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :height="470"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              { 'chart-tab-panel--hidden': selectedCaudalTypeChartTab !== 'mike' },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('mike')"
+                              :data="mikeChartData"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :height="470"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              {
+                                'chart-tab-panel--hidden':
+                                  selectedCaudalTypeChartTab !== 'combined',
+                              },
+                            ]"
+                          >
+                            <CombinedNamMikeChart
+                              v-if="mountedTabs.has('combined')"
+                              :historical="caudalHistorical"
+                              :nam-harmonie="caudalForecastHarmonie"
+                              :nam-eps="caudalForecastEpstat"
+                              :mike-harmonie="mikeForecastHarmonie"
+                              :mike-eps="mikeForecastEpsat"
+                              :thresholds="currentStationThresholds"
+                              :loading="loadingCaudales"
+                              :height="470"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                        </div>
+                      </template>
+                    </template>
+
+                    <div v-else>
+                      <v-tabs v-model="selectedPrecipChartTab" class="bg-surface px-2">
+                        <v-tab value="precipitaciones">Precipitaciones</v-tab>
+                        <v-tab value="acumuladas">Acumuladas</v-tab>
+                      </v-tabs>
+
+                      <v-window v-model="selectedPrecipChartTab" class="flex-grow-1">
+                        <v-window-item value="precipitaciones" class="h-100">
+                          <v-sheet class="pa-2 h-100 d-flex flex-column">
+                            <PrecipitationsChart
+                              :data="selectedChartData ?? {}"
+                              :height="450"
+                              :loading="loadingChart"
+                              mode="precipitations"
+                            />
+                          </v-sheet>
+                        </v-window-item>
+
+                        <v-window-item value="acumuladas" class="h-100">
+                          <v-sheet class="pa-2 h-100 d-flex flex-column">
+                            <PrecipAccumulatedTimeSeriesChart
+                              :precipitations-historical="selectedChartData?.historical"
+                              :precipitations-forecast-harmonie="
+                                selectedChartData?.forecastHarmonie
+                              "
+                              :precipitations-forecast-epstat="selectedChartData?.forecastEpsat"
+                              :height="450"
+                              :loading="loadingChart"
+                            />
+                          </v-sheet>
+                        </v-window-item>
+                      </v-window>
+                    </div>
+                  </template>
                 </v-card-text>
               </template>
 
@@ -381,6 +409,8 @@
   import ContentObservedData from './ContentSaih/ContentObservedData.vue'
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
   import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
+  import ContentLocalFileHidrograma from './ContentLocalFileHidrograma.vue'
+  import ContentLocalFilePrecipitaciones from './ContentLocalFilePrecipitaciones.vue'
   import { getWFSFeatureById } from '@/services/geoserver'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import type { WFSLayerConfig } from '@/types/Layers'
@@ -437,6 +467,15 @@
   // back to live data either: show the file's own stations if there are
   // any, otherwise none at all (never the live API).
   const isFileMode = computed(() => localFileStore.hasStations || localArealFileStore.hasAreas)
+
+  // The selected row/marker's own file data, used to feed the local-file
+  // chart components directly instead of useCaudalPredictions/fetchChartData
+  // (both of which only know how to hit the live API).
+  const localSelectedStation = computed(() =>
+    isFileMode.value
+      ? localFileStore.stations.find((s) => s.stationCode === selectedStationCode.value)
+      : undefined
+  )
 
   const selectedStationCode = ref<string | null>(null)
   const hoveredStationCode = ref<string | null>(null)
