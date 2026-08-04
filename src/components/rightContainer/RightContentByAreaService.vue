@@ -388,6 +388,7 @@
   import type { PredictionResult } from '@/types/Predictions'
   import { getArealPrecipitationService } from '@/services/arealPrecipitation'
   import type { ArealPrecipResponse, ArealPrecipSeries } from '@/types/ArealPrecipitation'
+  import { useLocalArealFileStore } from '@/stores/localArealFileStore'
   import {
     subcuencasStyle,
     sistemas10Style,
@@ -405,6 +406,7 @@
   const route = useRoute()
   const router = useRouter()
   const selectionBus = useSubcuencaSelectionBus()
+  const localArealFileStore = useLocalArealFileStore()
 
   // ── State ─────────────────────────────────────────────────────────────────
 
@@ -700,13 +702,33 @@
   }
 
   watch(
-    precipArealLocationId,
-    (locationId) => {
-      if (locationId) {
-        void loadPrecipArealData(locationId)
-      } else {
+    [precipArealLocationId, () => localArealFileStore.areas],
+    ([locationId]) => {
+      if (!locationId) {
         precipArealData.value = {}
+        return
       }
+
+      // If this exact area was loaded from a local file, use it directly —
+      // no API call at all, mirrors how a local-file station never touches
+      // the live predictions endpoints either. Also re-checked whenever the
+      // local areal store changes, so loading a file while the panel is
+      // already open switches over without needing to reopen it. Matched
+      // case/whitespace-insensitively in case the WFS `fews` value and the
+      // file's locationId differ only in casing or stray spaces.
+      const normalizedId = locationId.trim().toUpperCase()
+      const localArea = localArealFileStore.areas.find(
+        (a) => a.id.trim().toUpperCase() === normalizedId
+      )
+
+      if (localArea) {
+        precipArealRequestId += 1
+        loadingPrecipAreal.value = false
+        precipArealData.value = localArea.predictions
+        return
+      }
+
+      void loadPrecipArealData(locationId)
     },
     { immediate: true }
   )

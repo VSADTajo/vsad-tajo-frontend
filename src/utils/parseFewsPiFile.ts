@@ -1,11 +1,8 @@
-import type { FewsPiEvent, FewsPiFile, FewsPiTimeSeries } from '@/types/FewsPiFile'
+import type { FewsPiFile, FewsPiTimeSeries } from '@/types/FewsPiFile'
 import type { LocalFileStation } from '@/types/LocalStationsFile'
-import type {
-  DataStationPrediction,
-  PredictionResult,
-  StationPrediction,
-} from '@/types/Predictions'
+import type { DataStationPrediction } from '@/types/Predictions'
 import { baseStationCode, stationTypeFromCode } from '@/utils/localStationCode'
+import { parseNumber, toStationPrediction } from '@/utils/fewsPiCommon'
 
 // Maps a FEWS parameterId to the DataStationPrediction slot it feeds.
 // Extend this as later phases bring caudal/volumen files (Q.NAM.*, V.MIKE11.*, ...).
@@ -54,15 +51,6 @@ function resolvePredictionKey(parameterId: string): keyof DataStationPrediction 
   return 'forecastEpsat'
 }
 
-function combineDateTime(dt?: { date: string; time: string }): string {
-  return dt ? `${dt.date}T${dt.time}` : ''
-}
-
-function parseNumber(value: string | undefined): number {
-  const parsed = Number.parseFloat(value ?? '')
-  return Number.isFinite(parsed) ? parsed : Number.NaN
-}
-
 function isPrecipitationParameter(parameterId: string): boolean {
   return parameterId.startsWith('P.')
 }
@@ -86,41 +74,6 @@ function predictionTarget(
   if (isPrecipitationParameter(parameterId)) return buckets.precipitacion
   if (isVolumeParameter(parameterId)) return buckets.volumen
   return buckets.caudal
-}
-
-function toPredictionResults(events: FewsPiEvent[], missVal: number): PredictionResult[] {
-  const results: PredictionResult[] = []
-
-  events.forEach((event, index) => {
-    const value = parseNumber(event.value)
-    if (!Number.isFinite(value) || value === missVal) return
-
-    results.push({
-      id: index,
-      date: `${event.date}T${event.time}`,
-      value,
-      flag: Number.parseInt(event.flag ?? '0', 10),
-    })
-  })
-
-  return results
-}
-
-function toStationPrediction(series: FewsPiTimeSeries): StationPrediction {
-  const { header, events = [] } = series
-  const missVal = parseNumber(header.missVal)
-
-  return {
-    id: `${header.locationId}-${header.parameterId}`,
-    stationId: header.locationId,
-    stationName: header.stationName ?? header.locationId,
-    predictionTypeName: header.parameterId,
-    simulationDate: combineDateTime(header.forecastDate) || combineDateTime(header.startDate),
-    predictionDate: combineDateTime(header.startDate),
-    predictionProvider: header.moduleInstanceId ?? '',
-    predictedBy: header.moduleInstanceId ?? '',
-    results: toPredictionResults(events, missVal),
-  }
 }
 
 function toLocalFileStation(stationCode: string, seriesList: FewsPiTimeSeries[]): LocalFileStation {

@@ -64,12 +64,12 @@
     <!-- ARCHIVO LOCAL: siempre pegado abajo, la lista rellena el hueco -->
     <div class="local-file-section">
       <v-divider class="mb-2" />
-      <div v-if="localFileStore.hasStations" class="px-4">
+      <div v-if="localFileStore.hasStations || localArealFileStore.hasAreas" class="px-4">
         <p class="font-weight-medium mb-1">Desde Archivo Local</p>
 
         <div
           v-for="file in localFileStore.files"
-          :key="file.id"
+          :key="`station-${file.id}`"
           class="d-flex align-center justify-space-between"
         >
           <p class="text-caption text-medium-emphasis mb-0 text-truncate">{{ file.fileName }}</p>
@@ -79,6 +79,21 @@
             variant="text"
             color="error"
             @click="onRemoveLocalFile(file.id)"
+          />
+        </div>
+
+        <div
+          v-for="file in localArealFileStore.files"
+          :key="`areal-${file.id}`"
+          class="d-flex align-center justify-space-between"
+        >
+          <p class="text-caption text-medium-emphasis mb-0 text-truncate">{{ file.fileName }}</p>
+          <v-btn
+            icon="mdi-close-circle-outline"
+            size="small"
+            variant="text"
+            color="error"
+            @click="localArealFileStore.removeFile(file.id)"
           />
         </div>
       </div>
@@ -207,6 +222,7 @@
   import { getAvisosResumenService } from '@/services/avisos'
   import { useDisplay } from 'vuetify'
   import { useLocalFileStore } from '@/stores/localFileStore'
+  import { useLocalArealFileStore } from '@/stores/localArealFileStore'
   import { useMapStore } from '@/stores/mapStore'
   import { getSaihTypeColor } from '@/utils/saihStations'
   import { setSaihMarkerHighlight, setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
@@ -217,6 +233,7 @@
   const route = useRoute()
   const router = useRouter()
   const localFileStore = useLocalFileStore()
+  const localArealFileStore = useLocalArealFileStore()
   const mapStore = useMapStore()
 
   const goBack = () => {

@@ -5,7 +5,9 @@ import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
 import { isFewsPiFile } from '@/types/FewsPiFile'
 import { fewsPiFileToStations } from '@/utils/parseFewsPiFile'
+import { isArealLocationId, parseArealFewsPiFile } from '@/utils/parseArealFewsPiFile'
 import { isObservedCsvFileName, parseObservedCsvFile } from '@/utils/parseObservedCsvFile'
+import { useLocalArealFileStore } from '@/stores/localArealFileStore'
 import type { DataStationPrediction } from '@/types/Predictions'
 
 export interface LoadedLocalFile {
@@ -100,6 +102,7 @@ export const useLocalFileStore = defineStore('localFile', () => {
   const files = useStorage<LoadedLocalFile[]>('localFile:files', [])
   const error = ref<string | null>(null)
   const selectedStationCode = ref<string | null>(null)
+  const arealFileStore = useLocalArealFileStore()
 
   const stations = computed<LocalFileStation[]>(() => mergeStationsByCode(files.value))
 
@@ -139,6 +142,18 @@ export const useLocalFileStore = defineStore('localFile', () => {
       }
 
       if (isFewsPiFile(parsed)) {
+        const firstLocationId = parsed.timeSeries[0]?.header?.locationId ?? ''
+
+        if (isArealLocationId(firstLocationId)) {
+          const areas = parseArealFewsPiFile(parsed)
+          if (areas.length === 0) {
+            errors.push(`"${file.name}" no contiene ninguna serie areal reconocible.`)
+            continue
+          }
+          arealFileStore.ingest(file.name, areas)
+          continue
+        }
+
         newFiles.push({
           id: generateFileId(),
           fileName: file.name,
