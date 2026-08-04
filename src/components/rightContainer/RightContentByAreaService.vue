@@ -17,6 +17,15 @@
     </v-chip>
   </StationStickyHeader>
 
+  <v-tabs
+    v-if="!loadingFeature && selectedRouteValue && hasPrecipAreal"
+    v-model="selectedTab"
+    class="bg-surface"
+  >
+    <v-tab value="precipitacion">Precipitación Areal</v-tab>
+    <v-tab value="estaciones">Estaciones</v-tab>
+  </v-tabs>
+
   <v-card class="pa-2 bg-background" elevation="2">
     <v-progress-linear v-if="loadingFeature" indeterminate />
 
@@ -46,20 +55,17 @@
 
           <v-col cols="12" sm="8">
             <template v-if="hasPrecipAreal">
-              <v-tabs v-model="selectedTab" class="bg-surface">
-                <v-tab value="precipitacion">Precipitación Areal</v-tab>
-                <v-tab value="estaciones">Estaciones</v-tab>
-              </v-tabs>
-
               <v-window v-model="selectedTab">
                 <v-window-item value="precipitacion">
-                  <PrecipitationsChart
-                    :data="precipArealData"
-                    :height="415"
-                    :loading="loadingPrecipAreal"
-                    mode="precipitations"
-                    class="bg-surface border-radius-4"
-                  />
+                  <v-card>
+                    <PrecipitationsChart
+                      :data="precipArealData"
+                      :height="460"
+                      :loading="loadingPrecipAreal"
+                      mode="precipitations"
+                      class="bg-surface border-radius-4"
+                    />
+                  </v-card>
                 </v-window-item>
 
                 <v-window-item value="estaciones">
