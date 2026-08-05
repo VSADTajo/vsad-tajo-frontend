@@ -25,10 +25,6 @@
           <v-list-item-title>Simulaciones</v-list-item-title>
         </v-list-item>
 
-        <v-list-item value="archivo-local" @click="toggleSection('archivo-local')">
-          <v-list-item-title>Archivo local</v-list-item-title>
-        </v-list-item>
-
         <v-list-item value="informes" @click="toggleSection('informes')">
           <v-list-item-title>Informes</v-list-item-title>
         </v-list-item>

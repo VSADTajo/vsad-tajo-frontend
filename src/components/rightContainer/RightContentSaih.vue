@@ -172,15 +172,51 @@
         tipo: 'SAIH',
         tipo_cod: station.tipoCod ?? null,
         threshold: station.threshold ?? null,
-        umbral_caudal_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1', 'umbralVolumen1']),
-        umbral_caudal_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2', 'umbralVolumen2']),
-        umbral_caudal_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3', 'umbralVolumen3']),
-        umbral_cauda_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1', 'umbralVolumen1']),
-        umbral_cauda_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2', 'umbralVolumen2']),
-        umbral_cauda_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3', 'umbralVolumen3']),
-        umbral_amarillo: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1', 'umbralVolumen1']),
-        umbral_naranja: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2', 'umbralVolumen2']),
-        umbral_rojo: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3', 'umbralVolumen3']),
+        umbral_caudal_1: getThresholdValue(station.threshold, [
+          'umbralCaudal1',
+          'umbralNivel1',
+          'umbralVolumen1',
+        ]),
+        umbral_caudal_2: getThresholdValue(station.threshold, [
+          'umbralCaudal2',
+          'umbralNivel2',
+          'umbralVolumen2',
+        ]),
+        umbral_caudal_3: getThresholdValue(station.threshold, [
+          'umbralCaudal3',
+          'umbralNivel3',
+          'umbralVolumen3',
+        ]),
+        umbral_cauda_1: getThresholdValue(station.threshold, [
+          'umbralCaudal1',
+          'umbralNivel1',
+          'umbralVolumen1',
+        ]),
+        umbral_cauda_2: getThresholdValue(station.threshold, [
+          'umbralCaudal2',
+          'umbralNivel2',
+          'umbralVolumen2',
+        ]),
+        umbral_cauda_3: getThresholdValue(station.threshold, [
+          'umbralCaudal3',
+          'umbralNivel3',
+          'umbralVolumen3',
+        ]),
+        umbral_amarillo: getThresholdValue(station.threshold, [
+          'umbralCaudal1',
+          'umbralNivel1',
+          'umbralVolumen1',
+        ]),
+        umbral_naranja: getThresholdValue(station.threshold, [
+          'umbralCaudal2',
+          'umbralNivel2',
+          'umbralVolumen2',
+        ]),
+        umbral_rojo: getThresholdValue(station.threshold, [
+          'umbralCaudal3',
+          'umbralNivel3',
+          'umbralVolumen3',
+        ]),
       },
     }
   }

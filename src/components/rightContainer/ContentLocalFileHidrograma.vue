@@ -12,7 +12,7 @@
         class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
         elevation="2"
       >
-        <ContentSaihAlertStatus :caudal-historical="historical" :thresholds="thresholds" />
+        <ContentSaihAlertStatus :caudal-historical="historical" :thresholds="resolvedThresholds" />
       </v-card>
 
       <v-card
@@ -25,7 +25,7 @@
             <ContentObservedData
               :is-embalse="isEmbalse"
               :caudal-historical="historical"
-              :thresholds="thresholds"
+              :thresholds="resolvedThresholds"
             />
           </v-col>
         </v-row>
@@ -41,7 +41,7 @@
           mode="observed"
           :is-embalse="isEmbalse"
           :caudal-historical="historical"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
           title="Resumen Operativo Observado"
         />
       </v-card>
@@ -52,11 +52,16 @@
         <v-card class="bg-background w-100 d-flex flex-column">
           <v-card-text>
             <v-sheet class="pa-2">
+              <v-tabs v-if="hasVolumen" v-model="selectedVariant" density="compact" class="mb-3">
+                <v-tab value="caudal">Caudal</v-tab>
+                <v-tab value="volumen">Volumen</v-tab>
+              </v-tabs>
+
               <ForecastChartNew
                 :data="chartData"
                 :is-embalse="isEmbalse"
                 :height="470"
-                :thresholds="thresholds"
+                :thresholds="resolvedThresholds"
                 :focus-threshold-request="thresholdFocusRequest"
                 @focus-threshold-complete="handleThresholdFocusComplete"
               />
@@ -66,9 +71,9 @@
 
         <v-card class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            active-tab="caudalNAM"
+            :active-tab="selectedVariant === 'volumen' ? 'volumenNAM' : 'caudalNAM'"
             :is-embalse="isEmbalse"
-            :thresholds="thresholds"
+            :thresholds="resolvedThresholds"
             :selected-threshold="selectedThreshold"
             @focus-threshold="handleThresholdFocus"
           />
@@ -82,7 +87,7 @@
             :forecast-ens-p25="forecastEnsP25"
             :forecast-ens-p75="forecastEnsP75"
             :forecast-ens-p90="forecastEnsP90"
-            :thresholds="thresholds"
+            :thresholds="resolvedThresholds"
           />
         </v-card>
       </div>
@@ -104,7 +109,7 @@
           :caudal-forecast-harmonie="forecastHarmonie"
           :caudal-forecast-epsat="forecastEpsat"
           :mode="'predictions'"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
         />
       </v-card>
       <v-card
@@ -117,7 +122,7 @@
           hide-date-selector
           :caudal-forecast-harmonie="forecastHarmonie"
           :caudal-forecast-epstat="forecastEpsat"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
         />
       </v-card>
 
@@ -135,7 +140,7 @@
           :caudal-forecast-ens-p25="forecastEnsP25"
           :caudal-forecast-ens-p75="forecastEnsP75"
           :caudal-forecast-ens-p90="forecastEnsP90"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
           title="Resumen Operativo Predicciones"
         />
       </v-card>
@@ -154,6 +159,7 @@
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
   import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
+  import { getStationByCodeService } from '@/services/general'
 
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
@@ -169,15 +175,67 @@
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
     predictions?: DataStationPrediction
+    volumenPredictions?: DataStationPrediction
+    stationCode?: string
   }>()
 
-  const historical = computed(() => props.predictions?.historical)
-  const forecastHarmonie = computed(() => props.predictions?.forecastHarmonie)
-  const forecastEpsat = computed(() => props.predictions?.forecastEpsat)
-  const forecastEnsP10 = computed(() => props.predictions?.forecastEnsP10)
-  const forecastEnsP25 = computed(() => props.predictions?.forecastEnsP25)
-  const forecastEnsP75 = computed(() => props.predictions?.forecastEnsP75)
-  const forecastEnsP90 = computed(() => props.predictions?.forecastEnsP90)
+  // Umbrales are static station config, not "predictions" — fetched live
+  // the same way the non-local-file view does (RightContentSaih.vue), even
+  // while everything else on this page comes from the loaded file. Local
+  // files never carry threshold data of their own.
+  const liveThreshold = ref<Record<string, unknown> | null>(null)
+
+  watch(
+    () => props.stationCode,
+    async (code) => {
+      liveThreshold.value = null
+      if (!code) return
+
+      try {
+        const station = await getStationByCodeService(code)
+        liveThreshold.value = (station.threshold as Record<string, unknown> | null) ?? null
+      } catch {
+        liveThreshold.value = null
+      }
+    },
+    { immediate: true }
+  )
+
+  const resolvedThresholds = computed<Record<string, unknown> | undefined>(() =>
+    liveThreshold.value ? { ...props.thresholds, ...liveThreshold.value } : props.thresholds
+  )
+
+  // Caudal and volumen are kept as separate DataStationPrediction objects
+  // (same reasoning as the store split) — an embalse with both shows a small
+  // Caudal/Volumen switch, mirroring how the live app treats them as
+  // distinct views rather than merging them into one series.
+  const hasVolumen = computed(() => Object.keys(props.volumenPredictions ?? {}).length > 0)
+  const hasCaudalData = computed(() => Object.keys(props.predictions ?? {}).length > 0)
+  const selectedVariant = ref<'caudal' | 'volumen'>('caudal')
+
+  // Reset the default variant whenever the underlying station's data changes
+  // (this component is reused across station navigation) — otherwise a
+  // station without caudal data could be stuck showing an empty caudal view
+  // while its actual volumen data sits one tab away.
+  watch(
+    [hasCaudalData, hasVolumen],
+    ([caudal, volumen]) => {
+      selectedVariant.value = caudal ? 'caudal' : volumen ? 'volumen' : 'caudal'
+    },
+    { immediate: true }
+  )
+
+  const activePredictions = computed(() =>
+    selectedVariant.value === 'volumen' ? props.volumenPredictions : props.predictions
+  )
+
+  const historical = computed(() => activePredictions.value?.historical)
+  const forecastHarmonie = computed(() => activePredictions.value?.forecastHarmonie)
+  const forecastEpsat = computed(() => activePredictions.value?.forecastEpsat)
+  const forecastEnsP10 = computed(() => activePredictions.value?.forecastEnsP10)
+  const forecastEnsP25 = computed(() => activePredictions.value?.forecastEnsP25)
+  const forecastEnsP75 = computed(() => activePredictions.value?.forecastEnsP75)
+  const forecastEnsP90 = computed(() => activePredictions.value?.forecastEnsP90)
 
   const chartData = computed(() => ({
     historical: historical.value,
