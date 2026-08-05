@@ -61,56 +61,70 @@
       </v-row>
     </div>
 
-    <!-- ARCHIVO LOCAL: siempre pegado abajo, la lista rellena el hueco -->
+    <!-- ARCHIVO LOCAL: bloque agrupado (lista + input) siempre pegado abajo -->
     <div class="local-file-section">
       <v-divider class="mb-2" />
-      <div v-if="localFileStore.hasStations || localArealFileStore.hasAreas" class="px-4">
-        <p class="font-weight-medium mb-1">Desde Archivo Local</p>
 
-        <div
-          v-for="file in localFileStore.files"
-          :key="`station-${file.id}`"
-          class="d-flex align-center justify-space-between"
-        >
-          <p class="text-caption text-medium-emphasis mb-0 text-truncate">{{ file.fileName }}</p>
-          <v-btn
-            icon="mdi-close-circle-outline"
-            size="small"
-            variant="text"
-            color="error"
-            @click="onRemoveLocalFile(file.id)"
-          />
-        </div>
+      <div class="local-file-bottom px-4 pb-4">
+        <template v-if="localFileStore.hasStations || localArealFileStore.hasAreas">
+          <div class="d-flex align-center justify-space-between mb-1">
+            <p class="font-weight-medium mb-0">Desde Archivo Local</p>
+            <span class="text-caption text-medium-emphasis">{{ localFileCount }} archivo(s)</span>
+          </div>
 
-        <div
-          v-for="file in localArealFileStore.files"
-          :key="`areal-${file.id}`"
-          class="d-flex align-center justify-space-between"
-        >
-          <p class="text-caption text-medium-emphasis mb-0 text-truncate">{{ file.fileName }}</p>
-          <v-btn
-            icon="mdi-close-circle-outline"
-            size="small"
-            variant="text"
-            color="error"
-            @click="localArealFileStore.removeFile(file.id)"
-          />
-        </div>
-      </div>
+          <div class="local-file-list mb-3">
+            <div
+              v-for="file in localFileStore.files"
+              :key="`station-${file.id}`"
+              class="local-file-row"
+            >
+              <v-icon size="16" color="medium-emphasis" class="mr-2">
+                mdi-file-document-outline
+              </v-icon>
+              <p class="text-caption text-medium-emphasis mb-0 text-truncate flex-grow-1">
+                {{ file.fileName }}
+              </p>
+              <v-btn
+                icon="mdi-close-circle-outline"
+                size="x-small"
+                variant="text"
+                color="error"
+                @click="onRemoveLocalFile(file.id)"
+              />
+            </div>
 
-      <div class="local-file-list-wrapper px-4">
+            <div
+              v-for="file in localArealFileStore.files"
+              :key="`areal-${file.id}`"
+              class="local-file-row"
+            >
+              <v-icon size="16" color="medium-emphasis" class="mr-2">
+                mdi-file-document-outline
+              </v-icon>
+              <p class="text-caption text-medium-emphasis mb-0 text-truncate flex-grow-1">
+                {{ file.fileName }}
+              </p>
+              <v-btn
+                icon="mdi-close-circle-outline"
+                size="x-small"
+                variant="text"
+                color="error"
+                @click="localArealFileStore.removeFile(file.id)"
+              />
+            </div>
+          </div>
+        </template>
+
         <v-alert
           v-if="localFileStore.hasStations && localFileStore.stationsWithPredictions.length === 0"
           type="info"
           variant="tonal"
           density="compact"
-          class="mt-2"
+          class="mb-2"
         >
           El archivo no contiene ninguna estación con predicciones.
         </v-alert>
-      </div>
 
-      <div class="local-file-input-row px-4 pb-4">
         <v-alert
           v-if="localFileStore.error"
           type="error"
@@ -196,6 +210,10 @@
   const selectedFiles = ref<File[] | null>(null)
   const loadingLocalFile = ref(false)
 
+  const localFileCount = computed(
+    () => localFileStore.files.length + localArealFileStore.files.length
+  )
+
   async function onFilesSelected(fileOrFiles: File | File[] | null): Promise<void> {
     const list = Array.isArray(fileOrFiles) ? fileOrFiles : fileOrFiles ? [fileOrFiles] : []
     if (list.length === 0) return
@@ -246,9 +264,6 @@
     overflow-y: auto;
   }
 
-  // Claims all remaining height below the layer groups, so the file input
-  // always sits at the very bottom of the panel and the station list fills
-  // whatever space is left above it.
   .local-file-section {
     flex: 1 1 auto;
     min-height: 0;
@@ -256,19 +271,43 @@
     flex-direction: column;
   }
 
-  .local-file-list-wrapper {
-    flex: 0 1 auto;
-    min-height: 0;
-    max-height: 30vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  // margin-top: auto absorbs all free space above this item, so the input
-  // stays pinned to the bottom whether the list above is empty, small, or
-  // capped at max-height.
-  .local-file-input-row {
+  // margin-top: auto absorbs all free space above, so the whole group
+  // (loaded-files list + input) stays together pinned to the bottom instead
+  // of the list drifting away from the input.
+  .local-file-bottom {
     flex: 0 0 auto;
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  // Capped so 5+ loaded files scroll internally instead of pushing the
+  // input down or growing the panel.
+  .local-file-list {
+    max-height: 25vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(110, 118, 129, 0.5) transparent;
+  }
+
+  .local-file-list::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .local-file-list::-webkit-scrollbar-thumb {
+    background: rgba(110, 118, 129, 0.5);
+    border-radius: 999px;
+  }
+
+  .local-file-row {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  .local-file-row:last-child {
+    border-bottom: none;
   }
 </style>
