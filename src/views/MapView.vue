@@ -222,9 +222,16 @@
 
     const { initBaseLayers } = useBaseLayers(map)
 
+    // Must run before useDynamicLayers: it hides the live SAIH layers
+    // synchronously via layersStore when a local file is already loaded.
+    // useDynamicLayers's watcher is `immediate`, so on a cold reload (no
+    // cached WFS layer yet) its very first sync would otherwise capture
+    // "stations visible" and race the slower live fetch against the local
+    // file's hide — sometimes losing, leaving live markers clickable on top
+    // of (or instead of) the file's own.
+    useLocalFileLayer(map)
     useDynamicLayers(map)
     useAvisosLayers(map)
-    useLocalFileLayer(map)
     await initBaseLayers()
 
     const resizeObserver = new ResizeObserver(() => map.invalidateSize())

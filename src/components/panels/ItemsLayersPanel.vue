@@ -108,72 +108,6 @@
         >
           El archivo no contiene ninguna estación con predicciones.
         </v-alert>
-
-        <v-list
-          v-else-if="localFileStore.hasStations"
-          class="local-file-list py-0 mt-2"
-          density="compact"
-          bg-color="surface_variant border"
-        >
-          <v-list-item
-            v-for="station in localFileStore.stationsWithPredictions"
-            :key="station.id ?? station.stationCode"
-            :active="localFileStore.selectedStationCode === station.stationCode"
-            :class="[
-              'border',
-              {
-                'item-map-hover':
-                  mapStore.hoveredStationCode?.toUpperCase() === station.stationCode.toUpperCase(),
-              },
-            ]"
-            color="primary"
-            @click="openLocalFileDetail(station)"
-            @mouseenter="onLocalFileItemEnter(station.stationCode)"
-            @mouseleave="onLocalFileItemLeave"
-          >
-            <template #prepend>
-              <div
-                class="saih-marker mr-3"
-                :style="{ '--saih-color': getSaihTypeColor(station.tipoCod), flexShrink: 0 }"
-              >
-                {{ station.tipoCod ?? '?' }}
-              </div>
-            </template>
-
-            <v-list-item-title class="text-body-2 font-weight-medium">
-              {{ station.name }}
-            </v-list-item-title>
-            <v-list-item-subtitle class="text-caption">
-              {{ station.stationCode }}
-            </v-list-item-subtitle>
-
-            <template #append>
-              <div class="local-file-actions" @click.stop>
-                <v-btn
-                  icon
-                  variant="text"
-                  density="compact"
-                  title="Ir a la estación"
-                  color="primary"
-                  class="mr-2"
-                  :disabled="station.latitude == null || station.longitude == null"
-                  @click="flyToLocalFileStation(station)"
-                >
-                  <v-icon size="16">mdi-map-marker</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="text"
-                  density="compact"
-                  title="Abrir detalle"
-                  @click="openLocalFileDetail(station)"
-                >
-                  <v-icon size="16">mdi-open-in-new</v-icon>
-                </v-btn>
-              </div>
-            </template>
-          </v-list-item>
-        </v-list>
       </div>
 
       <div class="local-file-input-row px-4 pb-4">
@@ -223,10 +157,7 @@
   import { useDisplay } from 'vuetify'
   import { useLocalFileStore } from '@/stores/localFileStore'
   import { useLocalArealFileStore } from '@/stores/localArealFileStore'
-  import { useMapStore } from '@/stores/mapStore'
-  import { getSaihTypeColor } from '@/utils/saihStations'
-  import { setSaihMarkerHighlight, setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
-  import type { LocalFileStation } from '@/types/LocalStationsFile'
+  import { setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
 
   const { mdAndUp } = useDisplay()
 
@@ -234,7 +165,6 @@
   const router = useRouter()
   const localFileStore = useLocalFileStore()
   const localArealFileStore = useLocalArealFileStore()
-  const mapStore = useMapStore()
 
   const goBack = () => {
     router.push('/')
@@ -292,26 +222,6 @@
     }
   }
 
-  function openLocalFileDetail(station: LocalFileStation): void {
-    localFileStore.selectStation(station.stationCode)
-    router.replace({ query: { ...route.query, localStation: station.stationCode } })
-  }
-
-  function flyToLocalFileStation(station: LocalFileStation): void {
-    if (station.latitude == null || station.longitude == null) return
-    mapStore.requestFlyTo(station.latitude, station.longitude, { zoom: 13 })
-  }
-
-  function onLocalFileItemEnter(stationCode: string): void {
-    setSaihMarkerHighlight(stationCode)
-    mapStore.setHoveredStation(stationCode)
-  }
-
-  function onLocalFileItemLeave(): void {
-    setSaihMarkerHighlight(null)
-    mapStore.setHoveredStation(null)
-  }
-
   watch(
     () => localFileStore.selectedStationCode,
     (code) => setSaihMarkerSelected(code ?? null)
@@ -360,31 +270,5 @@
   .local-file-input-row {
     flex: 0 0 auto;
     margin-top: auto;
-  }
-
-  .local-file-list {
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(110, 118, 129, 0.5) transparent;
-  }
-
-  .local-file-list::-webkit-scrollbar {
-    width: 5px;
-  }
-
-  .local-file-list::-webkit-scrollbar-thumb {
-    background: rgba(110, 118, 129, 0.5);
-    border-radius: 999px;
-  }
-
-  .item-map-hover {
-    background: rgb(var(--v-theme-primary), 0.08) !important;
-  }
-
-  .local-file-actions {
-    display: flex;
-    align-items: center;
-    gap: 2px;
   }
 </style>

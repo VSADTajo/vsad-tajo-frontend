@@ -43,6 +43,7 @@
   import { useLocalFileStore } from '@/stores/localFileStore'
   import { getSaihTypeColor } from '@/utils/saihStations'
   import { stationsToGeoJSON } from '@/utils/stationsToGeoJSON'
+  import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
   import StationStickyHeader from './StationStickyHeader.vue'
   import ContentLocalFileHidrograma from './ContentLocalFileHidrograma.vue'
   import ContentLocalFilePrecipitaciones from './ContentLocalFilePrecipitaciones.vue'
@@ -57,17 +58,41 @@
     localFileStore.stations.find((s) => s.stationCode === stationCode.value)
   )
 
+  // municipio/provincia/ccaa/zona (the StationStickyHeader chips) aren't in
+  // the FEWS file at all — they're static station metadata, so fetched live
+  // the same way thresholds are, keeping the header on par with
+  // RightContentSaih.vue even though the predictions themselves come from file.
+  const liveStationMeta = ref<StationByCodeResponse | null>(null)
+
+  watch(
+    () => station.value?.stationCode,
+    async (code) => {
+      liveStationMeta.value = null
+      if (!code) return
+
+      try {
+        liveStationMeta.value = await getStationByCodeService(code)
+      } catch {
+        liveStationMeta.value = null
+      }
+    },
+    { immediate: true }
+  )
+
   const feature = computed<GeoJSON.Feature | null>(() => {
     if (!station.value) return null
     const base = stationsToGeoJSON([station.value]).features[0]
     if (!base) return null
 
     // StationStickyHeader reads `codigo`/`nombre`/`tipo`, which the generic
-    // stationsToGeoJSON() (built for the map layer) doesn't set.
+    // stationsToGeoJSON() (built for the map layer) doesn't set. codigo/
+    // nombre/tipo stay authoritative from the file even if the live lookup
+    // matched a different-looking record.
     return {
       ...base,
       properties: {
         ...base.properties,
+        ...liveStationMeta.value,
         codigo: station.value.stationCode,
         nombre: station.value.name,
         tipo: 'SAIH',
