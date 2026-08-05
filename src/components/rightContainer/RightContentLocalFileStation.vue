@@ -24,6 +24,7 @@
         :thresholds="feature?.properties as Record<string, unknown>"
         :predictions="station.predictionsCaudal"
         :volumen-predictions="station.predictionsVolumen"
+        :station-code="station.stationCode"
       />
     </div>
 

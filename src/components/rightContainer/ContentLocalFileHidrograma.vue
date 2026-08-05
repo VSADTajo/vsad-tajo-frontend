@@ -12,7 +12,7 @@
         class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
         elevation="2"
       >
-        <ContentSaihAlertStatus :caudal-historical="historical" :thresholds="thresholds" />
+        <ContentSaihAlertStatus :caudal-historical="historical" :thresholds="resolvedThresholds" />
       </v-card>
 
       <v-card
@@ -25,7 +25,7 @@
             <ContentObservedData
               :is-embalse="isEmbalse"
               :caudal-historical="historical"
-              :thresholds="thresholds"
+              :thresholds="resolvedThresholds"
             />
           </v-col>
         </v-row>
@@ -41,7 +41,7 @@
           mode="observed"
           :is-embalse="isEmbalse"
           :caudal-historical="historical"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
           title="Resumen Operativo Observado"
         />
       </v-card>
@@ -61,7 +61,7 @@
                 :data="chartData"
                 :is-embalse="isEmbalse"
                 :height="470"
-                :thresholds="thresholds"
+                :thresholds="resolvedThresholds"
                 :focus-threshold-request="thresholdFocusRequest"
                 @focus-threshold-complete="handleThresholdFocusComplete"
               />
@@ -73,7 +73,7 @@
           <ContentUmbralesData
             :active-tab="selectedVariant === 'volumen' ? 'volumenNAM' : 'caudalNAM'"
             :is-embalse="isEmbalse"
-            :thresholds="thresholds"
+            :thresholds="resolvedThresholds"
             :selected-threshold="selectedThreshold"
             @focus-threshold="handleThresholdFocus"
           />
@@ -87,7 +87,7 @@
             :forecast-ens-p25="forecastEnsP25"
             :forecast-ens-p75="forecastEnsP75"
             :forecast-ens-p90="forecastEnsP90"
-            :thresholds="thresholds"
+            :thresholds="resolvedThresholds"
           />
         </v-card>
       </div>
@@ -109,7 +109,7 @@
           :caudal-forecast-harmonie="forecastHarmonie"
           :caudal-forecast-epsat="forecastEpsat"
           :mode="'predictions'"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
         />
       </v-card>
       <v-card
@@ -122,7 +122,7 @@
           hide-date-selector
           :caudal-forecast-harmonie="forecastHarmonie"
           :caudal-forecast-epstat="forecastEpsat"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
         />
       </v-card>
 
@@ -140,7 +140,7 @@
           :caudal-forecast-ens-p25="forecastEnsP25"
           :caudal-forecast-ens-p75="forecastEnsP75"
           :caudal-forecast-ens-p90="forecastEnsP90"
-          :thresholds="thresholds"
+          :thresholds="resolvedThresholds"
           title="Resumen Operativo Predicciones"
         />
       </v-card>
@@ -159,6 +159,7 @@
   import ContentUmbralesData from './ContentSaih/ContentUmbralesData.vue'
   import ContentSaihCaudalMatrix from './ContentSaih/ContentSaihCaudalMatrix.vue'
   import ContentSaihPredictionsLatest from './ContentSaih/ContentSaihPredictionsLatest.vue'
+  import { getStationByCodeService } from '@/services/general'
 
   type ThresholdType = 'caudal' | 'volumen'
   type ThresholdLevel = 1 | 2 | 3
@@ -175,7 +176,34 @@
     thresholds?: Record<string, unknown>
     predictions?: DataStationPrediction
     volumenPredictions?: DataStationPrediction
+    stationCode?: string
   }>()
+
+  // Umbrales are static station config, not "predictions" — fetched live
+  // the same way the non-local-file view does (RightContentSaih.vue), even
+  // while everything else on this page comes from the loaded file. Local
+  // files never carry threshold data of their own.
+  const liveThreshold = ref<Record<string, unknown> | null>(null)
+
+  watch(
+    () => props.stationCode,
+    async (code) => {
+      liveThreshold.value = null
+      if (!code) return
+
+      try {
+        const station = await getStationByCodeService(code)
+        liveThreshold.value = (station.threshold as Record<string, unknown> | null) ?? null
+      } catch {
+        liveThreshold.value = null
+      }
+    },
+    { immediate: true }
+  )
+
+  const resolvedThresholds = computed<Record<string, unknown> | undefined>(() =>
+    liveThreshold.value ? { ...props.thresholds, ...liveThreshold.value } : props.thresholds
+  )
 
   // Caudal and volumen are kept as separate DataStationPrediction objects
   // (same reasoning as the store split) — an embalse with both shows a small

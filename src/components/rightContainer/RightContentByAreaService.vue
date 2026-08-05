@@ -164,6 +164,7 @@
                       :thresholds="currentStationThresholds"
                       :predictions="localSelectedStation?.predictionsCaudal"
                       :volumen-predictions="localSelectedStation?.predictionsVolumen"
+                      :station-code="selectedStationCode ?? undefined"
                     />
                     <ContentLocalFilePrecipitaciones
                       v-else
