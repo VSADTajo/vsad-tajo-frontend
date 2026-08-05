@@ -112,11 +112,8 @@
   import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
-  import {
-    getEmbalseStationsService,
-    createSimulationService,
-    type StationByCodeResponse,
-  } from '@/services/general'
+  import { getEmbalseStationsService, type StationByCodeResponse } from '@/services/general'
+  import { createSimulationService } from '@/services/simulations'
   import { useLayersStore } from '@/stores/layersStore'
   import { useMapStore } from '@/stores/mapStore'
   import { useSimulationsStore } from '@/stores/simulationsStore'

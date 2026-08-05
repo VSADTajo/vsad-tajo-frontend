@@ -113,7 +113,7 @@
   defineOptions({ inheritAttrs: false })
   import type { SimulationRecord } from '@/types/Simulations'
   import { formatDateDDMMYYYY, formatDateDDMM } from '@/utils/dates'
-  import { deleteSimulationService } from '@/services/general'
+  import { deleteSimulationService } from '@/services/simulations'
   import SimulationEditDialog from './SimulationEditDialog.vue'
 
   const props = defineProps<{

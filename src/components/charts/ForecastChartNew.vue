@@ -344,7 +344,6 @@
 
     const result: ApexSeriesItem[] = []
     const labels = xLabels.value
-    const nowMs = Date.now()
 
     // Observado
     if (historicalData.value) {
@@ -472,9 +471,7 @@
     // Harmonie
     if (HarmonieData.value) {
       const detMap = new Map(HarmonieData.value.map((d) => [d.date, d.value]))
-      const values = allDates.value.map((date) =>
-        new Date(date).getTime() < nowMs ? null : (detMap.get(date) ?? null)
-      )
+      const values = allDates.value.map((date) => detMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
           name: predictionHarmonieSeriesName.value,
@@ -491,9 +488,7 @@
     // EPS
     if (epsatData.value) {
       const epsatMap = new Map(epsatData.value.map((d) => [d.date, d.value]))
-      const values = allDates.value.map((date) =>
-        new Date(date).getTime() < nowMs ? null : (epsatMap.get(date) ?? null)
-      )
+      const values = allDates.value.map((date) => epsatMap.get(date) ?? null)
       if (hasFiniteValue(values)) {
         result.push({
           name: 'Predicción Prob. EPS',
@@ -512,7 +507,6 @@
       const p10Map = new Map(p10Data.value.map((d) => [d.date, d.value]))
       const p90Map = new Map(p90Data.value.map((d) => [d.date, d.value]))
       const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
-        if (new Date(date).getTime() < nowMs) return null
         const low = p10Map.get(date) ?? null
         const high = p90Map.get(date) ?? null
         return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null
@@ -535,7 +529,6 @@
       const p25Map = new Map(p25Data.value.map((d) => [d.date, d.value]))
       const p75Map = new Map(p75Data.value.map((d) => [d.date, d.value]))
       const ranges: Array<[number | null, number | null] | null> = allDates.value.map((date) => {
-        if (new Date(date).getTime() < nowMs) return null
         const low = p25Map.get(date) ?? null
         const high = p75Map.get(date) ?? null
         return Number.isFinite(low) && Number.isFinite(high) ? [low, high] : null

@@ -1,5 +1,7 @@
 import { getSaihAlertInfo, getSaihPrecipMaxInfo } from '@/utils/saihAlerts'
 import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
+import { useSimulationsStore } from '@/stores/simulationsStore'
+import type { SimulationResultPrediction } from '@/types/Simulations'
 import { formatPopupDate } from './dates'
 
 export const SAIH_TYPE_COLORS: Record<string, string> = {
@@ -107,6 +109,52 @@ function buildAlertChip(
   return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">${formatValue} m3/s</span>`
 }
 
+function buildSimulationPredictionsSection(stationCode: string): string {
+  const results = useSimulationsStore().simulationResults
+  if (!results) return ''
+
+  const stationPredictions = results.predictions.filter(
+    (prediction) =>
+      String(prediction.station?.stationCode ?? prediction.stationId ?? '').toUpperCase() ===
+      stationCode.toUpperCase()
+  )
+
+  if (!stationPredictions.length) return ''
+
+  const sorted = [...stationPredictions].sort((a, b) => {
+    const nameCompare = a.predictionTypeName.localeCompare(b.predictionTypeName)
+    if (nameCompare !== 0) return nameCompare
+    return (a.percentile ?? -1) - (b.percentile ?? -1)
+  })
+
+  const rows = sorted
+    .map((prediction: SimulationResultPrediction) => {
+      const label = escapeHtml(
+        prediction.predictionTypeName + (prediction.percentile != null ? ` (P${prediction.percentile})` : '')
+      )
+      const unit = escapeHtml(prediction.predictionTypeUnit ?? '')
+      const maxValue = escapeHtml(
+        prediction.max?.value != null ? `${prediction.max.value.toFixed(2)} ${unit}` : '-'
+      )
+      const maxDate = escapeHtml(formatPopupDate(prediction.max?.date))
+      const lastValue = escapeHtml(
+        prediction.last?.value != null ? `${prediction.last.value.toFixed(2)} ${unit}` : '-'
+      )
+      const lastDate = escapeHtml(formatPopupDate(prediction.last?.date))
+
+      return `
+        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e5e7eb">
+          <div style="font-weight:700;margin-bottom:2px">${label}</div>
+          <div>Máx: ${maxValue} <span style="color:#6b7280">(${maxDate})</span></div>
+          <div>Últ: ${lastValue} <span style="color:#6b7280">(${lastDate})</span></div>
+        </div>
+      `
+    })
+    .join('')
+
+  return rows
+}
+
 export function buildSaihMinimalPopupContent(feature: GeoJSON.Feature): string {
   const props = (feature.properties ?? {}) as Record<string, unknown>
   const tipo = String(props.tipoCod ?? props.tipo_cod ?? props.tipo ?? '')
@@ -116,6 +164,10 @@ export function buildSaihMinimalPopupContent(feature: GeoJSON.Feature): string {
   const nombre = escapeHtml(props.name ?? props.nombre ?? '')
   const municipio = escapeHtml(props.municipio ?? '-')
 
+  const simulationSection = buildSimulationPredictionsSection(
+    String(props.stationCode ?? props.codigo ?? '')
+  )
+
   return `
     <div style="min-width:180px;border-radius:12px;overflow:hidden;font-family:Montserrat,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,0.16)">
       <div style="padding:10px 12px;background:linear-gradient(135deg, ${headerColor} 0%, ${headerColorDark} 100%);color:#fff">
@@ -124,6 +176,7 @@ export function buildSaihMinimalPopupContent(feature: GeoJSON.Feature): string {
       </div>
       <div style="padding:10px 12px;background:#fff;color:#1f2937;font-size:12px;line-height:1.5">
         <div><strong>Municipio:</strong> ${municipio}</div>
+        ${simulationSection}
       </div>
     </div>
   `

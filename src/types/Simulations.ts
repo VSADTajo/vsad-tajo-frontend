@@ -1,7 +1,19 @@
-﻿export type SimulationResultPrediction = {
+﻿export type SimulationResultPoint = {
+  date: string
+  value: number
+  flag: number
+}
+
+export type SimulationResultPrediction = {
   id: string
   stationId: string
   stationName: string
+  station?: {
+    id: string
+    name: string
+    stationCode: string
+    [key: string]: unknown
+  }
   predictionTypeId: string
   predictionTypeName: string
   predictionTypeUnit: string
@@ -11,7 +23,8 @@
   predictionDate: string
   predictionStartDate: string
   predictionEndDate: string
-  results: Array<{ date: string; value: number; flag: number }>
+  max: SimulationResultPoint
+  last: SimulationResultPoint
 }
 
 export type SimulationResultsResponse = {
@@ -55,3 +68,21 @@ export type SimulationRecord = {
   maneuvers: ApiSimulationManeuver[]
   createdAt: string
 }
+
+export type CreateSimulationPayload = {
+  modmeteo: 'BOTH'
+  description?: string
+  maneuvers: {
+    reservoirCode: string
+    outputFlowValue: number
+    startDate: string
+    endDate: string
+  }[]
+}
+
+export type CreateSimulationResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export type UpdateManeuverPayload = { id: string; startDate: string | null; endDate: string | null }

@@ -7,7 +7,7 @@
       <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
-      <div v-if="!isSimulationsRoute" class="map-data-source-toggle">
+      <div v-if="!isSimulationsRoute && !hasLocalFileStations" class="map-data-source-toggle">
         <v-tooltip
           text="No aplica para datos observados"
           location="bottom"
@@ -96,6 +96,7 @@
   import { useBaseLayers } from '@/composables/useBaseLayers'
   import { useDynamicLayers } from '@/composables/useDynamicLayers'
   import { useAvisosLayers } from '@/composables/useAvisosLayers'
+  import { useLocalFileLayer } from '@/composables/useLocalFileLayer'
   import { center, defaultZoom, defaultZoomForMobile, minZoom } from '@/constants/mapConfig'
   import { createMapPanes } from '@/config/panes/mapPanes'
   import MapAvisosTimeControls from '@/components/map/MapAvisosTimeControls.vue'
@@ -112,6 +113,7 @@
   import { useRoute } from 'vue-router'
   import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
   import { useMapModelStore } from '@/stores/mapModelStore'
+  import { useLocalFileStore } from '@/stores/localFileStore'
 
   const route = useRoute()
   const layersStore = useLayersStore()
@@ -120,9 +122,11 @@
   const simulationsStore = useSimulationsStore()
   const dataSourceStore = useMapDataSourceStore()
   const modelStore = useMapModelStore()
+  const localFileStore = useLocalFileStore()
   const { mdAndUp } = useDisplay()
 
   const isSimulationsRoute = computed(() => route.name === 'simulaciones')
+  const hasLocalFileStations = computed(() => localFileStore.stationsWithPredictions.length > 0)
   const selectedDataSource = computed({
     get: () => dataSourceStore.selectedDataSource,
     set: (v) => {
@@ -218,6 +222,14 @@
 
     const { initBaseLayers } = useBaseLayers(map)
 
+    // Must run before useDynamicLayers: it hides the live SAIH layers
+    // synchronously via layersStore when a local file is already loaded.
+    // useDynamicLayers's watcher is `immediate`, so on a cold reload (no
+    // cached WFS layer yet) its very first sync would otherwise capture
+    // "stations visible" and race the slower live fetch against the local
+    // file's hide — sometimes losing, leaving live markers clickable on top
+    // of (or instead of) the file's own.
+    useLocalFileLayer(map)
     useDynamicLayers(map)
     useAvisosLayers(map)
     await initBaseLayers()

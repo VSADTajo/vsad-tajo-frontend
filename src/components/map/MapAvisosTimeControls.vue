@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="avisos-time-controls" :class="{ 'avisos-time-controls--stacked': stacked }">
     <v-card elevation="8" class="pa-4 bg-primary opacity-90 avisos-time-card">
       <div class="d-flex align-center justify-space-between mb-3 ga-4 flex-wrap">
@@ -262,13 +262,17 @@
   }
 
   .interval-pill {
-    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-sizing: border-box;
+    border: 2px solid rgba(255, 255, 255, 0.45);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.15);
     color: rgba(255, 255, 255, 0.92);
     font-size: 12px;
     font-weight: 600;
-    padding: 8px 6px;
+    padding: 8px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     transition:
       background-color 0.2s ease,
       transform 0.2s ease,
@@ -302,7 +306,6 @@
   }
 
   .interval-pill--active {
-    border-width: 2px;
     border-color: white;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);

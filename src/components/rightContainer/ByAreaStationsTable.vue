@@ -195,7 +195,7 @@
       loading: false,
       selectedStationCode: null,
       hoveredStationCode: null,
-      height: 332,
+      height: 380,
     }
   )
 

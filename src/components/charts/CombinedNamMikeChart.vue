@@ -164,16 +164,13 @@
 
   function buildSeries(
     data: NormalizedPoint[] | null,
-    name: string,
-    isPrediction: boolean,
-    nowMs: number
+    name: string
   ): { name: string; type: string; data: { x: string; y: number | null }[] } | null {
     if (!data) return null
     const dataMap = new Map(data.map((d) => [d.date, d.value]))
     const labels = xLabels.value
     const points = allDates.value.map((date, i) => {
-      const v =
-        isPrediction && new Date(date).getTime() < nowMs ? null : (dataMap.get(date) ?? null)
+      const v = dataMap.get(date) ?? null
       return { x: labels[i], y: v }
     })
     if (!hasFiniteValue(points)) return null
@@ -181,17 +178,16 @@
   }
 
   const series = computed(() => {
-    const nowMs = Date.now()
     const result: { name: string; type: string; data: { x: string; y: number | null }[] }[] = []
-    const s1 = buildSeries(historicalData.value, 'Observado', false, nowMs)
+    const s1 = buildSeries(historicalData.value, 'Observado')
     if (s1) result.push(s1)
-    const s2 = buildSeries(namHData.value, 'NAM Harmonie', true, nowMs)
+    const s2 = buildSeries(namHData.value, 'NAM Harmonie')
     if (s2) result.push(s2)
-    const s3 = buildSeries(namEData.value, 'NAM EPS Medio', true, nowMs)
+    const s3 = buildSeries(namEData.value, 'NAM EPS Medio')
     if (s3) result.push(s3)
-    const s4 = buildSeries(mk11HData.value, 'MIKE Harmonie', true, nowMs)
+    const s4 = buildSeries(mk11HData.value, 'MIKE Harmonie')
     if (s4) result.push(s4)
-    const s5 = buildSeries(mk11EData.value, 'MIKE EPS Medio', true, nowMs)
+    const s5 = buildSeries(mk11EData.value, 'MIKE EPS Medio')
     if (s5) result.push(s5)
     return result
   })
