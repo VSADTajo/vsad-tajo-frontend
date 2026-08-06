@@ -206,19 +206,27 @@ html {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--saih-color) 60%, transparent);
 }
 
-.saih-marker.is-simulation {
-  transform: scale(1.22);
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--saih-color) 80%, transparent),
-    0 0 10px 4px color-mix(in srgb, var(--saih-color) 35%, transparent);
-}
-
+// A station can carry both classes at once (it's operated in the
+// simulation *and* has prediction data). Both selectors have equal
+// specificity, so source order decides the winner for shared properties
+// (transform/box-shadow) — is-simulation is declared last on purpose so it
+// stays the visually "stronger" style over plain is-downstream.
 .saih-marker.is-downstream {
   transform: scale(1.18);
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--saih-color) 50%, transparent),
     0 0 8px 3px color-mix(in srgb, var(--saih-color) 20%, transparent);
   opacity: 0.85;
+}
+
+.saih-marker.is-simulation {
+  transform: scale(1.22);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--saih-color) 80%, transparent),
+    0 0 10px 4px color-mix(in srgb, var(--saih-color) 35%, transparent);
+  // Reasserted because is-downstream's opacity isn't a shared property —
+  // source order alone wouldn't override it.
+  opacity: 1;
 }
 
 .leaflet-popup.feature-hover-popup,
