@@ -60,6 +60,7 @@
               <ForecastChartNew
                 :data="chartData"
                 :is-embalse="isEmbalse"
+                :volume-only="selectedVariant === 'volumen'"
                 :height="470"
                 :thresholds="chartThresholds"
                 :focus-threshold-request="thresholdFocusRequest"

@@ -122,6 +122,7 @@
                       v-if="mountedEmbalseTabs.has('volumen')"
                       :data="volumenChartData"
                       :is-embalse="true"
+                      :volume-only="true"
                       :height="550"
                       :loading="loadingCaudales || loadingSimulationVolume"
                       :thresholds="chartThresholds"
@@ -203,17 +204,36 @@
       >
         <ContentSaihPredictionsLatest
           class="ma-2"
-          active-tab="caudal"
-          :loading="loadingCaudales"
-          :loading-harmonie="loadingHarmoniePredict"
-          :loading-eps="loadingEpsPredict"
-          :caudal-forecast-harmonie="caudalForecastHarmonie"
-          :caudal-forecast-epstat="caudalForecastEpstat"
+          :active-tab="isEmbalse ? activeEmbalseTab : 'caudal'"
+          hide-date-selector
+          :loading="
+            isEmbalse && activeEmbalseTab === 'volumen' ? loadingSimulationVolume : loadingCaudales
+          "
+          :loading-harmonie="
+            isEmbalse && activeEmbalseTab === 'volumen'
+              ? loadingSimulationVolume
+              : loadingHarmoniePredict
+          "
+          :loading-eps="
+            isEmbalse && activeEmbalseTab === 'volumen'
+              ? loadingSimulationVolume
+              : loadingEpsPredict
+          "
+          :caudal-forecast-harmonie="
+            isEmbalse && activeEmbalseTab === 'volumen'
+              ? simulationVolumeHarmonie
+              : caudalForecastHarmonie
+          "
+          :caudal-forecast-epstat="
+            isEmbalse && activeEmbalseTab === 'volumen'
+              ? simulationVolumeEpsat
+              : caudalForecastEpstat
+          "
           :selected-harmonie-caudal-date="selectedHarmonieCaudalDate"
           :selected-eps-caudal-date="selectedEpsCaudalDate"
           :harmonie-caudal-dates="harmonieCaudalDates"
           :eps-caudal-dates="epsCaudalDates"
-          :thresholds="flatThresholds"
+          :thresholds="chartThresholds"
           @update:selected-harmonie-caudal-date="selectedHarmonieCaudalDate = $event"
           @update:selected-eps-caudal-date="selectedEpsCaudalDate = $event"
         />
