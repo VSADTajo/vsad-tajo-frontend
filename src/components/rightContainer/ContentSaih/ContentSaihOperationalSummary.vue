@@ -214,6 +214,9 @@
     }
 
     if (props.isEmbalse) {
+      // No source for embalseVolumeHistorical here: there is no real
+      // volumen threshold to compare it against (thresholds only exist for
+      // caudal), so a volumen series can never be evaluated for exceedance.
       return [
         {
           id: 'entrada',
@@ -224,12 +227,6 @@
           id: 'salida',
           label: 'Salida observada',
           series: normalizeSeries(props.caudalOutflowHistorical),
-        },
-        {
-          id: 'volumen',
-          label: 'Volumen observado',
-          series: normalizeSeries(props.embalseVolumeHistorical),
-          useVolumeThresholds: true,
         },
       ]
     }

@@ -81,6 +81,8 @@
     forecastMikeHarmonie?: StationPrediction
     forecastMikeEpsat?: StationPrediction
     observed?: StationPrediction
+    observedEntrada?: StationPrediction
+    observedSalida?: StationPrediction
     thresholds?: Record<string, unknown>
     loading?: boolean
     title?: string
@@ -102,9 +104,33 @@
   const isCombinedMode = computed(() => !!(props.forecastMikeHarmonie || props.forecastMikeEpsat))
 
   const rowDefinitions = computed<RowDefinition[]>(() => {
-    const observedRow: RowDefinition[] = props.observed
-      ? [{ id: 'observed', label: 'Observado', prediction: props.observed }]
-      : []
+    // Embalses have separate inflow/outflow observed series — show both
+    // instead of a single generic "Observado" row when they're provided.
+    const observedRow: RowDefinition[] =
+      props.observedEntrada || props.observedSalida
+        ? [
+            ...(props.observedEntrada
+              ? [
+                  {
+                    id: 'observedEntrada',
+                    label: 'Obs. Entrada',
+                    prediction: props.observedEntrada,
+                  },
+                ]
+              : []),
+            ...(props.observedSalida
+              ? [
+                  {
+                    id: 'observedSalida',
+                    label: 'Obs. Salida',
+                    prediction: props.observedSalida,
+                  },
+                ]
+              : []),
+          ]
+        : props.observed
+          ? [{ id: 'observed', label: 'Observado', prediction: props.observed }]
+          : []
     if (isCombinedMode.value) {
       return [
         ...observedRow,

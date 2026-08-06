@@ -113,11 +113,15 @@ function buildSimulationPredictionsSection(stationCode: string): string {
   const results = useSimulationsStore().simulationResults
   if (!results) return ''
 
-  const stationPredictions = results.predictions.filter(
-    (prediction) =>
-      String(prediction.station?.stationCode ?? prediction.stationId ?? '').toUpperCase() ===
-      stationCode.toUpperCase()
-  )
+  // Only the EPS median (P50) and the deterministic Harmonie run — not all
+  // 6 percentiles the API returns per station.
+  const stationPredictions = results.predictions.filter((prediction) => {
+    const code = String(prediction.station?.stationCode ?? prediction.stationId ?? '')
+    if (code.toUpperCase() !== stationCode.toUpperCase()) return false
+
+    if (prediction.predictionTypeName.endsWith('.harmonie')) return true
+    return prediction.predictionTypeName.endsWith('.eps') && prediction.percentile === 50
+  })
 
   if (!stationPredictions.length) return ''
 
@@ -129,9 +133,9 @@ function buildSimulationPredictionsSection(stationCode: string): string {
 
   const rows = sorted
     .map((prediction: SimulationResultPrediction) => {
-      const label = escapeHtml(
-        prediction.predictionTypeName + (prediction.percentile != null ? ` (P${prediction.percentile})` : '')
-      )
+      const label = prediction.predictionTypeName.endsWith('.harmonie')
+        ? 'Volumenes Harmonie'
+        : 'Volumenes EPS Medio'
       const unit = escapeHtml(prediction.predictionTypeUnit ?? '')
       const maxValue = escapeHtml(
         prediction.max?.value != null ? `${prediction.max.value.toFixed(2)} ${unit}` : '-'
