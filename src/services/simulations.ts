@@ -13,6 +13,20 @@ export async function getSimulationResultsService(id: string): Promise<Simulatio
     .json<SimulationResultsResponse>()
 }
 
+// Same endpoint, but scoped to one station and with the full time series
+// (withResults=true) — used to feed a station's own volumen chart instead of
+// just the popup's max/last summary.
+export async function getSimulationStationResultsService(
+  id: string,
+  stationCode: string
+): Promise<SimulationResultsResponse> {
+  return api
+    .get(`simulations/manual/${id}/results`, {
+      searchParams: { withResults: 'true', stationCode },
+    })
+    .json<SimulationResultsResponse>()
+}
+
 export async function createSimulationService(
   payload: CreateSimulationPayload
 ): Promise<CreateSimulationResponse> {

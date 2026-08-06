@@ -24,7 +24,7 @@
 
     <v-card-text v-else class="observed-content">
       <template v-if="hasObservedData && activeTab === 'caudal'">
-        <div v-if="isEmbalse" class="d-flex justify-center mb-3">
+        <div v-if="isEmbalse && embalseSection !== 'volumen'" class="d-flex justify-center mb-3">
           <v-btn-toggle
             v-model="embalseObservedMode"
             mandatory
@@ -36,7 +36,14 @@
 
             <v-btn value="salida" size="x-small" :disabled="!hasSalidaData">Sal.</v-btn>
 
-            <v-btn value="volumen" size="x-small" :disabled="!hasVolumenData">Vol.</v-btn>
+            <v-btn
+              v-if="embalseSection !== 'caudal'"
+              value="volumen"
+              size="x-small"
+              :disabled="!hasVolumenData"
+            >
+              Vol.
+            </v-btn>
           </v-btn-toggle>
         </div>
 
@@ -184,6 +191,11 @@
       precipitationsHistorical?: StationPrediction
       thresholds?: Record<string, unknown>
       accumDays?: number
+      // When the caller has its own Caudal/Volumen tabs (e.g. an embalse
+      // hidrograma view), this locks the Entr./Sal./Vol. toggle to match:
+      // 'caudal' hides Vol., 'volumen' hides the toggle entirely and shows
+      // only volumen. Leave unset to keep the old always-all-three toggle.
+      embalseSection?: 'caudal' | 'volumen'
     }>(),
 
     {
@@ -196,6 +208,7 @@
       precipitationsHistorical: undefined,
       thresholds: undefined,
       accumDays: 10,
+      embalseSection: undefined,
     }
   )
 
@@ -297,6 +310,16 @@
 
   watchEffect(() => {
     if (!props.isEmbalse || props.activeTab !== 'caudal') return
+
+    if (props.embalseSection === 'volumen') {
+      embalseObservedMode.value = 'volumen'
+      return
+    }
+
+    if (props.embalseSection === 'caudal' && embalseObservedMode.value === 'volumen') {
+      embalseObservedMode.value = hasEntradaData.value ? 'entrada' : 'salida'
+      return
+    }
 
     const currentHasData =
       embalseObservedMode.value === 'entrada'

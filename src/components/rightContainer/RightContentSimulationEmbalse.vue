@@ -53,6 +53,7 @@
             <ContentObservedData
               :loading="loadingCaudales"
               :is-embalse="isEmbalse"
+              :embalse-section="activeEmbalseTab"
               :caudal-historical="caudalHistorical"
               :caudal-outflow-historical="caudalOutflowHistorical"
               :embalse-volume-historical="embalseVolumeHistorical"
@@ -63,6 +64,7 @@
       </v-card>
 
       <v-card
+        v-if="!isEmbalse || (isEmbalse && activeEmbalseTab === 'caudal')"
         ref="leftSummaryCardEl"
         class="ma-2 mt-0 pa-2 bg-background w-100 d-flex flex-column summary-container-card"
         elevation="2"
@@ -121,8 +123,8 @@
                       :data="volumenChartData"
                       :is-embalse="true"
                       :height="550"
-                      :loading="loadingCaudales"
-                      :thresholds="flatThresholds"
+                      :loading="loadingCaudales || loadingSimulationVolume"
+                      :thresholds="chartThresholds"
                       :focus-threshold-request="thresholdFocusRequest"
                       @focus-threshold-complete="handleThresholdFocusComplete"
                     />
@@ -143,9 +145,9 @@
           </v-card-text>
         </v-card>
 
-        <v-card class="mt-2 pa-2 bg-background" elevation="2">
+        <v-card v-if="activeEmbalseTab !== 'volumen'" class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            :active-tab="activeEmbalseTab === 'volumen' ? 'volumenNAM' : 'caudalNAM'"
+            active-tab="caudalNAM"
             :is-embalse="isEmbalse"
             :thresholds="flatThresholds"
             :selected-threshold="selectedThreshold"
@@ -155,10 +157,18 @@
 
         <v-card class="pa-2 bg-background mt-2" elevation="2">
           <ContentSaihCaudalMatrix
-            :forecast-harmonie="caudalForecastHarmonie"
-            :forecast-epsat="undefined"
-            :thresholds="flatThresholds"
-            :loading="loadingCaudales"
+            :forecast-harmonie="matrixData.forecastHarmonie"
+            :forecast-epsat="matrixData.forecastEpsat"
+            :forecast-ens-p10="matrixData.forecastEnsP10"
+            :forecast-ens-p25="matrixData.forecastEnsP25"
+            :forecast-ens-p75="matrixData.forecastEnsP75"
+            :forecast-ens-p90="matrixData.forecastEnsP90"
+            :observed="matrixData.observed"
+            :observed-entrada="matrixData.observedEntrada"
+            :observed-salida="matrixData.observedSalida"
+            :thresholds="chartThresholds"
+            :no-thresholds="activeEmbalseTab === 'volumen'"
+            :loading="matrixLoading"
           />
         </v-card>
       </div>
@@ -210,6 +220,7 @@
       </v-card>
 
       <v-card
+        v-if="!isEmbalse || (isEmbalse && activeEmbalseTab === 'caudal')"
         ref="rightSummaryCardEl"
         class="ma-2 mt-0 pa-2 bg-background w-100 d-flex flex-column summary-container-card"
         elevation="2"
@@ -232,7 +243,7 @@
     </v-col>
   </v-row>
 
-  <v-row v-if="station && isEmbalse" class="align-stretch">
+  <v-row v-if="station && isEmbalse && activeEmbalseTab === 'volumen'" class="align-stretch">
     <v-col cols="12" md="3" lg="3" class="order-4 order-md-4 d-flex flex-column">
       <v-card
         class="ma-2 mt-2 pa-2 bg-background w-100 flex-grow-1 d-flex flex-column"
@@ -267,6 +278,9 @@
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
+  import { getSimulationStationResultsService } from '@/services/simulations'
+  import type { SimulationResultPrediction } from '@/types/Simulations'
+  import type { StationPrediction } from '@/types/Predictions'
   import { useSimulationsStore } from '@/stores/simulationsStore'
   import { isDownstreamStation } from '@/utils/saihMarkersRegistry'
   import { getSaihTypeColor } from '@/utils/saihStations'
@@ -318,6 +332,19 @@
   const embalsesSet = new Set(embalsesWithCaudalPredictions)
   const isEmbalse = computed(() => embalsesSet.has(normalizedStationCode.value))
 
+  // Whether the active simulation actually produced predictions for this
+  // station — read straight from simulationResults (a reactive Pinia ref)
+  // rather than isDownstreamStation()'s plain Set, which doesn't trigger
+  // Vue reactivity when it's mutated asynchronously after this computes.
+  const hasSimulationDataForStation = computed(() => {
+    const results = simulationsStore.simulationResults
+    if (!results || !normalizedStationCode.value) return false
+    return results.predictions.some(
+      (p) =>
+        (p.station?.stationCode ?? p.stationId ?? '').toUpperCase() === normalizedStationCode.value
+    )
+  })
+
   const codeType = computed(() => {
     const val = station.value?.tipoCod
     return typeof val === 'string' ? val : undefined
@@ -345,16 +372,29 @@
     const s = station.value
     if (!s) return undefined
     const t = s.threshold as Record<string, unknown> | undefined
+    // For embalses the only threshold value the backend sends often lives
+    // under umbralVolumenX, but it's a caudal-scale figure (there is no
+    // separate, distinct volumen threshold) — so it's valid to surface it
+    // as "umbral_caudal_X" for caudal-tab consumers (ContentUmbralesData,
+    // the caudal chart/matrix). It must NOT be reused on volumen-scale
+    // displays (different units) — see chartThresholds below, which is what
+    // volumen-tab consumers should bind to instead of this directly.
     return {
       ...(s as unknown as Record<string, unknown>),
-      umbral_caudal_1: t?.umbralCaudal1 ?? t?.umbralNivel1 ?? null,
-      umbral_caudal_2: t?.umbralCaudal2 ?? t?.umbralNivel2 ?? null,
-      umbral_caudal_3: t?.umbralCaudal3 ?? t?.umbralNivel3 ?? null,
-      umbral_cauda_1: t?.umbralCaudal1 ?? t?.umbralNivel1 ?? null,
-      umbral_cauda_2: t?.umbralCaudal2 ?? t?.umbralNivel2 ?? null,
-      umbral_cauda_3: t?.umbralCaudal3 ?? t?.umbralNivel3 ?? null,
+      umbral_caudal_1: t?.umbralCaudal1 ?? t?.umbralNivel1 ?? t?.umbralVolumen1 ?? null,
+      umbral_caudal_2: t?.umbralCaudal2 ?? t?.umbralNivel2 ?? t?.umbralVolumen2 ?? null,
+      umbral_caudal_3: t?.umbralCaudal3 ?? t?.umbralNivel3 ?? t?.umbralVolumen3 ?? null,
+      umbral_cauda_1: t?.umbralCaudal1 ?? t?.umbralNivel1 ?? t?.umbralVolumen1 ?? null,
+      umbral_cauda_2: t?.umbralCaudal2 ?? t?.umbralNivel2 ?? t?.umbralVolumen2 ?? null,
+      umbral_cauda_3: t?.umbralCaudal3 ?? t?.umbralNivel3 ?? t?.umbralVolumen3 ?? null,
     }
   })
+
+  // Thresholds are caudal-scale only — never valid on the volumen chart/
+  // matrix (different units/scale), so those consumers get undefined there.
+  const chartThresholds = computed<Record<string, unknown> | undefined>(() =>
+    activeEmbalseTab.value === 'volumen' ? undefined : flatThresholds.value
+  )
 
   function shadeHex(hex: string, factor: number): string {
     const value = hex.replace('#', '')
@@ -445,18 +485,143 @@
     historicalVolume: embalseVolumeHistorical.value,
     resguardoVolume: effectiveResguardoPrediction.value,
     minimumVolume: effectiveMinimoPrediction.value,
-    forecastHarmonie: undefined,
-    forecastEpsat: undefined,
-    forecastEnsP10: undefined,
-    forecastEnsP25: undefined,
-    forecastEnsP75: undefined,
-    forecastEnsP90: undefined,
+    forecastHarmonie: simulationVolumeHarmonie.value,
+    forecastEpsat: simulationVolumeEpsat.value,
+    forecastEnsP10: simulationVolumeEnsP10.value,
+    forecastEnsP25: simulationVolumeEnsP25.value,
+    forecastEnsP75: simulationVolumeEnsP75.value,
+    forecastEnsP90: simulationVolumeEnsP90.value,
   }))
+
+  // ── Simulation volume predictions (Volumen tab) ────────────────────────────
+  // The summary /results call (withResults=false, used for the map popups)
+  // only has max/last per station. The volumen chart needs the full time
+  // series, which only the per-station call with withResults=true returns —
+  // that same call already includes every EPS percentile, not just P50.
+  const simulationVolumeHarmonie = ref<StationPrediction | undefined>(undefined)
+  const simulationVolumeEpsat = ref<StationPrediction | undefined>(undefined)
+  const simulationVolumeEnsP10 = ref<StationPrediction | undefined>(undefined)
+  const simulationVolumeEnsP25 = ref<StationPrediction | undefined>(undefined)
+  const simulationVolumeEnsP75 = ref<StationPrediction | undefined>(undefined)
+  const simulationVolumeEnsP90 = ref<StationPrediction | undefined>(undefined)
+  const loadingSimulationVolume = ref(false)
+
+  function toStationPrediction(
+    prediction?: SimulationResultPrediction
+  ): StationPrediction | undefined {
+    if (!prediction) return undefined
+
+    return {
+      id: prediction.id,
+      stationId: prediction.stationId,
+      stationName: prediction.stationName,
+      predictionTypeName: prediction.predictionTypeName,
+      simulationDate: prediction.predictionDate,
+      predictionDate: prediction.predictionDate,
+      percentile: prediction.percentile != null ? String(prediction.percentile) : undefined,
+      predictionProvider: prediction.predictionProvider,
+      predictedBy: prediction.predictedBy,
+      results: (prediction.results ?? []).map((r, i) => ({
+        id: i,
+        date: r.date,
+        value: r.value,
+        flag: r.flag,
+      })),
+    }
+  }
+
+  let simulationVolumeRequestId = 0
+
+  async function loadSimulationVolumePredictions(simId: string, code: string): Promise<void> {
+    const requestId = ++simulationVolumeRequestId
+    loadingSimulationVolume.value = true
+
+    try {
+      const response = await getSimulationStationResultsService(simId, code)
+      if (requestId !== simulationVolumeRequestId) return
+
+      const findEps = (percentile: number) =>
+        response.predictions.find(
+          (p) => p.predictionTypeName.endsWith('.eps') && p.percentile === percentile
+        )
+      const harmonie = response.predictions.find((p) => p.predictionTypeName.endsWith('.harmonie'))
+
+      simulationVolumeEpsat.value = toStationPrediction(findEps(50))
+      simulationVolumeHarmonie.value = toStationPrediction(harmonie)
+      simulationVolumeEnsP10.value = toStationPrediction(findEps(10))
+      simulationVolumeEnsP25.value = toStationPrediction(findEps(25))
+      simulationVolumeEnsP75.value = toStationPrediction(findEps(75))
+      simulationVolumeEnsP90.value = toStationPrediction(findEps(90))
+    } catch {
+      if (requestId !== simulationVolumeRequestId) return
+      simulationVolumeEpsat.value = undefined
+      simulationVolumeHarmonie.value = undefined
+      simulationVolumeEnsP10.value = undefined
+      simulationVolumeEnsP25.value = undefined
+      simulationVolumeEnsP75.value = undefined
+      simulationVolumeEnsP90.value = undefined
+    } finally {
+      if (requestId === simulationVolumeRequestId) loadingSimulationVolume.value = false
+    }
+  }
+
+  watch(
+    [() => simulationsStore.activeSimulationId, normalizedStationCode, hasSimulationDataForStation],
+    ([simId, code, hasData]) => {
+      simulationVolumeRequestId++
+      simulationVolumeHarmonie.value = undefined
+      simulationVolumeEpsat.value = undefined
+      simulationVolumeEnsP10.value = undefined
+      simulationVolumeEnsP25.value = undefined
+      simulationVolumeEnsP75.value = undefined
+      simulationVolumeEnsP90.value = undefined
+      loadingSimulationVolume.value = false
+
+      if (!simId || !code || !hasData) return
+      void loadSimulationVolumePredictions(simId, code)
+    },
+    { immediate: true }
+  )
 
   // ── Embalse chart tabs ─────────────────────────────────────────────────────
   const activeEmbalseTab = ref<'caudal' | 'volumen'>('caudal')
   const mountedEmbalseTabs = reactive(new Set<string>(['caudal']))
   watch(activeEmbalseTab, (tab) => mountedEmbalseTabs.add(tab))
+
+  // ContentSaihCaudalMatrix should mirror whichever tab's own observed +
+  // predicted data is currently shown in the chart above it, not always
+  // caudal — same source data as chartData/volumenChartData.
+  const matrixData = computed(() =>
+    activeEmbalseTab.value === 'volumen'
+      ? {
+          forecastHarmonie: simulationVolumeHarmonie.value,
+          forecastEpsat: simulationVolumeEpsat.value,
+          forecastEnsP10: simulationVolumeEnsP10.value,
+          forecastEnsP25: simulationVolumeEnsP25.value,
+          forecastEnsP75: simulationVolumeEnsP75.value,
+          forecastEnsP90: simulationVolumeEnsP90.value,
+          observed: embalseVolumeHistorical.value,
+          observedEntrada: undefined,
+          observedSalida: undefined,
+        }
+      : {
+          forecastHarmonie: caudalForecastHarmonie.value,
+          forecastEpsat: undefined,
+          forecastEnsP10: undefined,
+          forecastEnsP25: undefined,
+          forecastEnsP75: undefined,
+          forecastEnsP90: undefined,
+          observed: undefined,
+          observedEntrada: caudalHistorical.value,
+          observedSalida: caudalOutflowHistorical.value,
+        }
+  )
+
+  const matrixLoading = computed(
+    () =>
+      loadingCaudales.value ||
+      (activeEmbalseTab.value === 'volumen' && loadingSimulationVolume.value)
+  )
 
   // ── Threshold focus ────────────────────────────────────────────────────────
   const selectedThreshold = ref<ThresholdSelection>(null)

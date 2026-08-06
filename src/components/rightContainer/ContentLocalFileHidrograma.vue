@@ -12,7 +12,7 @@
         class="ma-2 pa-2 bg-background w-100 flex-shrink-0"
         elevation="2"
       >
-        <ContentSaihAlertStatus :caudal-historical="historical" :thresholds="resolvedThresholds" />
+        <ContentSaihAlertStatus :caudal-historical="historical" :thresholds="chartThresholds" />
       </v-card>
 
       <v-card
@@ -25,7 +25,7 @@
             <ContentObservedData
               :is-embalse="isEmbalse"
               :caudal-historical="historical"
-              :thresholds="resolvedThresholds"
+              :thresholds="chartThresholds"
             />
           </v-col>
         </v-row>
@@ -41,7 +41,7 @@
           mode="observed"
           :is-embalse="isEmbalse"
           :caudal-historical="historical"
-          :thresholds="resolvedThresholds"
+          :thresholds="chartThresholds"
           title="Resumen Operativo Observado"
         />
       </v-card>
@@ -61,7 +61,7 @@
                 :data="chartData"
                 :is-embalse="isEmbalse"
                 :height="470"
-                :thresholds="resolvedThresholds"
+                :thresholds="chartThresholds"
                 :focus-threshold-request="thresholdFocusRequest"
                 @focus-threshold-complete="handleThresholdFocusComplete"
               />
@@ -69,9 +69,9 @@
           </v-card-text>
         </v-card>
 
-        <v-card class="mt-2 pa-2 bg-background" elevation="2">
+        <v-card v-if="selectedVariant !== 'volumen'" class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            :active-tab="selectedVariant === 'volumen' ? 'volumenNAM' : 'caudalNAM'"
+            active-tab="caudalNAM"
             :is-embalse="isEmbalse"
             :thresholds="resolvedThresholds"
             :selected-threshold="selectedThreshold"
@@ -87,7 +87,8 @@
             :forecast-ens-p25="forecastEnsP25"
             :forecast-ens-p75="forecastEnsP75"
             :forecast-ens-p90="forecastEnsP90"
-            :thresholds="resolvedThresholds"
+            :thresholds="chartThresholds"
+            :no-thresholds="selectedVariant === 'volumen'"
           />
         </v-card>
       </div>
@@ -109,7 +110,7 @@
           :caudal-forecast-harmonie="forecastHarmonie"
           :caudal-forecast-epsat="forecastEpsat"
           :mode="'predictions'"
-          :thresholds="resolvedThresholds"
+          :thresholds="chartThresholds"
         />
       </v-card>
       <v-card
@@ -122,7 +123,7 @@
           hide-date-selector
           :caudal-forecast-harmonie="forecastHarmonie"
           :caudal-forecast-epstat="forecastEpsat"
-          :thresholds="resolvedThresholds"
+          :thresholds="chartThresholds"
         />
       </v-card>
 
@@ -140,7 +141,7 @@
           :caudal-forecast-ens-p25="forecastEnsP25"
           :caudal-forecast-ens-p75="forecastEnsP75"
           :caudal-forecast-ens-p90="forecastEnsP90"
-          :thresholds="resolvedThresholds"
+          :thresholds="chartThresholds"
           title="Resumen Operativo Predicciones"
         />
       </v-card>
@@ -201,9 +202,28 @@
     { immediate: true }
   )
 
-  const resolvedThresholds = computed<Record<string, unknown> | undefined>(() =>
-    liveThreshold.value ? { ...props.thresholds, ...liveThreshold.value } : props.thresholds
-  )
+  // The only threshold value the backend sends for an embalse often lives
+  // under umbralVolumenX, but it's a caudal-scale figure (there is no
+  // separate, distinct volumen threshold) — valid to surface as
+  // "umbral_caudal_X" for caudal-variant consumers (ContentUmbralesData, the
+  // caudal chart/matrix). Must NOT be reused on volumen-scale displays
+  // (different units) — see chartThresholds below, which volumen-variant
+  // consumers bind to instead of this directly.
+  const resolvedThresholds = computed<Record<string, unknown> | undefined>(() => {
+    if (!liveThreshold.value) return props.thresholds
+
+    const t = liveThreshold.value
+    const flattened = {
+      umbral_caudal_1: t.umbralCaudal1 ?? t.umbralNivel1 ?? t.umbralVolumen1 ?? null,
+      umbral_caudal_2: t.umbralCaudal2 ?? t.umbralNivel2 ?? t.umbralVolumen2 ?? null,
+      umbral_caudal_3: t.umbralCaudal3 ?? t.umbralNivel3 ?? t.umbralVolumen3 ?? null,
+      umbral_cauda_1: t.umbralCaudal1 ?? t.umbralNivel1 ?? t.umbralVolumen1 ?? null,
+      umbral_cauda_2: t.umbralCaudal2 ?? t.umbralNivel2 ?? t.umbralVolumen2 ?? null,
+      umbral_cauda_3: t.umbralCaudal3 ?? t.umbralNivel3 ?? t.umbralVolumen3 ?? null,
+    }
+
+    return { ...props.thresholds, ...t, ...flattened }
+  })
 
   // Caudal and volumen are kept as separate DataStationPrediction objects
   // (same reasoning as the store split) — an embalse with both shows a small
@@ -212,6 +232,12 @@
   const hasVolumen = computed(() => Object.keys(props.volumenPredictions ?? {}).length > 0)
   const hasCaudalData = computed(() => Object.keys(props.predictions ?? {}).length > 0)
   const selectedVariant = ref<'caudal' | 'volumen'>('caudal')
+
+  // Thresholds are caudal-scale only — never valid on the volumen chart/
+  // matrix (different units/scale), so those consumers get undefined there.
+  const chartThresholds = computed<Record<string, unknown> | undefined>(() =>
+    selectedVariant.value === 'volumen' ? undefined : resolvedThresholds.value
+  )
 
   // Reset the default variant whenever the underlying station's data changes
   // (this component is reused across station navigation) — otherwise a
