@@ -120,7 +120,7 @@
 
 <style scoped>
   .embalse-list-wrapper {
-    max-height: 30vh;
+    max-height: 65vh;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;

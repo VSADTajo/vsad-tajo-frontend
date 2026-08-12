@@ -10,6 +10,7 @@
         />
 
         <v-list-item
+          v-if="hasRole('admin')"
           prepend-icon="mdi-tune-variant"
           :active="activeSection === 'simulaciones'"
           @click="toggleSection('simulaciones')"
@@ -23,12 +24,6 @@
           :active="activeSection === 'mapasbase'"
           @click="toggleSection('mapasbase')"
         />
-
-        <v-list-item
-          prepend-icon="mdi-cog-outline"
-          :active="activeSection === 'ajustes'"
-          @click="toggleSection('ajustes')"
-        />
       </v-list>
     </v-row>
   </v-navigation-drawer>
@@ -36,6 +31,8 @@
 
 <script setup lang="ts">
   import { useNavigation } from '@/composables/useNavigation'
+  import { useAuth } from '@/composables/useAuth'
 
   const { activeSection, toggleSection } = useNavigation()
+  const { hasRole } = useAuth()
 </script>

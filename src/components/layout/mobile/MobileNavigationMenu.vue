@@ -21,7 +21,11 @@
           <v-list-item-title>Avisos</v-list-item-title>
         </v-list-item>
 
-        <v-list-item value="simulaciones" @click="toggleSection('simulaciones')">
+        <v-list-item
+          v-if="hasRole('admin')"
+          value="simulaciones"
+          @click="toggleSection('simulaciones')"
+        >
           <v-list-item-title>Simulaciones</v-list-item-title>
         </v-list-item>
 
@@ -45,8 +49,10 @@
   import { ref } from 'vue'
 
   import { useNavigation } from '@/composables/useNavigation'
+  import { useAuth } from '@/composables/useAuth'
 
   const { toggleSection, activeSection } = useNavigation()
+  const { hasRole } = useAuth()
 
   const mobileMenuOpen = ref(false)
 </script>
