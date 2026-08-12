@@ -5,3 +5,10 @@ export interface LoginResponse {
   refreshToken: string
   refreshExpiresIn: string
 }
+
+export interface UserInfo {
+  userId: string
+  email: string
+  name: string
+  roles: string[]
+}

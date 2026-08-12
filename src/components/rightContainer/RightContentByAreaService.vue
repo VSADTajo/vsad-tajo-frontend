@@ -271,7 +271,7 @@
                         <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
                           <v-tab value="nam">NAM</v-tab>
                           <v-tab value="mike">MIKE</v-tab>
-                          <v-tab value="combined">NAM + MIKE</v-tab>
+                          <v-tab v-if="hasRole('admin')" value="combined">NAM + MIKE</v-tab>
                         </v-tabs>
                         <div class="chart-tab-root">
                           <div
@@ -399,6 +399,7 @@
     useSubcuencaSelectionBus,
     type SubcuencaSeriesMode,
   } from '@/composables/useSubcuencaSelectionBus'
+  import { useAuth } from '@/composables/useAuth'
   import ForecastChartNew from '../charts/ForecastChartNew.vue'
   import PrecipitationsChart from '../charts/PrecipitationsChart.vue'
   import PrecipAccumulatedTimeSeriesChart from '../charts/PrecipAccumulatedTimeSeriesChart.vue'
@@ -444,6 +445,7 @@
 
   const route = useRoute()
   const router = useRouter()
+  const { hasRole } = useAuth()
   const selectionBus = useSubcuencaSelectionBus()
   const localArealFileStore = useLocalArealFileStore()
   const localFileStore = useLocalFileStore()

@@ -78,6 +78,7 @@
   function logout() {
     localStorage.removeItem('token')
     localStorage.removeItem('email')
+    localStorage.removeItem('roles')
     router.push({ name: 'login' })
   }
 </script>

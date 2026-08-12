@@ -72,7 +72,7 @@
             <span class="text-caption text-medium-emphasis">{{ localFileCount }} archivo(s)</span>
           </div>
 
-          <div class="local-file-list mb-3">
+          <div class="local-file-list mb-3 bg-surface rounded-lg px-2 py-1">
             <div
               v-for="file in localFileStore.files"
               :key="`station-${file.id}`"

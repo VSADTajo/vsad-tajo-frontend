@@ -14,6 +14,7 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import { useNavigation } from '@/composables/useNavigation'
+  import { useAuth } from '@/composables/useAuth'
 
   import ItemsLayersPanel from '@/components/panels/ItemsLayersPanel.vue'
   import AlertsPanel from '@/components/panels/AlertsPanel.vue'
@@ -23,6 +24,7 @@
   import SimulationsPanel from '@/components/panels/SimulationsPanel.vue'
 
   const { activeSection, drawerOpen } = useNavigation()
+  const { hasRole } = useAuth()
 
   const activeComponent = computed(() => {
     switch (activeSection.value) {
@@ -31,7 +33,7 @@
       case 'avisos':
         return AlertsPanel
       case 'simulaciones':
-        return SimulationsPanel
+        return hasRole('admin') ? SimulationsPanel : null
       case 'informes':
         return ReportsPanel
       case 'mapasbase':
