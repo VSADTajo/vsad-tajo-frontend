@@ -59,6 +59,11 @@
     defineProps<{
       data: CaudalChartData
       isEmbalse?: boolean
+      // All series in `data` are volumen-scale (hm3), even ones that would
+      // otherwise be classified as caudal by name (e.g. harmonie/EPS
+      // forecast) — forces a single hm3 axis instead of the usual dual
+      // caudal/volumen axis split.
+      volumeOnly?: boolean
       loading?: boolean
       toolbar?: boolean
       height?: number
@@ -67,6 +72,7 @@
     }>(),
     {
       isEmbalse: false,
+      volumeOnly: false,
       loading: false,
       toolbar: true,
       height: 550,
@@ -335,6 +341,7 @@
   }
 
   function isVolumeSeriesName(name?: string): boolean {
+    if (props.volumeOnly) return true
     return name === 'Volumen observado' || name === 'Resguardo volumen' || name === 'Volumen minimo'
   }
 

@@ -25,6 +25,8 @@ export type SimulationResultPrediction = {
   predictionEndDate: string
   max: SimulationResultPoint
   last: SimulationResultPoint
+  // Present only when the results call is made with withResults=true.
+  results?: SimulationResultPoint[]
 }
 
 export type SimulationResultsResponse = {

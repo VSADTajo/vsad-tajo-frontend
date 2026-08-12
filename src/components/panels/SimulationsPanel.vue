@@ -42,26 +42,6 @@
 
     <div class="simulations-body mt-4">
       <v-row class="mt-1">
-        <v-col cols="12" class="pt-2 pb-2">
-          <v-autocomplete
-            v-model="selectedCode"
-            v-model:search="searchText"
-            :items="autocompleteItems"
-            item-title="title"
-            item-value="value"
-            clearable
-            label="Buscar Embalse"
-            variant="outlined"
-            color="primary"
-            bg-color="surface"
-            hide-details
-            class="px-3"
-            density="compact"
-            rounded
-            prepend-inner-icon="mdi-magnify"
-            no-filter
-          />
-        </v-col>
         <v-col cols="12">
           <p class="pl-4 font-weight-medium">Embalses</p>
         </v-col>
@@ -138,10 +118,6 @@
   const operations = ref<SimulationOperation[]>([])
   const editingIndex = ref<number | null>(null)
   const simulationDescription = ref('')
-
-  const autocompleteItems = computed(() =>
-    embalses.value.map((e) => ({ title: e.name, value: e.stationCode }))
-  )
 
   const selectedEmbalse = computed(
     () => embalses.value.find((e) => e.stationCode === selectedCode.value) ?? null

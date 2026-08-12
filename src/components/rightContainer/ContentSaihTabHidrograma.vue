@@ -149,7 +149,7 @@
                 <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
                   <v-tab value="nam">NAM</v-tab>
                   <v-tab value="mike">MIKE</v-tab>
-                  <v-tab value="combined">NAM + MIKE</v-tab>
+                  <v-tab v-if="hasRole('admin')" value="combined">NAM + MIKE</v-tab>
                 </v-tabs>
                 <div class="chart-tab-root">
                   <div
@@ -348,6 +348,7 @@
 <script lang="ts" setup>
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
+  import { useAuth } from '@/composables/useAuth'
   import { useCaudalPredictions } from '@/composables/useCaudalPredictions'
   import { useResguardos } from '@/composables/useResguardos'
 
@@ -382,6 +383,8 @@
     (e: 'update:selected-harmonie-caudal-date', value: string): void
     (e: 'update:selected-eps-caudal-date', value: string): void
   }>()
+
+  const { hasRole } = useAuth()
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const selectedEmbalseChartTab = ref<'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE'>(
