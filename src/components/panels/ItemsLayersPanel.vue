@@ -58,6 +58,10 @@
             :default-open="false"
           />
         </v-col>
+
+        <v-col cols="12" class="pt-1 px-4">
+          <ItemsScenariosGroup ref="scenariosGroupEl" />
+        </v-col>
       </v-row>
     </div>
 
@@ -150,8 +154,53 @@
           :loading="loadingLocalFile"
           @update:model-value="onFilesSelected"
         />
+
+        <template v-if="scenarioFiles.length > 0">
+          <v-text-field
+            v-model="scenarioName"
+            label="Nombre del escenario"
+            variant="outlined"
+            color="primary"
+            bg-color="surface"
+            density="compact"
+            hide-details
+            class="mt-3"
+          />
+
+          <v-alert
+            v-if="scenarioUploadError"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mt-2"
+          >
+            {{ scenarioUploadError }}
+          </v-alert>
+
+          <v-btn
+            color="primary"
+            variant="flat"
+            block
+            class="mt-2"
+            prepend-icon="mdi-cloud-upload-outline"
+            :loading="uploadingScenario"
+            :disabled="!scenarioName.trim()"
+            @click="onUploadScenario"
+          >
+            Subir Escenario
+          </v-btn>
+        </template>
       </div>
     </div>
+
+    <v-snackbar
+      v-model="scenarioSnackbar.visible"
+      :color="scenarioSnackbar.color"
+      location="bottom center"
+      :timeout="3500"
+    >
+      {{ scenarioSnackbar.message }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -159,6 +208,7 @@
   import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import ItemsLayersGroup from '../itemslayers/ItemsLayersGroup.vue'
+  import ItemsScenariosGroup from '../itemslayers/ItemsScenariosGroup.vue'
 
   import {
     stationLayers,
@@ -172,6 +222,7 @@
   import { useLocalFileStore } from '@/stores/localFileStore'
   import { useLocalArealFileStore } from '@/stores/localArealFileStore'
   import { setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
+  import { createScenarioService, uploadScenarioFilesService } from '@/services/scenarios'
 
   const { mdAndUp } = useDisplay()
 
@@ -218,12 +269,48 @@
     const list = Array.isArray(fileOrFiles) ? fileOrFiles : fileOrFiles ? [fileOrFiles] : []
     if (list.length === 0) return
 
+    scenarioFiles.value = [...scenarioFiles.value, ...list]
+
     loadingLocalFile.value = true
     try {
       await localFileStore.loadFromFiles(list)
     } finally {
       loadingLocalFile.value = false
       selectedFiles.value = null
+    }
+  }
+
+  // ── Escenario: subida de los archivos cargados al backend ──────────────────
+
+  const scenarioFiles = ref<File[]>([])
+  const scenarioName = ref('')
+  const uploadingScenario = ref(false)
+  const scenarioUploadError = ref<string | null>(null)
+  const scenarioSnackbar = ref({ visible: false, message: '', color: 'success' })
+  const scenariosGroupEl = ref<InstanceType<typeof ItemsScenariosGroup> | null>(null)
+
+  async function onUploadScenario(): Promise<void> {
+    const name = scenarioName.value.trim()
+    if (!name || scenarioFiles.value.length === 0) return
+
+    uploadingScenario.value = true
+    scenarioUploadError.value = null
+    try {
+      const scenario = await createScenarioService({ name, payload: {} })
+      await uploadScenarioFilesService(scenario.id, scenarioFiles.value)
+
+      scenarioFiles.value = []
+      scenarioName.value = ''
+      scenarioSnackbar.value = {
+        visible: true,
+        message: 'Escenario subido correctamente',
+        color: 'success',
+      }
+      scenariosGroupEl.value?.refresh()
+    } catch {
+      scenarioUploadError.value = 'Error subiendo el escenario. Inténtalo de nuevo.'
+    } finally {
+      uploadingScenario.value = false
     }
   }
 
