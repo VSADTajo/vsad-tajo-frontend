@@ -31,12 +31,20 @@
           <template v-else>
             <v-list-group v-for="scenario in scenarios" :key="scenario.id" :value="scenario.id">
               <template #activator="{ props }">
-                <v-list-item
-                  v-bind="props"
-                  :title="scenario.name"
-                  class="border"
-                  @click.stop="onExpandScenario(scenario)"
-                />
+                <v-list-item v-bind="props" class="border" @click.stop="onExpandScenario(scenario)">
+                  <template #prepend>
+                    <v-checkbox
+                      density="compact"
+                      hide-details
+                      class="mr-2"
+                      color="success"
+                      :model-value="selectedScenarioId === scenario.id"
+                      @click.stop="toggleScenarioSelection(scenario.id)"
+                    />
+                  </template>
+
+                  <v-list-item-title>{{ scenario.name }}</v-list-item-title>
+                </v-list-item>
               </template>
 
               <v-list-item
@@ -94,6 +102,10 @@
   } from '@/services/scenarios'
   import type { ScenarioFile, ScenarioSummary } from '@/types/Scenarios'
 
+  const emit = defineEmits<{
+    (e: 'update:selected-scenario-id', value: string | null): void
+  }>()
+
   const isOpen = ref(false)
   const loadingScenarios = ref(true)
   const scenarios = ref<ScenarioSummary[]>([])
@@ -101,6 +113,12 @@
   const filesLoadingById = reactive<Record<string, boolean>>({})
   const deletingFileId = ref<string | null>(null)
   const deleteError = ref<string | null>(null)
+  const selectedScenarioId = ref<string | null>(null)
+
+  function toggleScenarioSelection(scenarioId: string): void {
+    selectedScenarioId.value = selectedScenarioId.value === scenarioId ? null : scenarioId
+    emit('update:selected-scenario-id', selectedScenarioId.value)
+  }
 
   function formatFileSize(bytes: number): string {
     return `${(bytes / 1024).toFixed(1)} KB`
@@ -150,12 +168,20 @@
     for (const key of Object.keys(filesByScenarioId)) {
       delete filesByScenarioId[key]
     }
-    void loadScenarios()
+    void loadScenarios().then(() => {
+      if (
+        selectedScenarioId.value &&
+        !scenarios.value.some((s) => s.id === selectedScenarioId.value)
+      ) {
+        selectedScenarioId.value = null
+        emit('update:selected-scenario-id', null)
+      }
+    })
   }
 
   onMounted(loadScenarios)
 
-  defineExpose({ refresh })
+  defineExpose({ refresh, selectedScenarioId })
 </script>
 
 <style scoped></style>
