@@ -59,14 +59,17 @@
           />
         </v-col>
 
-        <v-col cols="12" class="pt-1 px-4">
-          <ItemsScenariosGroup ref="scenariosGroupEl" />
+        <v-col v-if="hasRole('admin')" cols="12" class="pt-1 px-4">
+          <ItemsScenariosGroup
+            ref="scenariosGroupEl"
+            @update:selected-scenario-id="selectedScenarioId = $event"
+          />
         </v-col>
       </v-row>
     </div>
 
     <!-- CARGAR ESCENARIO: bloque de carga/prueba/subida, siempre pegado abajo -->
-    <div class="scenarios-section bg-background">
+    <div v-if="hasRole('admin')" class="scenarios-section bg-background">
       <v-divider class="mb-2" />
 
       <div class="scenarios-bottom px-4 pb-4">
@@ -125,7 +128,9 @@
 
               <v-alert
                 v-if="
-                  localFileStore.hasStations && localFileStore.stationsWithPredictions.length === 0
+                  !selectedScenarioId &&
+                  localFileStore.hasStations &&
+                  localFileStore.stationsWithPredictions.length === 0
                 "
                 type="info"
                 variant="tonal"
@@ -136,7 +141,7 @@
               </v-alert>
 
               <v-alert
-                v-if="localFileStore.error"
+                v-if="!selectedScenarioId && localFileStore.error"
                 type="error"
                 variant="tonal"
                 density="compact"
@@ -219,11 +224,13 @@
   import { useLocalArealFileStore } from '@/stores/localArealFileStore'
   import { setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
   import { createScenarioService, uploadScenarioFilesService } from '@/services/scenarios'
+  import { useAuth } from '@/composables/useAuth'
 
   const { mdAndUp } = useDisplay()
 
   const route = useRoute()
   const router = useRouter()
+  const { hasRole } = useAuth()
   const localFileStore = useLocalFileStore()
   const localArealFileStore = useLocalArealFileStore()
 
@@ -257,25 +264,42 @@
   const selectedFiles = ref<File[] | null>(null)
   const loadingLocalFile = ref(false)
   const isUploaderOpen = ref(true)
+  const selectedScenarioId = ref<string | null>(null)
 
   type LocalFileEntry = { key: string; fileName: string; remove: () => void }
 
-  const mergedLocalFiles = computed<LocalFileEntry[]>(() => [
-    ...localFileStore.files.map((file) => ({
-      key: `station-${file.id}`,
-      fileName: file.fileName,
-      remove: () => onRemoveLocalFile(file.id),
-    })),
-    ...localArealFileStore.files.map((file) => ({
-      key: `areal-${file.id}`,
-      fileName: file.fileName,
-      remove: () => localArealFileStore.removeFile(file.id),
-    })),
-  ])
+  // A selected scenario's downloaded files also live in localFileStore (see
+  // ItemsScenariosGroup), but they don't belong in this "about to upload"
+  // preview — that list is only for files picked through the input below.
+  const mergedLocalFiles = computed<LocalFileEntry[]>(() => {
+    if (selectedScenarioId.value) return []
+
+    return [
+      ...localFileStore.files.map((file) => ({
+        key: `station-${file.id}`,
+        fileName: file.fileName,
+        remove: () => onRemoveLocalFile(file.id),
+      })),
+      ...localArealFileStore.files.map((file) => ({
+        key: `areal-${file.id}`,
+        fileName: file.fileName,
+        remove: () => localArealFileStore.removeFile(file.id),
+      })),
+    ]
+  })
 
   async function onFilesSelected(fileOrFiles: File | File[] | null): Promise<void> {
     const list = Array.isArray(fileOrFiles) ? fileOrFiles : fileOrFiles ? [fileOrFiles] : []
     if (list.length === 0) return
+
+    // Manually loaded files take priority over an active scenario: drop the
+    // scenario's data instead of merging with it, and deselect it so the
+    // two modes never mix.
+    if (selectedScenarioId.value) {
+      localFileStore.clear()
+      localArealFileStore.clear()
+      scenariosGroupEl.value?.clearSelection()
+    }
 
     scenarioFiles.value = [...scenarioFiles.value, ...list]
 
