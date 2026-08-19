@@ -29,7 +29,7 @@ function buildPopupContent(feature: GeoJSON.Feature): string {
         <div style="font-size:12px;opacity:.92;margin-top:2px;line-height:1.2">${nombre}</div>
       </div>
       <div style="padding:6px 10px;background:#fff;color:#1f2937;font-size:11px;">
-        Estación cargada desde archivo local
+        Estación cargada desde un Escenario o un Archivo Local
       </div>
     </div>
   `

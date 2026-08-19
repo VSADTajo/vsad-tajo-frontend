@@ -7,7 +7,7 @@ export const zonasLayers: LayerNode[] = [
   },
   {
     id: 'sistemas10',
-    title: 'Sistemas Explotación',
+    title: 'Sistemas SAIH',
   },
   {
     id: 'zonasexpl',
@@ -58,21 +58,21 @@ export const meteoMaps: LayerNode[] = [
       },
       {
         id: 'eps_precipitacion_25',
-        title: 'Precipitaciones 25',
+        title: 'Precipitación 25',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
       },
       {
         id: 'eps_precipitacion_75',
-        title: 'Precipitaciones 75',
+        title: 'Precipitación 75',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
       },
       {
         id: 'eps_precipitacion_media',
-        title: 'Precipitaciones Media',
+        title: 'Precipitación Media',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
@@ -80,7 +80,7 @@ export const meteoMaps: LayerNode[] = [
 
       {
         id: 'eps_precipitacion_media_acumulada',
-        title: 'Precipitaciones Media Acumulada',
+        title: 'Precipitación Media Acumulada',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
@@ -181,47 +181,47 @@ export const meteoMaps: LayerNode[] = [
 export const efasLayers: LayerNode[] = [
   {
     id: 'reportingpoints',
-    title: 'Reporting Points',
+    title: 'Puntos de Notificación',
   },
   {
     id: 'rainDWD',
-    title: 'Acc. Precip. Det. DWD',
+    title: 'Precip. Acum. Det. DWD',
     opacityEnabled: true,
     opacity: 1,
   },
   {
     id: 'rainEUD',
-    title: 'Acc. Precip. Det. AIFS Single',
+    title: 'Precip. Acum. Det. AIFS',
     opacityEnabled: true,
     opacity: 1,
   },
   {
     id: 'soilMoisture',
-    title: 'Soil Moisture',
+    title: 'Humedad del Suelo',
     opacityEnabled: true,
     opacity: 1,
   },
   {
     id: 'scWB',
-    title: 'Snow Water Equivalent',
+    title: 'Equivalente de Agua en Nieve',
     opacityEnabled: true,
     opacity: 1,
   },
   {
     id: 'alDWD',
-    title: 'Det. DWD',
+    title: 'Caudal Previsto Det. DWD',
     opacityEnabled: true,
     opacity: 1,
   },
   {
     id: 'alEUD',
-    title: 'AIFS Single',
+    title: 'Caudal Previsto Det. AIFS',
     opacityEnabled: true,
     opacity: 1,
   },
   {
     id: 'floodInundationScenarios',
-    title: 'Flood Inundation Scenarios',
+    title: 'Escenarios de Inundación',
     opacityEnabled: true,
     opacity: 1,
   },

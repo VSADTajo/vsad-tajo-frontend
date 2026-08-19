@@ -204,6 +204,16 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
 
   const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
 
+  // A pure precipitation station (tipo P) has no caudal entry, so
+  // alertInfo.simulationDate is null — fall back to precipInfo's, which is
+  // where a P_* station's simulationDate actually comes from.
+  const simulationDate = alertInfo.simulationDate ?? precipInfo.simulationDate
+
+  const simulationDateSection =
+    !isObservado && simulationDate
+      ? `<div style="margin-bottom:6px"><strong>Fecha de Simulación</strong> ${escapeHtml(formatPopupDate(simulationDate))}</div>`
+      : ''
+
   const maxTime = escapeHtml(formatPopupDate(alertInfo.maxDate))
   const caudalLabel = isObservado ? 'Caudal Max Observado' : 'Caudal Máximo Previsto'
   const caudalDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
@@ -240,6 +250,7 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
         <div style="font-size:12px;opacity:.92;margin-top:2px;line-height:1.2">${nombre}</div>
       </div>
       <div style="padding:10px 12px;background:#fff;color:#1f2937;font-size:12px;line-height:1.5">
+        ${simulationDateSection}
         ${caudalSection}
         ${precipSection}
         <div><strong>Municipio:</strong> ${municipio}</div>
