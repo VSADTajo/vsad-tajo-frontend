@@ -7,7 +7,7 @@ export const zonasLayers: LayerNode[] = [
   },
   {
     id: 'sistemas10',
-    title: 'Sistemas Explotación',
+    title: 'Sistemas SAIH',
   },
   {
     id: 'zonasexpl',
@@ -58,21 +58,21 @@ export const meteoMaps: LayerNode[] = [
       },
       {
         id: 'eps_precipitacion_25',
-        title: 'Precipitaciones 25',
+        title: 'Precipitación 25',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
       },
       {
         id: 'eps_precipitacion_75',
-        title: 'Precipitaciones 75',
+        title: 'Precipitación 75',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
       },
       {
         id: 'eps_precipitacion_media',
-        title: 'Precipitaciones Media',
+        title: 'Precipitación Media',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,
@@ -80,7 +80,7 @@ export const meteoMaps: LayerNode[] = [
 
       {
         id: 'eps_precipitacion_media_acumulada',
-        title: 'Precipitaciones Media Acumulada',
+        title: 'Precipitación Media Acumulada',
         parentLayer: 'eps',
         opacityEnabled: true,
         opacity: 1,

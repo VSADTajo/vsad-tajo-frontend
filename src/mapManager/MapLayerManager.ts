@@ -12,7 +12,6 @@ import router from '@/router'
 import { getLayerLegendUrl } from '@/services/efasWmsService'
 import { getGeoServerLegendUrl } from '@/services/geoserverWmsService'
 import { LegendManager } from './LegendManager'
-import { MAP_PANES } from '@/config/panes/mapPanes'
 import { isSelectableLayerId, type SelectableLayerId } from './layerConstants'
 import { TemporalLayerManager } from './TemporalLayerManager'
 import { LayerInteractionManager } from './LayerInteractionManager'
@@ -21,6 +20,8 @@ import { ensureSaihAlertsLoaded } from '@/utils/saihAlerts'
 import { isPrecipitacionLayerId } from './layerConstants'
 import { useLayersStore } from '@/stores/layersStore'
 import { useSimulationsStore } from '@/stores/simulationsStore'
+import { boundaryStore } from '@/stores/boundaryStore'
+import { contornoStyle, contornoOutlineOnlyStyle } from '@/config/styles/layerStyles'
 
 export class MapLayerManager {
   private map: L.Map
@@ -247,10 +248,7 @@ export class MapLayerManager {
         }
 
         if (isSelectableLayerId(layerState.id)) {
-          const pane = this.map.getPane(MAP_PANES.CONTORNO)
-          if (pane) {
-            pane.style.display = 'none'
-          }
+          boundaryStore.contorno?.layer?.setStyle(contornoOutlineOnlyStyle)
         }
 
         if (config.type === 'WMS') {
@@ -345,16 +343,13 @@ export class MapLayerManager {
         this.legendManager.removeLegend(layerState.id)
 
         if (isSelectableLayerId(layerState.id)) {
-          // Solo restaurar CONTORNO si NO queda activo ninguno del grupo
+          // Solo restaurar el relleno de CONTORNO si NO queda activo ninguno del grupo
           const anyGroupActive = Object.values(layersState).some(
             (l) => l.visible && isSelectableLayerId(l.id)
           )
 
           if (!anyGroupActive) {
-            const pane = this.map.getPane(MAP_PANES.CONTORNO)
-            if (pane) {
-              pane.style.display = ''
-            }
+            boundaryStore.contorno?.layer?.setStyle(contornoStyle.normal)
           }
         }
       }

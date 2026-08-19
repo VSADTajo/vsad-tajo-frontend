@@ -62,6 +62,15 @@ export const contornoStyle: LayerStyle = {
   },
 }
 
+// Applied while a "zonas" layer (subcuencas/sistemas10/zonasexpl/meteoalerta)
+// is active, instead of hiding the contorno pane outright — the basin
+// outline stays visible as a plain stroke instead of disappearing.
+export const contornoOutlineOnlyStyle: L.PathOptions = {
+  color: contornoStyle.normal.color,
+  weight: contornoStyle.normal.weight,
+  fill: false,
+}
+
 export const subcuencasStyle: LayerStyle = {
   normal: {
     color: '#8d5d26',
