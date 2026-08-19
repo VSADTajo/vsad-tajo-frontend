@@ -223,6 +223,7 @@ export function getSaihAlertInfo(feature: Feature): {
   latestValue: number | null
   latestDate: string | null
   maxDate: string | null
+  simulationDate: string | null
   backgroundColor: string | null
 } {
   const stationCode = getStationCode(feature)
@@ -232,6 +233,7 @@ export function getSaihAlertInfo(feature: Feature): {
       latestValue: null,
       latestDate: null,
       maxDate: null,
+      simulationDate: null,
       backgroundColor: null,
     }
   }
@@ -274,6 +276,7 @@ export function getSaihAlertInfo(feature: Feature): {
       latestValue: null,
       latestDate: null,
       maxDate: null,
+      simulationDate: null,
       backgroundColor: null,
     }
   }
@@ -293,6 +296,7 @@ export function getSaihAlertInfo(feature: Feature): {
     latestValue: bestEntry.latestValue,
     latestDate: bestEntry.latestDate,
     maxDate: bestEntry.maxDate,
+    simulationDate: bestEntry.simulationDate,
     backgroundColor,
   }
 }
@@ -300,9 +304,10 @@ export function getSaihAlertInfo(feature: Feature): {
 export function getSaihPrecipMaxInfo(feature: Feature): {
   maxValue: number | null
   maxDate: string | null
+  simulationDate: string | null
 } {
   const stationCode = getStationCode(feature)
-  if (!stationCode) return { maxValue: null, maxDate: null }
+  if (!stationCode) return { maxValue: null, maxDate: null, simulationDate: null }
 
   const source = useMapDataSourceStore().selectedDataSource
 
@@ -315,7 +320,11 @@ export function getSaihPrecipMaxInfo(feature: Feature): {
     bestEntry = bestPObsByStation.get(stationCode)
   }
 
-  if (!bestEntry) return { maxValue: null, maxDate: null }
+  if (!bestEntry) return { maxValue: null, maxDate: null, simulationDate: null }
 
-  return { maxValue: bestEntry.maxValue, maxDate: bestEntry.maxDate }
+  return {
+    maxValue: bestEntry.maxValue,
+    maxDate: bestEntry.maxDate,
+    simulationDate: bestEntry.simulationDate,
+  }
 }
