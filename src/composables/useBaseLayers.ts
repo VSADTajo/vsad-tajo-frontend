@@ -27,6 +27,7 @@ export function useBaseLayers(map: L.Map) {
         setBoundary('contorno', {
           geojson: layer.toGeoJSON() as GeoJSON.FeatureCollection,
           bbox: bbox,
+          layer,
         })
       }
     }

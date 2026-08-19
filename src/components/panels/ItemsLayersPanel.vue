@@ -44,7 +44,7 @@
         <v-col cols="12" class="pt-1 pb-1 px-4">
           <ItemsLayersGroup
             :layers="efasLayers"
-            title="Mapas Efas"
+            title="EFAS"
             :multiple="false"
             :default-open="false"
           />
@@ -53,7 +53,7 @@
         <v-col cols="12" class="pt-1 pb-1 px-4">
           <ItemsLayersGroup
             :layers="filteredAvisosLayers"
-            title="Avisos"
+            title="Avisos AEMET"
             :multiple="false"
             :default-open="false"
           />

@@ -1,6 +1,9 @@
+import type L from 'leaflet'
+
 type BoundaryData = {
   geojson: GeoJSON.FeatureCollection
   bbox: [[number, number], [number, number]]
+  layer?: L.GeoJSON
 }
 
 export const boundaryStore: Record<string, BoundaryData> = {}

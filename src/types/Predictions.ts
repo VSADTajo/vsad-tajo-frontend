@@ -93,6 +93,7 @@ export type StationMaxLatestValue = {
   latestDate: string
   predictionTypeName: string
   maxDate: string
+  simulationDate: string
 }
 
 export type MaxLatestValuesResponse = {
