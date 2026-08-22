@@ -78,7 +78,7 @@
             class="layers-title d-flex justify-space-between align-center cursor-pointer"
             @click="isUploaderOpen = !isUploaderOpen"
           >
-            <span>Cargar Escenario</span>
+            <span>Cargar Evento</span>
 
             <v-icon>
               {{ isUploaderOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
@@ -156,7 +156,7 @@
 
                   <v-text-field
                     v-model="scenarioName"
-                    label="Nombre del escenario"
+                    label="Nombre del Evento"
                     variant="outlined"
                     color="primary"
                     bg-color="surface"
@@ -184,7 +184,7 @@
                     :disabled="!scenarioName.trim()"
                     @click="onUploadScenario"
                   >
-                    Subir Escenario
+                    Subir Evento
                   </v-btn>
                 </div>
               </v-expand-transition>
@@ -335,12 +335,12 @@
       scenarioName.value = ''
       scenarioSnackbar.value = {
         visible: true,
-        message: 'Escenario subido correctamente',
+        message: 'Evento subido correctamente',
         color: 'success',
       }
       scenariosGroupEl.value?.refresh()
     } catch {
-      scenarioUploadError.value = 'Error subiendo el escenario. Inténtalo de nuevo.'
+      scenarioUploadError.value = 'Error subiendo el Evento. Inténtalo de nuevo.'
     } finally {
       uploadingScenario.value = false
     }
