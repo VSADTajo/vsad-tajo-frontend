@@ -4,7 +4,7 @@
       class="layers-title d-flex justify-space-between align-center cursor-pointer"
       @click="isOpen = !isOpen"
     >
-      <span>Escenarios</span>
+      <span>Eventos Pasados</span>
 
       <v-icon>
         {{ isOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
@@ -16,14 +16,14 @@
         <v-list bg-color="surface_variant" density="compact">
           <v-list-item
             v-if="loadingScenarios"
-            title="Cargando escenarios..."
+            title="Cargando Eventos Pasados..."
             disabled
             class="text-caption text-medium-emphasis"
           />
 
           <v-list-item
             v-else-if="scenarios.length === 0"
-            title="No hay escenarios guardados"
+            title="No hay Eventos Pasados Guardados"
             disabled
             class="text-caption text-medium-emphasis"
           />
@@ -121,10 +121,9 @@
     @update:model-value="!deletingScenario && (scenarioPendingDelete = null)"
   >
     <v-card v-if="scenarioPendingDelete">
-      <v-card-title class="text-subtitle-1 pt-4 px-4 bg-primary">Eliminar escenario</v-card-title>
+      <v-card-title class="text-subtitle-1 pt-4 px-4 bg-primary">Eliminar Evento</v-card-title>
       <v-card-text class="px-4 pb-2">
-        ¿Estás seguro de eliminar el escenario "{{ scenarioPendingDelete.name }}" y todos sus
-        archivos?
+        ¿Estás seguro de eliminar el Evento "{{ scenarioPendingDelete.name }}" y todos sus archivos?
       </v-card-text>
       <v-card-actions class="px-4 pb-4 pt-2">
         <v-spacer />
@@ -195,7 +194,7 @@
 
     if (hasManualFiles) {
       selectionError.value =
-        'Ya tienes archivos cargados manualmente. Elimínalos antes de seleccionar un escenario.'
+        'Ya tienes archivos cargados manualmente. Elimínalos antes de seleccionar un Evento.'
       return
     }
 
@@ -217,7 +216,7 @@
       localArealFileStore.clear()
       await localFileStore.loadFromFiles(downloaded)
     } catch {
-      selectionError.value = 'Error cargando los datos del escenario.'
+      selectionError.value = 'Error cargando los datos del Evento.'
       selectedScenarioId.value = null
       emit('update:selected-scenario-id', null)
     } finally {
@@ -302,7 +301,7 @@
 
       scenarioPendingDelete.value = null
     } catch {
-      deleteError.value = 'Error eliminando el escenario. Inténtalo de nuevo.'
+      deleteError.value = 'Error eliminando el Evento. Inténtalo de nuevo.'
     } finally {
       deletingScenario.value = false
     }

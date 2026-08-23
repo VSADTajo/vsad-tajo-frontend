@@ -78,7 +78,7 @@
             class="layers-title d-flex justify-space-between align-center cursor-pointer"
             @click="isUploaderOpen = !isUploaderOpen"
           >
-            <span>Cargar Escenario</span>
+            <span>Cargar Evento</span>
 
             <v-icon>
               {{ isUploaderOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
@@ -156,23 +156,13 @@
 
                   <v-text-field
                     v-model="scenarioName"
-                    label="Nombre del escenario"
+                    label="Nombre del Evento"
                     variant="outlined"
                     color="primary"
                     bg-color="surface"
                     density="compact"
                     hide-details
                   />
-
-                  <v-alert
-                    v-if="scenarioUploadError"
-                    type="error"
-                    variant="tonal"
-                    density="compact"
-                    class="mt-2"
-                  >
-                    {{ scenarioUploadError }}
-                  </v-alert>
 
                   <v-btn
                     color="primary"
@@ -184,7 +174,7 @@
                     :disabled="!scenarioName.trim()"
                     @click="onUploadScenario"
                   >
-                    Subir Escenario
+                    Subir Evento
                   </v-btn>
                 </div>
               </v-expand-transition>
@@ -317,7 +307,6 @@
   const scenarioFiles = ref<File[]>([])
   const scenarioName = ref('')
   const uploadingScenario = ref(false)
-  const scenarioUploadError = ref<string | null>(null)
   const scenarioSnackbar = ref({ visible: false, message: '', color: 'success' })
   const scenariosGroupEl = ref<InstanceType<typeof ItemsScenariosGroup> | null>(null)
 
@@ -326,7 +315,6 @@
     if (!name || scenarioFiles.value.length === 0) return
 
     uploadingScenario.value = true
-    scenarioUploadError.value = null
     try {
       const scenario = await createScenarioService({ name, payload: {} })
       await uploadScenarioFilesService(scenario.id, scenarioFiles.value)
@@ -335,12 +323,16 @@
       scenarioName.value = ''
       scenarioSnackbar.value = {
         visible: true,
-        message: 'Escenario subido correctamente',
+        message: 'Evento subido correctamente',
         color: 'success',
       }
       scenariosGroupEl.value?.refresh()
     } catch {
-      scenarioUploadError.value = 'Error subiendo el escenario. Inténtalo de nuevo.'
+      scenarioSnackbar.value = {
+        visible: true,
+        message: 'Error subiendo el Evento. Inténtalo de nuevo.',
+        color: 'error',
+      }
     } finally {
       uploadingScenario.value = false
     }

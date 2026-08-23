@@ -696,6 +696,16 @@
     return date.toISOString().replace(/\.\d{3}Z$/, 'Z')
   }
 
+  // fromForecastDate/toForecastDate filter by forecast *run* issuance date,
+  // not by each event's own timestamp. ENS only issues one run a day, so
+  // using the exact current time as `from` excludes today's run as soon as
+  // it's later than the run's issuance hour, coming back empty (`groups: []`)
+  // for the rest of the day. Aligning to the start of the UTC day keeps
+  // today's run inside the window, same as the working Swagger request.
+  function startOfUtcDay(date: Date): Date {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  }
+
   function pickArealSeries(response?: ArealPrecipResponse): ArealPrecipSeries | undefined {
     if (!response) return undefined
     const medGroup = response.groups.find((g) => g.stat === 'Med')
@@ -733,10 +743,12 @@
     const requestId = ++precipArealRequestId
     loadingPrecipAreal.value = true
 
-    const now = new Date()
-    const forecastFrom = toForecastDateParam(now)
-    const forecastTo = toForecastDateParam(new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000))
-    const observedFrom = toForecastDateParam(new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000))
+    const todayStart = startOfUtcDay(new Date())
+    const forecastFrom = toForecastDateParam(todayStart)
+    const forecastTo = toForecastDateParam(new Date(todayStart.getTime() + 3 * 24 * 60 * 60 * 1000))
+    const observedFrom = toForecastDateParam(
+      new Date(todayStart.getTime() - 3 * 24 * 60 * 60 * 1000)
+    )
     const observedTo = forecastFrom
 
     try {

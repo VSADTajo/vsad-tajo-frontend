@@ -4,7 +4,7 @@
       <!-- Mitad izquierda -->
       <v-col cols="12" md="8" class="d-flex align-center justify-center text-white left-side">
         <div class="text-center text-primary">
-          <h1 class="text-h3 font-weight-bold">VSAD TAJO</h1>
+          <h1 class="text-h2 font-weight-bold">TAGUS FLOWCAST</h1>
           <h1 class="text-h3 font-weight-bold">Bienvenido</h1>
         </div>
       </v-col>
