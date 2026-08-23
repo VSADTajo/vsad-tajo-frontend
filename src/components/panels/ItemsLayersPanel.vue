@@ -164,16 +164,6 @@
                     hide-details
                   />
 
-                  <v-alert
-                    v-if="scenarioUploadError"
-                    type="error"
-                    variant="tonal"
-                    density="compact"
-                    class="mt-2"
-                  >
-                    {{ scenarioUploadError }}
-                  </v-alert>
-
                   <v-btn
                     color="primary"
                     variant="flat"
@@ -317,7 +307,6 @@
   const scenarioFiles = ref<File[]>([])
   const scenarioName = ref('')
   const uploadingScenario = ref(false)
-  const scenarioUploadError = ref<string | null>(null)
   const scenarioSnackbar = ref({ visible: false, message: '', color: 'success' })
   const scenariosGroupEl = ref<InstanceType<typeof ItemsScenariosGroup> | null>(null)
 
@@ -326,7 +315,6 @@
     if (!name || scenarioFiles.value.length === 0) return
 
     uploadingScenario.value = true
-    scenarioUploadError.value = null
     try {
       const scenario = await createScenarioService({ name, payload: {} })
       await uploadScenarioFilesService(scenario.id, scenarioFiles.value)
@@ -340,7 +328,11 @@
       }
       scenariosGroupEl.value?.refresh()
     } catch {
-      scenarioUploadError.value = 'Error subiendo el Evento. Inténtalo de nuevo.'
+      scenarioSnackbar.value = {
+        visible: true,
+        message: 'Error subiendo el Evento. Inténtalo de nuevo.',
+        color: 'error',
+      }
     } finally {
       uploadingScenario.value = false
     }
