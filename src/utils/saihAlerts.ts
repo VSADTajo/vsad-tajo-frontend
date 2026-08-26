@@ -35,12 +35,27 @@ const bestPObsByStation = new Map<string, StationMaxLatestValue>()
 
 type CacheSlot = { loadedAt: number; failedAt: number; inFlight: Promise<void> | null }
 
-const slots: Record<string, CacheSlot> = {
-  namH: { loadedAt: 0, failedAt: 0, inFlight: null },
-  namE: { loadedAt: 0, failedAt: 0, inFlight: null },
-  mk11H: { loadedAt: 0, failedAt: 0, inFlight: null },
-  mk11E: { loadedAt: 0, failedAt: 0, inFlight: null },
-  obs: { loadedAt: 0, failedAt: 0, inFlight: null },
+function makeSlot(): CacheSlot {
+  return { loadedAt: 0, failedAt: 0, inFlight: null }
+}
+
+// Caudal (Q+I) and Precipitación load independently — the map only ever
+// shows one of the two views at a time (MapView's model toggle), so on
+// load only the active view's series get fetched instead of bundling both
+// (plus the model that isn't even selected) into every request.
+const slots = {
+  caudal: {
+    namH: makeSlot(),
+    namE: makeSlot(),
+    mk11H: makeSlot(),
+    mk11E: makeSlot(),
+    obs: makeSlot(),
+  },
+  precip: {
+    harmonie: makeSlot(),
+    epsmedio: makeSlot(),
+    observado: makeSlot(),
+  },
 }
 
 function normalizeStationKey(value: unknown): string {
@@ -109,11 +124,11 @@ function setBestByStation(
 }
 
 async function runSlot(
-  slotKey: string,
+  label: string,
+  slot: CacheSlot,
   sizeCheck: Map<string, StationMaxLatestValue>,
   loader: () => Promise<void>
 ): Promise<void> {
-  const slot = slots[slotKey]
   const cacheIsFresh = Date.now() - slot.loadedAt < ALERT_CACHE_TTL_MS
   const inCooldown = Date.now() - slot.failedAt < ALERT_FAILURE_COOLDOWN_MS
 
@@ -131,7 +146,7 @@ async function runSlot(
     })
     .catch((err) => {
       slot.failedAt = Date.now()
-      console.warn(`SAIH [${slotKey}] values unavailable. Retrying in 60s.`, err)
+      console.warn(`SAIH [${label}] values unavailable. Retrying in 60s.`, err)
     })
     .finally(() => {
       slot.inFlight = null
@@ -141,8 +156,101 @@ async function runSlot(
 }
 
 export function invalidateSaihAlertsCache(): void {
-  for (const slot of Object.values(slots)) {
-    slot.loadedAt = 0
+  for (const group of Object.values(slots)) {
+    for (const slot of Object.values(group)) {
+      slot.loadedAt = 0
+    }
+  }
+}
+
+async function loadCaudal(
+  source: ReturnType<typeof useMapDataSourceStore>['selectedDataSource'],
+  model: ReturnType<typeof useMapModelStore>['selectedModel']
+): Promise<void> {
+  if (source === 'observado') {
+    await runSlot('caudal:obs', slots.caudal.obs, bestQObsAforosByStation, async () => {
+      const [qAforos, qEmbalse] = await Promise.all([
+        getMaxAndLatestValuesService('FICT98.historical'),
+        getMaxAndLatestValuesService('FICT99.historical'),
+      ])
+      setBestByStation(bestQObsAforosByStation, qAforos)
+      setBestByStation(bestQObsEmbalseByStation, qEmbalse)
+    })
+    return
+  }
+
+  if (source === 'harmonie') {
+    if (model === 'mike11') {
+      await runSlot('caudal:mk11H', slots.caudal.mk11H, bestQMk11HByStation, async () => {
+        const [q, i] = await Promise.all([
+          getMaxAndLatestValuesService('Q.mk11.forecast'),
+          getMaxAndLatestValuesService('I.mk11.forecast'),
+        ])
+        setBestByStation(bestQMk11HByStation, q)
+        setBestByStation(bestIMk11HByStation, i)
+      })
+      return
+    }
+
+    await runSlot('caudal:namH', slots.caudal.namH, bestQNamHByStation, async () => {
+      const [q, i] = await Promise.all([
+        getMaxAndLatestValuesService('Q.NAM.harmonie'),
+        getMaxAndLatestValuesService('I.NAM.harmonie'),
+      ])
+      setBestByStation(bestQNamHByStation, q)
+      setBestByStation(bestINamHByStation, i)
+    })
+    return
+  }
+
+  if (source === 'epsmedio') {
+    if (model === 'mike11') {
+      await runSlot('caudal:mk11E', slots.caudal.mk11E, bestQMk11EByStation, async () => {
+        const [q, i] = await Promise.all([
+          getMaxAndLatestValuesService('Q.mk11.EPSforecast'),
+          getMaxAndLatestValuesService('I.mk11.EPSforecast'),
+        ])
+        setBestByStation(bestQMk11EByStation, q)
+        setBestByStation(bestIMk11EByStation, i)
+      })
+      return
+    }
+
+    await runSlot('caudal:namE', slots.caudal.namE, bestQNamEByStation, async () => {
+      const [q, i] = await Promise.all([
+        getMaxAndLatestValuesService('Q.NAM.ens'),
+        getMaxAndLatestValuesService('I.nam.ens'),
+      ])
+      setBestByStation(bestQNamEByStation, q)
+      setBestByStation(bestINamEByStation, i)
+    })
+  }
+}
+
+async function loadPrecip(
+  source: ReturnType<typeof useMapDataSourceStore>['selectedDataSource']
+): Promise<void> {
+  if (source === 'observado') {
+    await runSlot('precip:observado', slots.precip.observado, bestPObsByStation, async () => {
+      const p = await getMaxAndLatestValuesService('WI__01.historical')
+      setBestByStation(bestPObsByStation, p)
+    })
+    return
+  }
+
+  if (source === 'harmonie') {
+    await runSlot('precip:harmonie', slots.precip.harmonie, bestPHByStation, async () => {
+      const p = await getMaxAndLatestValuesService('P.harmonie.forecast')
+      setBestByStation(bestPHByStation, p)
+    })
+    return
+  }
+
+  if (source === 'epsmedio') {
+    await runSlot('precip:epsmedio', slots.precip.epsmedio, bestPEByStation, async () => {
+      const p = await getMaxAndLatestValuesService('P.ens.forecast')
+      setBestByStation(bestPEByStation, p)
+    })
   }
 }
 
@@ -150,72 +258,12 @@ export async function ensureSaihAlertsLoaded(): Promise<void> {
   const source = useMapDataSourceStore().selectedDataSource
   const model = useMapModelStore().selectedModel
 
-  if (source === 'observado') {
-    await runSlot('obs', bestQObsAforosByStation, async () => {
-      const [qAforos, qEmbalse, precip] = await Promise.all([
-        getMaxAndLatestValuesService('FICT98.historical'),
-        getMaxAndLatestValuesService('FICT99.historical'),
-        getMaxAndLatestValuesService('WI__01.historical'),
-      ])
-      setBestByStation(bestQObsAforosByStation, qAforos)
-      setBestByStation(bestQObsEmbalseByStation, qEmbalse)
-      setBestByStation(bestPObsByStation, precip)
-    })
+  if (model === 'precipitacion') {
+    await loadPrecip(source)
     return
   }
 
-  if (source === 'harmonie') {
-    if (model === 'nam') {
-      await runSlot('namH', bestQNamHByStation, async () => {
-        const [q, i, p] = await Promise.all([
-          getMaxAndLatestValuesService('Q.NAM.harmonie'),
-          getMaxAndLatestValuesService('I.NAM.harmonie'),
-          getMaxAndLatestValuesService('P.harmonie.forecast'),
-        ])
-        setBestByStation(bestQNamHByStation, q)
-        setBestByStation(bestINamHByStation, i)
-        setBestByStation(bestPHByStation, p)
-      })
-    } else {
-      await runSlot('mk11H', bestQMk11HByStation, async () => {
-        const [q, i, p] = await Promise.all([
-          getMaxAndLatestValuesService('Q.mk11.forecast'),
-          getMaxAndLatestValuesService('I.mk11.forecast'),
-          getMaxAndLatestValuesService('P.harmonie.forecast'),
-        ])
-        setBestByStation(bestQMk11HByStation, q)
-        setBestByStation(bestIMk11HByStation, i)
-        setBestByStation(bestPHByStation, p)
-      })
-    }
-    return
-  }
-
-  if (source === 'epsmedio') {
-    if (model === 'nam') {
-      await runSlot('namE', bestQNamEByStation, async () => {
-        const [q, i, p] = await Promise.all([
-          getMaxAndLatestValuesService('Q.NAM.ens'),
-          getMaxAndLatestValuesService('I.nam.ens'),
-          getMaxAndLatestValuesService('P.ens.forecast'),
-        ])
-        setBestByStation(bestQNamEByStation, q)
-        setBestByStation(bestINamEByStation, i)
-        setBestByStation(bestPEByStation, p)
-      })
-    } else {
-      await runSlot('mk11E', bestQMk11EByStation, async () => {
-        const [q, i, p] = await Promise.all([
-          getMaxAndLatestValuesService('Q.mk11.EPSforecast'),
-          getMaxAndLatestValuesService('I.mk11.EPSforecast'),
-          getMaxAndLatestValuesService('P.ens.forecast'),
-        ])
-        setBestByStation(bestQMk11EByStation, q)
-        setBestByStation(bestIMk11EByStation, i)
-        setBestByStation(bestPEByStation, p)
-      })
-    }
-  }
+  await loadCaudal(source, model)
 }
 
 export function getSaihAlertInfo(feature: Feature): {
@@ -245,15 +293,21 @@ export function getSaihAlertInfo(feature: Feature): {
   let bestEntry: StationMaxLatestValue | undefined
 
   if (source === 'observado') {
-    bestEntry = isEmbalse
-      ? bestQObsEmbalseByStation.get(stationCode)
-      : bestQObsAforosByStation.get(stationCode)
+    // Observado only distinguishes Caudal vs Precipitación (no NAM/MIKE11
+    // split) — when Precipitación is the active view there's no caudal
+    // entry to report here, same as the harmonie/epsmedio branches below.
+    bestEntry =
+      model === 'precipitacion'
+        ? undefined
+        : isEmbalse
+          ? bestQObsEmbalseByStation.get(stationCode)
+          : bestQObsAforosByStation.get(stationCode)
   } else if (source === 'harmonie') {
     if (model === 'nam') {
       bestEntry = isEmbalse
         ? bestINamHByStation.get(stationCode)
         : bestQNamHByStation.get(stationCode)
-    } else {
+    } else if (model === 'mike11') {
       bestEntry = isEmbalse
         ? bestIMk11HByStation.get(stationCode)
         : bestQMk11HByStation.get(stationCode)
@@ -263,7 +317,7 @@ export function getSaihAlertInfo(feature: Feature): {
       bestEntry = isEmbalse
         ? bestINamEByStation.get(stationCode)
         : bestQNamEByStation.get(stationCode)
-    } else {
+    } else if (model === 'mike11') {
       bestEntry = isEmbalse
         ? bestIMk11EByStation.get(stationCode)
         : bestQMk11EByStation.get(stationCode)
