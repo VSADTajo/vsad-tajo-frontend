@@ -11,39 +11,54 @@
     {{ error }}
   </v-alert>
 
-  <v-sheet elevation="2" class="mt-2">
-    <v-tabs v-model="tab" color="primary">
-      <v-tab v-if="hasCaudal" value="caudal">Hidrogramas</v-tab>
-      <v-tab value="precipitaciones">Precipitaciones</v-tab>
-    </v-tabs>
-  </v-sheet>
+  <!--
+    hasCaudal/tab only reach their final value once loadFeature's async
+    availability check resolves — rendering the tabs before that showed a
+    single "Precipitaciones" tab that then had "Hidrogramas" pop in next to
+    it once loading finished. Wait for loading to fully settle instead.
+  -->
+  <template v-if="!loadingFeature">
+    <div v-if="!hasCaudal && !hasPrecip" class="empty-state">
+      <v-alert type="warning" variant="tonal" class="ma-2">
+        Esta estación no tiene datos de caudal ni de precipitación disponibles.
+      </v-alert>
+    </div>
 
-  <div v-if="tab === 'caudal'" class="bg-surface">
-    <ContentSaihTabHidrograma
-      :is-embalse="isEmbalse"
-      :normalized-station-code="normalizedStationCode"
-      :thresholds="feature?.properties as Record<string, unknown>"
-    />
-  </div>
+    <template v-else>
+      <v-sheet elevation="2" class="mt-2">
+        <v-tabs v-model="tab" color="primary">
+          <v-tab v-if="hasCaudal" value="caudal">Hidrogramas</v-tab>
+          <v-tab v-if="hasPrecip" value="precipitaciones">Precipitaciones</v-tab>
+        </v-tabs>
+      </v-sheet>
 
-  <div v-else class="bg-surface">
-    <ContentSaihTabPrecipitaciones
-      :normalized-station-code="normalizedStationCode"
-      :thresholds="feature?.properties as Record<string, unknown>"
-    />
-  </div>
+      <div v-if="tab === 'caudal'" class="bg-surface">
+        <ContentSaihTabHidrograma
+          :is-embalse="isEmbalse"
+          :normalized-station-code="normalizedStationCode"
+          :thresholds="feature?.properties as Record<string, unknown>"
+        />
+      </div>
+
+      <div v-else class="bg-surface">
+        <ContentSaihTabPrecipitaciones
+          :normalized-station-code="normalizedStationCode"
+          :thresholds="feature?.properties as Record<string, unknown>"
+        />
+      </div>
+    </template>
+  </template>
 </template>
 
 <script lang="ts" setup>
   import { ref, computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { getStationByCodeService, type StationByCodeResponse } from '@/services/general'
+  import { getAvailablePredictionsService } from '@/services/predictions'
+  import type { PredictionTypeName } from '@/types/Predictions'
+  import { toDateList } from './utils/predictionTabUtils'
   import { getSaihTypeColor } from '@/utils/saihStations'
   import StationStickyHeader from './StationStickyHeader.vue'
-  import {
-    aforosWithCaudalPredictions,
-    embalsesWithCaudalPredictions,
-  } from '@/constants/predictionsAvailableData'
   import ContentSaihTabHidrograma from './ContentSaihTabHidrograma.vue'
   import ContentSaihTabPrecipitaciones from './ContentSaihTabPrecipitaciones.vue'
 
@@ -103,11 +118,6 @@
     }
   })
 
-  const stationsWithCaudalPredictions = new Set([
-    ...aforosWithCaudalPredictions,
-    ...embalsesWithCaudalPredictions,
-  ])
-
   const normalizedStationCode = computed(() => {
     const featureProperties = (feature.value?.properties ?? {}) as Record<string, unknown>
     const featureCode = featureProperties.stationCode ?? featureProperties.codigo
@@ -116,11 +126,41 @@
     return sourceCode?.trim().toUpperCase() ?? ''
   })
 
-  const hasCaudal = computed(() => stationsWithCaudalPredictions.has(normalizedStationCode.value))
-  const embalseCodes = new Set(embalsesWithCaudalPredictions)
-  const isEmbalse = computed(() => embalseCodes.has(normalizedStationCode.value))
+  // Whether the station has caudal predictions in ANY of the 4 model
+  // combinations (NAM/MIKE11 × Harmonie/EPS) — checked dynamically per
+  // station instead of against a hardcoded allowlist, which goes stale as
+  // new stations get predictions wired up on the backend.
+  const hasCaudal = ref(false)
+  // Same idea for precipitación — a station with neither should get a
+  // clear "no data" message instead of the Precipitaciones tab's full
+  // (empty) chart/card grid, which is what happened before this check.
+  const hasPrecip = ref(false)
+  const isEmbalse = computed(() => codeType.value === 'E')
 
-  const tab = ref<'caudal' | 'precipitaciones'>(hasCaudal.value ? 'caudal' : 'precipitaciones')
+  const tab = ref<'caudal' | 'precipitaciones'>('precipitaciones')
+
+  async function checkAnyDatesAvailable(
+    code: string,
+    types: PredictionTypeName[]
+  ): Promise<boolean> {
+    const responses = await Promise.all(
+      types.map((type) => getAvailablePredictionsService(code, type).catch(() => null))
+    )
+
+    return responses.some((response) => response != null && toDateList(response).length > 0)
+  }
+
+  function checkStationHasCaudal(code: string, isEmbalseType: boolean): Promise<boolean> {
+    const types: PredictionTypeName[] = isEmbalseType
+      ? ['I.NAM.harmonie', 'I.NAM.ens', 'I.mk11.forecast', 'I.mk11.EPSforecast']
+      : ['Q.NAM.harmonie', 'Q.NAM.ens', 'Q.mk11.forecast', 'Q.mk11.EPSforecast']
+
+    return checkAnyDatesAvailable(code, types)
+  }
+
+  function checkStationHasPrecip(code: string): Promise<boolean> {
+    return checkAnyDatesAvailable(code, ['P.harmonie.forecast', 'P.ens.forecast'])
+  }
 
   let featureRequestId = 0
 
@@ -247,12 +287,25 @@
       }
 
       feature.value = result
+
+      const [hasCaudalResult, hasPrecipResult] = await Promise.all([
+        checkStationHasCaudal(normalizedStationCode.value, codeType.value === 'E'),
+        checkStationHasPrecip(normalizedStationCode.value),
+      ])
+      if (requestId !== featureRequestId) {
+        return false
+      }
+
+      hasCaudal.value = hasCaudalResult
+      hasPrecip.value = hasPrecipResult
       tab.value = hasCaudal.value ? 'caudal' : 'precipitaciones'
       return true
     } catch (err) {
       console.error('Error loading feature:', err)
       error.value = 'Error loading feature'
       feature.value = null
+      hasCaudal.value = false
+      hasPrecip.value = false
       return false
     } finally {
       if (requestId === featureRequestId) {
@@ -266,6 +319,8 @@
     async (code) => {
       feature.value = null
       error.value = null
+      hasCaudal.value = false
+      hasPrecip.value = false
       if (!code) {
         loadingFeature.value = false
         return
@@ -286,6 +341,13 @@
 </script>
 
 <style scoped>
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+  }
+
   .chart-placeholder {
     display: flex;
     align-items: center;
