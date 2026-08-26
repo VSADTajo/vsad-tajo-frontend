@@ -1,5 +1,6 @@
 import { getSaihAlertInfo, getSaihPrecipMaxInfo } from '@/utils/saihAlerts'
 import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
+import { useMapModelStore } from '@/stores/mapModelStore'
 import { useSimulationsStore } from '@/stores/simulationsStore'
 import type { SimulationResultPrediction } from '@/types/Simulations'
 import { formatPopupDate } from './dates'
@@ -202,46 +203,74 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   const dataSource = useMapDataSourceStore().selectedDataSource
   const isObservado = dataSource === 'observado'
 
-  const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
+  // The top toggle picks one of three mutually exclusive views: Caudal NAM,
+  // Caudal MIKE, or Precipitaciones. The popup only ever shows the section
+  // matching the active one — never both, and never silently falling back
+  // to the other when the active one has no data for this station.
+  const isPrecipView = useMapModelStore().selectedModel === 'precipitacion'
+
+  const noDataStyle = 'margin-bottom:6px;color:#6b7280'
 
   // A pure precipitation station (tipo P) has no caudal entry, so
-  // alertInfo.simulationDate is null — fall back to precipInfo's, which is
-  // where a P_* station's simulationDate actually comes from.
-  const simulationDate = alertInfo.simulationDate ?? precipInfo.simulationDate
+  // alertInfo.simulationDate is null — the fields only ever come from the
+  // view currently being shown. Observado carries its own simulationDate
+  // too (same response shape as every other source), so it's shown here
+  // regardless of which data source is active.
+  const simulationDate = isPrecipView ? precipInfo.simulationDate : alertInfo.simulationDate
 
-  const simulationDateSection =
-    !isObservado && simulationDate
-      ? `<div style="margin-bottom:6px"><strong>Fecha de Simulación</strong> ${escapeHtml(formatPopupDate(simulationDate))}</div>`
-      : ''
+  const simulationDateSection = simulationDate
+    ? `<div style="margin-bottom:6px"><strong>Fecha de Simulación</strong> ${escapeHtml(formatPopupDate(simulationDate))}</div>`
+    : ''
 
+  // Latest is the most recent single reading (as opposed to maxValue, the
+  // peak over the whole forecast horizon) — colored against its own
+  // thresholds, not the max's classification (no backgroundColor override).
+  const latestValueChip = buildAlertChip(alertInfo.latestValue, props)
+  const latestTime = escapeHtml(formatPopupDate(alertInfo.latestDate))
+  const latestLabel = isObservado ? 'Último Caudal Observado' : 'Último Caudal Previsto'
+  const latestDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
+
+  const latestSection =
+    isPrecipView || alertInfo.latestValue == null
+      ? ''
+      : `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+          <strong>${latestLabel}</strong>
+          ${latestValueChip}
+        </div>
+        <div style="margin-bottom:6px"><strong>${latestDateLabel}</strong> ${latestTime}</div>`
+
+  const maxValueChip = buildAlertChip(alertInfo.maxValue, props, alertInfo.backgroundColor)
   const maxTime = escapeHtml(formatPopupDate(alertInfo.maxDate))
   const caudalLabel = isObservado ? 'Caudal Max Observado' : 'Caudal Máximo Previsto'
   const caudalDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
 
-  const caudalSection =
-    alertInfo.maxValue != null
+  const caudalSection = isPrecipView
+    ? ''
+    : alertInfo.maxValue != null
       ? `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
           <strong>${caudalLabel}</strong>
           ${maxValueChip}
         </div>
         <div style="margin-bottom:6px"><strong>${caudalDateLabel}</strong> ${maxTime}</div>`
-      : ''
+      : `<div style="${noDataStyle}">No hay datos de caudal.</div>`
 
   const precipValue = precipInfo.maxValue != null ? precipInfo.maxValue.toFixed(1) + ' mm' : '-'
   const precipTime = escapeHtml(formatPopupDate(precipInfo.maxDate))
   const precipLabel = isObservado ? 'Precipitacion Max observada' : 'Precipitación Máx. Prevista'
   const precipDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
 
-  const precipSection =
-    precipInfo.maxValue != null
+  const precipSection = !isPrecipView
+    ? ''
+    : precipInfo.maxValue != null
       ? `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
           <strong>${precipLabel}</strong>
           <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#bfdbfe;color:#1e3a5f;font-weight:700">${precipValue}</span>
         </div>
         <div style="margin-bottom:6px"><strong>${precipDateLabel}</strong> ${precipTime}</div>`
-      : ''
+      : `<div style="${noDataStyle}">No hay datos de precipitación.</div>`
 
   return `
     <div style="min-width:220px;border-radius:12px;overflow:hidden;font-family:Montserrat,sans-serif;box-shadow:0 8px 20px rgba(0,0,0,0.16)">
@@ -251,6 +280,7 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
       </div>
       <div style="padding:10px 12px;background:#fff;color:#1f2937;font-size:12px;line-height:1.5">
         ${simulationDateSection}
+        ${latestSection}
         ${caudalSection}
         ${precipSection}
         <div><strong>Municipio:</strong> ${municipio}</div>
