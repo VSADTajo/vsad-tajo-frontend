@@ -8,31 +8,32 @@
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
       <div v-if="!isSimulationsRoute && !hasLocalFileStations" class="map-data-source-toggle">
-        <v-tooltip
-          text="No aplica para datos observados"
-          location="bottom"
-          :disabled="selectedDataSource !== 'observado'"
+        <!--
+          The model toggle's width changes with its button count (2 for
+          Observado, 3 otherwise) — it goes first so that resizing only
+          shifts its own left edge, never the data-source toggle next to it.
+        -->
+        <v-btn-toggle
+          v-model="selectedModel"
+          mandatory
+          density="compact"
+          divided
+          variant="flat"
+          color="primary"
+          rounded="lg"
+          elevation="4"
+          class="bg-primary"
         >
-          <template #activator="{ props: tooltipProps }">
-            <v-btn-toggle
-              v-bind="tooltipProps"
-              v-model="selectedModel"
-              mandatory
-              density="compact"
-              divided
-              variant="flat"
-              color="primary"
-              rounded="lg"
-              elevation="4"
-              :disabled="selectedDataSource === 'observado'"
-              class="mr-4"
-              :class="selectedDataSource === 'observado' ? 'bg-primary opacity-40' : 'bg-primary'"
-            >
-              <v-btn value="nam" size="small">NAM</v-btn>
-              <v-btn value="mike11" size="small">MIKE11</v-btn>
-            </v-btn-toggle>
+          <template v-if="selectedDataSource === 'observado'">
+            <v-btn value="caudal" size="small">Caudal</v-btn>
+            <v-btn value="precipitacion" size="small">Precipitación</v-btn>
           </template>
-        </v-tooltip>
+          <template v-else>
+            <v-btn value="nam" size="small">Caudal NAM</v-btn>
+            <v-btn value="mike11" size="small">Caudal MIKE</v-btn>
+            <v-btn value="precipitacion" size="small">Precipitaciones</v-btn>
+          </template>
+        </v-btn-toggle>
 
         <v-btn-toggle
           v-model="selectedDataSource"
@@ -140,6 +141,21 @@
     },
   })
   const simulationHistoryOpen = computed(() => simulationsStore.historyOpen)
+
+  // The model toggle's button set changes with the data source (Observado
+  // only has Caudal/Precipitación, no NAM vs MIKE11 split) — keep the
+  // selection valid for whichever set is currently shown instead of
+  // leaving it pointing at a button that no longer exists.
+  watch(selectedDataSource, (source) => {
+    if (
+      source === 'observado' &&
+      (selectedModel.value === 'nam' || selectedModel.value === 'mike11')
+    ) {
+      selectedModel.value = 'caudal'
+    } else if (source !== 'observado' && selectedModel.value === 'caudal') {
+      selectedModel.value = 'nam'
+    }
+  })
 
   const temporalRangeLayerIds = new Set(
     dynamicLayersConfig
@@ -263,6 +279,9 @@
     top: 20px;
     right: 20px;
     z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
   .simulation-controls {
