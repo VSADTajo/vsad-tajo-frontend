@@ -1,17 +1,16 @@
 <template>
-  <v-container fluid class="fill-height pa-0">
+  <v-container fluid class="fill-height pa-0" :style="pageBackgroundStyle">
     <v-row no-gutters class="fill-height">
       <!-- Mitad izquierda -->
-      <v-col cols="12" md="8" class="d-flex align-center justify-center text-white left-side">
-        <div class="text-center text-primary">
-          <h1 class="text-h2 font-weight-bold">TAGUS FLOWCAST</h1>
-          <h1 class="text-h3 font-weight-bold">Bienvenido</h1>
-        </div>
-      </v-col>
+      <v-col
+        cols="12"
+        md="8"
+        class="d-flex align-center justify-center text-white left-side"
+      ></v-col>
 
       <!-- Mitad derecha (login) -->
-      <v-col cols="12" md="4" class="d-flex align-center justify-center bg-primary">
-        <v-card flat class="pa-4" min-width="500" max-width="800">
+      <v-col cols="12" md="4" class="d-flex align-center justify-end pa-8">
+        <v-card flat class="pa-4" min-width="400" max-width="600">
           <v-card-title class="text-h5">Iniciar sesión</v-card-title>
           <v-card-text>
             <v-alert v-if="error" type="error" variant="tonal" class="mb-4">
@@ -59,11 +58,19 @@
   import router from '@/router'
   import { loginService } from '@/services/auth'
   import { ref } from 'vue'
+  import loginBackground from '@/assets/img/TAGUS_FLOWCAST_main.png'
 
   const email = ref('')
   const password = ref('')
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  const pageBackgroundStyle = {
+    backgroundImage: `url(${loginBackground})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  }
 
   async function login() {
     error.value = null
@@ -80,11 +87,3 @@
     }
   }
 </script>
-
-<style scoped>
-  .left-side {
-    background-image: url('');
-    background-size: cover;
-    background-position: center;
-  }
-</style>
