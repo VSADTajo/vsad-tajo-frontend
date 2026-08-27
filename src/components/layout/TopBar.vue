@@ -83,6 +83,8 @@
 
     <v-spacer />
 
+    <v-img :src="flowcastLogo" max-width="60" height="60" contain class="mr-4" />
+
     <UserMenu />
   </v-app-bar>
 </template>
@@ -100,6 +102,7 @@
   import MobileNavigationMenu from './mobile/MobileNavigationMenu.vue'
   import logo from '@/assets/img/logo_saih-6.png'
   import ministerio from '@/assets/img/logo_espana.png'
+  import flowcastLogo from '@/assets/img/TAGUS_FLOWCAST_logo.png'
 
   const { mdAndUp } = useDisplay()
   const router = useRouter()
