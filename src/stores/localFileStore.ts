@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { useStorage } from '@vueuse/core'
 import { computed, ref } from 'vue'
 import type { LocalFileStation } from '@/types/LocalStationsFile'
 import { isLocalStationsFileResponse } from '@/types/LocalStationsFile'
@@ -97,10 +96,14 @@ function mergeStationsByCode(files: LoadedLocalFile[]): LocalFileStation[] {
 }
 
 export const useLocalFileStore = defineStore('localFile', () => {
-  // Persisted to localStorage so a reload / new session on the same browser
-  // keeps showing the last files loaded, without needing to re-upload them.
-  const files = useStorage<LoadedLocalFile[]>('localFile:files', [])
   const error = ref<string | null>(null)
+
+  // Not persisted — a full station export can be several MB, well past
+  // localStorage's ~5-10MB per-origin quota (that used to throw a
+  // QuotaExceededError on every load). Surviving a reload now goes through
+  // the Scenarios API instead: upload via createScenarioService +
+  // uploadScenarioFilesService, then reload later with getScenarioService.
+  const files = ref<LoadedLocalFile[]>([])
   const selectedStationCode = ref<string | null>(null)
   const arealFileStore = useLocalArealFileStore()
 
