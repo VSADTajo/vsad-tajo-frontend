@@ -88,6 +88,7 @@
           <v-expand-transition>
             <div v-show="isUploaderOpen" class="bg-surface-variant pa-3">
               <v-file-input
+                :key="fileInputKey"
                 v-model="selectedFiles"
                 label="Añadir archivos"
                 accept="application/json,.json,.csv,text/csv"
@@ -252,6 +253,10 @@
   // ── Archivo local ─────────────────────────────────────────────────────────
 
   const selectedFiles = ref<File[] | null>(null)
+  // Bumped after every load attempt (success or failure) to force the
+  // v-file-input to remount — resetting its v-model to null alone doesn't
+  // reliably clear its displayed chips for a `multiple` input.
+  const fileInputKey = ref(0)
   const loadingLocalFile = ref(false)
   const isUploaderOpen = ref(true)
   const selectedScenarioId = ref<string | null>(null)
@@ -299,6 +304,7 @@
     } finally {
       loadingLocalFile.value = false
       selectedFiles.value = null
+      fileInputKey.value++
     }
   }
 
@@ -316,17 +322,40 @@
 
     uploadingScenario.value = true
     try {
+      // Once the scenario is created, its files are attempted independently
+      // (see uploadScenarioFilesService) — a partial failure here is no
+      // longer a reason to report the whole thing as failed, nor to leave
+      // the form ready to create a *second* scenario of the same name if
+      // the user retries after seeing an error.
       const scenario = await createScenarioService({ name, payload: {} })
-      await uploadScenarioFilesService(scenario.id, scenarioFiles.value)
+      const { uploaded, failedFileNames } = await uploadScenarioFilesService(
+        scenario.id,
+        scenarioFiles.value
+      )
 
       scenarioFiles.value = []
       scenarioName.value = ''
-      scenarioSnackbar.value = {
-        visible: true,
-        message: 'Evento subido correctamente',
-        color: 'success',
-      }
       scenariosGroupEl.value?.refresh()
+
+      if (failedFileNames.length === 0) {
+        scenarioSnackbar.value = {
+          visible: true,
+          message: 'Evento subido correctamente',
+          color: 'success',
+        }
+      } else if (uploaded.length === 0) {
+        scenarioSnackbar.value = {
+          visible: true,
+          message: `Evento creado, pero ningún archivo se pudo subir: ${failedFileNames.join(', ')}. Añádelos de nuevo desde Eventos Pasados.`,
+          color: 'error',
+        }
+      } else {
+        scenarioSnackbar.value = {
+          visible: true,
+          message: `Evento subido, pero ${failedFileNames.length} archivo(s) fallaron: ${failedFileNames.join(', ')}`,
+          color: 'warning',
+        }
+      }
     } catch {
       scenarioSnackbar.value = {
         visible: true,
@@ -334,6 +363,11 @@
         color: 'error',
       }
     } finally {
+      // Once an upload is attempted — success, partial, or total failure —
+      // the locally-loaded preview files (mergedLocalFiles) are done being
+      // used for this purpose and are cleared either way.
+      localFileStore.clear()
+      localArealFileStore.clear()
       uploadingScenario.value = false
     }
   }

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { useStorage } from '@vueuse/core'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { LocalArealArea } from '@/types/LocalArealFile'
 import type { DataStationPrediction } from '@/types/Predictions'
 
@@ -40,9 +39,10 @@ function mergeAreasById(files: LoadedLocalArealFile[]): LocalArealArea[] {
 }
 
 export const useLocalArealFileStore = defineStore('localArealFile', () => {
-  // Persisted so a reload keeps showing the last areal files loaded, same as
-  // localFileStore does for station files.
-  const files = useStorage<LoadedLocalArealFile[]>('localArealFile:files', [])
+  // Not persisted — see localFileStore.ts for why (localStorage's quota
+  // can't reliably hold a full areal export; use the Scenarios API instead
+  // for anything that needs to survive a reload).
+  const files = ref<LoadedLocalArealFile[]>([])
 
   const areas = computed<LocalArealArea[]>(() => mergeAreasById(files.value))
   const hasAreas = computed(() => files.value.length > 0)
