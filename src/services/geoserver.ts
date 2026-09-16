@@ -88,16 +88,22 @@ function applyStationsCqlFilter(
 }
 
 // "Caudal NAM"/"Caudal MIKE" each only exist for a subset of stations —
-// hasCaudalNam/hasCaudalMike (from GET /stations) say which. Only these two
-// models narrow the station list; "caudal"/"precipitacion" (Observado,
-// EPS/Harmonie precipitación) have no equivalent per-model flag, so they
-// show every station that already passed the type (CQL) filter.
+// hasCaudalNam/hasCaudalMike (from GET /stations) say which. "caudal" is
+// Observado's generic button covering both models at once, so it shows a
+// station if either flag is true. "precipitacion" has no equivalent
+// per-model flag, so it shows every station that already passed the type
+// (CQL) filter.
 function applyModelAvailabilityFilter(
   items: StationsApiResponse['items'],
   model: string
 ): StationsApiResponse['items'] {
   if (model === 'nam') return items.filter((station) => station.hasCaudalNam === true)
   if (model === 'mike11') return items.filter((station) => station.hasCaudalMike === true)
+  if (model === 'caudal') {
+    return items.filter(
+      (station) => station.hasCaudalNam === true || station.hasCaudalMike === true
+    )
+  }
   return items
 }
 
