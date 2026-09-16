@@ -26,6 +26,8 @@ export interface StationData {
   municipio?: string | null
   provincia?: string | null
   ccaa?: string | null
+  hasCaudalNam?: boolean
+  hasCaudalMike?: boolean
   [key: string]: unknown
 }
 

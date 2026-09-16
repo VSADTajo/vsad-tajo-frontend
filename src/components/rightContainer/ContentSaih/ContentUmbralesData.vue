@@ -112,7 +112,7 @@
 
   function formatThreshold(value: number | null): string {
     if (value == null) return '--'
-    return `${value.toFixed(2)} m³/s`
+    return `${Math.round(value)} m³/s`
   }
 
   const threshold1Label = computed(() => formatThreshold(threshold1.value))
