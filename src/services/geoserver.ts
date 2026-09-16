@@ -15,6 +15,7 @@ import { buildSaihPopupContent, buildSaihMinimalPopupContent } from '@/utils/sai
 import { registerSaihMarker } from '@/utils/saihMarkersRegistry'
 import { useMapStore } from '@/stores/mapStore'
 import { useSimulationsStore } from '@/stores/simulationsStore'
+import { useMapModelStore } from '@/stores/mapModelStore'
 import {
   buildMeteoalertaPopupContent,
   buildSubcuencaPopupContent,
@@ -84,6 +85,20 @@ function applyStationsCqlFilter(
     const stationValue = String(station[parsedFilter.field] ?? '').toUpperCase()
     return allowedValues.has(stationValue)
   })
+}
+
+// "Caudal NAM"/"Caudal MIKE" each only exist for a subset of stations —
+// hasCaudalNam/hasCaudalMike (from GET /stations) say which. Only these two
+// models narrow the station list; "caudal"/"precipitacion" (Observado,
+// EPS/Harmonie precipitación) have no equivalent per-model flag, so they
+// show every station that already passed the type (CQL) filter.
+function applyModelAvailabilityFilter(
+  items: StationsApiResponse['items'],
+  model: string
+): StationsApiResponse['items'] {
+  if (model === 'nam') return items.filter((station) => station.hasCaudalNam === true)
+  if (model === 'mike11') return items.filter((station) => station.hasCaudalMike === true)
+  return items
 }
 
 export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, string>): L.Layer {
@@ -158,8 +173,12 @@ export async function createAPIStationsLayer(
     const response = await api.get(config.url, { timeout: false }).json<StationsApiResponse>()
 
     const filteredItems = applyStationsCqlFilter(response.items, extraParams?.CQL_FILTER)
+    const availableItems = applyModelAvailabilityFilter(
+      filteredItems,
+      useMapModelStore().selectedModel
+    )
 
-    const geojson = stationsToGeoJSON(filteredItems)
+    const geojson = stationsToGeoJSON(availableItems)
 
     const geojsonLayer = L.geoJSON(geojson, {
       pointToLayer: config.pointToLayer,
