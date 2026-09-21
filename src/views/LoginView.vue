@@ -58,7 +58,7 @@
   import router from '@/router'
   import { loginService } from '@/services/auth'
   import { ref } from 'vue'
-  import loginBackground from '@/assets/img/TAGUS_FLOWCAST_main.png'
+  import loginBackground from '@/assets/img/portada.png'
 
   const email = ref('')
   const password = ref('')
@@ -67,7 +67,7 @@
 
   const pageBackgroundStyle = {
     backgroundImage: `url(${loginBackground})`,
-    backgroundSize: 'cover',
+    backgroundSize: '100% 100%',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
   }
