@@ -1,8 +1,10 @@
-﻿<template>
+<template>
   <v-card class="bg-surface" elevation="2">
     <v-card-text class="pt-0">
       <template v-if="activeTab !== 'precipitaciones'">
-        <div class="text-body-2 font-weight-bold text-truncate mb-2 mt-2">Umbrales de caudal</div>
+        <div class="text-body-2 font-weight-bold text-truncate mb-2 mt-2">
+          {{ thresholdsTitle }}
+        </div>
         <div v-if="hasAnyThreshold" class="thresholds-row">
           <div class="threshold-item">
             <v-chip
@@ -47,7 +49,9 @@
             <span class="threshold-value">{{ threshold3Label }}</span>
           </div>
         </div>
-        <div v-else class="text-caption text-medium-emphasis pt-2">No hay umbrales de caudal.</div>
+        <div v-else class="text-caption text-medium-emphasis pt-2">
+          No hay {{ thresholdsTitle.toLowerCase() }}.
+        </div>
       </template>
 
       <div v-else class="text-caption text-medium-emphasis pt-2">No hay umbrales disponibles.</div>
@@ -62,10 +66,21 @@
   type ThresholdLevel = 1 | 2 | 3
 
   const props = defineProps<{
-    activeTab: 'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE' | 'precipitaciones'
+    activeTab:
+      | 'caudalNAM'
+      | 'caudalMIKE'
+      | 'volumenNAM'
+      | 'volumenMIKE'
+      | 'precipitaciones'
+      | 'nivel'
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
     selectedThreshold?: { kind: ThresholdType; level: ThresholdLevel } | null
+    // Some 'nivel' stations are really an absolute elevation ("COTA",
+    // msnm) rather than a plain water level ("Nivel", m) — per-station,
+    // passed down from nivelStations.ts rather than assumed.
+    nivelLabel?: string
+    nivelUnit?: string
   }>()
 
   const emit = defineEmits<{
@@ -99,20 +114,37 @@
   }
 
   const threshold1 = computed(() =>
-    readNumber(['umbral_caudal_1', 'umbralCaudal1', 'umbral_amarillo'], props.thresholds)
+    props.activeTab === 'nivel'
+      ? readNumber(['umbral_nivel_1', 'umbralNivel1'], props.thresholds)
+      : readNumber(['umbral_caudal_1', 'umbralCaudal1', 'umbral_amarillo'], props.thresholds)
   )
 
   const threshold2 = computed(() =>
-    readNumber(['umbral_caudal_2', 'umbralCaudal2', 'umbral_naranja'], props.thresholds)
+    props.activeTab === 'nivel'
+      ? readNumber(['umbral_nivel_2', 'umbralNivel2'], props.thresholds)
+      : readNumber(['umbral_caudal_2', 'umbralCaudal2', 'umbral_naranja'], props.thresholds)
   )
 
   const threshold3 = computed(() =>
-    readNumber(['umbral_caudal_3', 'umbralCaudal3', 'umbral_rojo'], props.thresholds)
+    props.activeTab === 'nivel'
+      ? readNumber(['umbral_nivel_3', 'umbralNivel3'], props.thresholds)
+      : readNumber(['umbral_caudal_3', 'umbralCaudal3', 'umbral_rojo'], props.thresholds)
+  )
+
+  const thresholdUnit = computed(() =>
+    props.activeTab === 'nivel' ? (props.nivelUnit ?? 'm') : 'm³/s'
+  )
+
+  const thresholdsTitle = computed(() =>
+    props.activeTab === 'nivel'
+      ? `Umbrales de ${props.nivelLabel ?? 'Nivel'}`
+      : 'Umbrales de caudal'
   )
 
   function formatThreshold(value: number | null): string {
     if (value == null) return '--'
-    return `${Math.round(value)} m³/s`
+    const formattedValue = props.activeTab === 'nivel' ? value.toFixed(3) : Math.round(value)
+    return `${formattedValue} ${thresholdUnit.value}`
   }
 
   const threshold1Label = computed(() => formatThreshold(threshold1.value))

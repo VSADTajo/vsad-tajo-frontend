@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <StationStickyHeader
     :feature="feature"
     :loading="loadingFeature"
@@ -18,7 +18,7 @@
     it once loading finished. Wait for loading to fully settle instead.
   -->
   <template v-if="!loadingFeature">
-    <div v-if="!hasCaudal && !hasPrecip" class="empty-state">
+    <div v-if="!hasCaudal && !hasPrecip && !hasNivel" class="empty-state">
       <v-alert type="warning" variant="tonal" class="ma-2">
         Esta estación no tiene datos de caudal ni de precipitación disponibles.
       </v-alert>
@@ -28,6 +28,7 @@
       <v-sheet elevation="2" class="mt-2">
         <v-tabs v-model="tab" color="primary">
           <v-tab v-if="hasCaudal" value="caudal">Hidrogramas</v-tab>
+          <v-tab v-if="hasNivel" value="nivel">{{ nivelLabel }}</v-tab>
           <v-tab v-if="hasPrecip" value="precipitaciones">Precipitaciones</v-tab>
         </v-tabs>
       </v-sheet>
@@ -35,6 +36,13 @@
       <div v-if="tab === 'caudal'" class="bg-surface">
         <ContentSaihTabHidrograma
           :is-embalse="isEmbalse"
+          :normalized-station-code="normalizedStationCode"
+          :thresholds="feature?.properties as Record<string, unknown>"
+        />
+      </div>
+
+      <div v-else-if="tab === 'nivel'" class="bg-surface">
+        <ContentSaihTabNivel
           :normalized-station-code="normalizedStationCode"
           :thresholds="feature?.properties as Record<string, unknown>"
         />
@@ -58,8 +66,10 @@
   import type { PredictionTypeName } from '@/types/Predictions'
   import { toDateList } from './utils/predictionTabUtils'
   import { getSaihTypeColor } from '@/utils/saihStations'
+  import { hasNivelTab, getNivelStationConfig } from '@/config/nivelStations'
   import StationStickyHeader from './StationStickyHeader.vue'
   import ContentSaihTabHidrograma from './ContentSaihTabHidrograma.vue'
+  import ContentSaihTabNivel from './ContentSaihTabNivel.vue'
   import ContentSaihTabPrecipitaciones from './ContentSaihTabPrecipitaciones.vue'
 
   const route = useRoute()
@@ -136,8 +146,12 @@
   // (empty) chart/card grid, which is what happened before this check.
   const hasPrecip = ref(false)
   const isEmbalse = computed(() => codeType.value === 'E')
+  const hasNivel = computed(() => hasNivelTab(normalizedStationCode.value))
+  const nivelLabel = computed(
+    () => getNivelStationConfig(normalizedStationCode.value)?.label ?? 'Nivel'
+  )
 
-  const tab = ref<'caudal' | 'precipitaciones'>('precipitaciones')
+  const tab = ref<'caudal' | 'nivel' | 'precipitaciones'>('precipitaciones')
 
   async function checkAnyDatesAvailable(
     code: string,
@@ -212,51 +226,27 @@
         tipo: 'SAIH',
         tipo_cod: station.tipoCod ?? null,
         threshold: station.threshold ?? null,
-        umbral_caudal_1: getThresholdValue(station.threshold, [
-          'umbralCaudal1',
-          'umbralNivel1',
-          'umbralVolumen1',
-        ]),
-        umbral_caudal_2: getThresholdValue(station.threshold, [
-          'umbralCaudal2',
-          'umbralNivel2',
-          'umbralVolumen2',
-        ]),
-        umbral_caudal_3: getThresholdValue(station.threshold, [
-          'umbralCaudal3',
-          'umbralNivel3',
-          'umbralVolumen3',
-        ]),
-        umbral_cauda_1: getThresholdValue(station.threshold, [
-          'umbralCaudal1',
-          'umbralNivel1',
-          'umbralVolumen1',
-        ]),
-        umbral_cauda_2: getThresholdValue(station.threshold, [
-          'umbralCaudal2',
-          'umbralNivel2',
-          'umbralVolumen2',
-        ]),
-        umbral_cauda_3: getThresholdValue(station.threshold, [
-          'umbralCaudal3',
-          'umbralNivel3',
-          'umbralVolumen3',
-        ]),
-        umbral_amarillo: getThresholdValue(station.threshold, [
-          'umbralCaudal1',
-          'umbralNivel1',
-          'umbralVolumen1',
-        ]),
-        umbral_naranja: getThresholdValue(station.threshold, [
-          'umbralCaudal2',
-          'umbralNivel2',
-          'umbralVolumen2',
-        ]),
-        umbral_rojo: getThresholdValue(station.threshold, [
-          'umbralCaudal3',
-          'umbralNivel3',
-          'umbralVolumen3',
-        ]),
+        // Caudal (m3/s) thresholds — deliberately NOT falling back to
+        // umbralNivel* here: nivel (m) is a different physical quantity
+        // with its own dedicated tab/fields below, and silently reusing a
+        // level threshold as a caudal one produced wrong-unit numbers on
+        // stations (e.g. AR24) that have real umbralNivel* but null
+        // umbralCaudal* — the Hidrogramas tab showed a fabricated "caudal"
+        // threshold that was actually a level value in disguise.
+        umbral_caudal_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralVolumen1']),
+        umbral_caudal_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralVolumen2']),
+        umbral_caudal_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralVolumen3']),
+        umbral_cauda_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralVolumen1']),
+        umbral_cauda_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralVolumen2']),
+        umbral_cauda_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralVolumen3']),
+        umbral_amarillo: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralVolumen1']),
+        umbral_naranja: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralVolumen2']),
+        umbral_rojo: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralVolumen3']),
+        // Nivel (m) thresholds — dedicated fields for the Nivel tab, never
+        // conflated with caudal above.
+        umbral_nivel_1: getThresholdValue(station.threshold, ['umbralNivel1']),
+        umbral_nivel_2: getThresholdValue(station.threshold, ['umbralNivel2']),
+        umbral_nivel_3: getThresholdValue(station.threshold, ['umbralNivel3']),
       },
     }
   }

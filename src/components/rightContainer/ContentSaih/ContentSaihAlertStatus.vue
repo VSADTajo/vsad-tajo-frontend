@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <v-card class="bg-surface h-100" elevation="2">
     <v-tooltip :text="cardTitle" location="end">
       <template #activator="{ props: tooltipProps }">
@@ -30,7 +30,7 @@
 
   const props = withDefaults(
     defineProps<{
-      activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
+      activeTab?: 'caudal' | 'volumen' | 'precipitaciones' | 'nivel'
       caudalHistorical?: StationPrediction
       precipitationsHistorical?: StationPrediction
       caudalForecastHarmonie?: StationPrediction
@@ -89,7 +89,9 @@
   )
 
   const maxObservedValue = computed<number | null>(() => {
-    if (props.activeTab === 'caudal') return maxResultValue(props.caudalHistorical)
+    if (props.activeTab === 'caudal' || props.activeTab === 'nivel') {
+      return maxResultValue(props.caudalHistorical)
+    }
     return maxResultValue(props.precipitationsHistorical)
   })
 
@@ -109,6 +111,9 @@
         nestedThreshold.value ?? props.thresholds
       )
     }
+    if (props.activeTab === 'nivel') {
+      return readNumber(['umbral_nivel_1', 'umbralNivel1'], props.thresholds)
+    }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_1', 'umbral_amarillo'], props.thresholds)
     }
@@ -122,6 +127,9 @@
         nestedThreshold.value ?? props.thresholds
       )
     }
+    if (props.activeTab === 'nivel') {
+      return readNumber(['umbral_nivel_2', 'umbralNivel2'], props.thresholds)
+    }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_2', 'umbral_naranja'], props.thresholds)
     }
@@ -134,6 +142,9 @@
         ['umbralVolumen3', 'umbral_3_volumen'],
         nestedThreshold.value ?? props.thresholds
       )
+    }
+    if (props.activeTab === 'nivel') {
+      return readNumber(['umbral_nivel_3', 'umbralNivel3'], props.thresholds)
     }
     if (props.activeTab === 'caudal') {
       return readNumber(['umbral_caudal_3', 'umbral_rojo'], props.thresholds)

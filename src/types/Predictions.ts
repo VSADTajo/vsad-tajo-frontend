@@ -37,6 +37,8 @@ export type PredictionTypeName =
   | 'I.NAM.ens.medio'
   | 'I.NAM.ens'
   | 'WI__01.historical'
+  | 'LI__01.historical'
+  | 'LICT01.historical'
   | 'FICT98.historical'
   | 'FICT99.historical'
   | 'FICT95.historical'

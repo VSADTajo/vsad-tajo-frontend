@@ -92,18 +92,26 @@ export function stationsToGeoJSON(stations: StationData[]): GeoJSON.FeatureColle
       provincia: station.provincia,
       ccaa: station.ccaa,
       threshold: station.threshold ?? null,
-      umbral_caudal_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
-      umbral_caudal_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
-      umbral_caudal_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
-      umbral_cauda_1: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
-      umbral_cauda_2: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
-      umbral_cauda_3: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
-      umbral_amarillo: getThresholdValue(station.threshold, ['umbralCaudal1', 'umbralNivel1']),
-      umbral_naranja: getThresholdValue(station.threshold, ['umbralCaudal2', 'umbralNivel2']),
-      umbral_rojo: getThresholdValue(station.threshold, ['umbralCaudal3', 'umbralNivel3']),
+      // Caudal (m3/s) thresholds — NOT falling back to umbralNivel* (a
+      // level, in m): they're different physical quantities, and reusing a
+      // level threshold as a caudal one produced false marker alerts on
+      // stations with real umbralNivel* but null umbralCaudal* (e.g. AR24),
+      // since a plausible caudal value could exceed the borrowed number.
+      umbral_caudal_1: getThresholdValue(station.threshold, ['umbralCaudal1']),
+      umbral_caudal_2: getThresholdValue(station.threshold, ['umbralCaudal2']),
+      umbral_caudal_3: getThresholdValue(station.threshold, ['umbralCaudal3']),
+      umbral_cauda_1: getThresholdValue(station.threshold, ['umbralCaudal1']),
+      umbral_cauda_2: getThresholdValue(station.threshold, ['umbralCaudal2']),
+      umbral_cauda_3: getThresholdValue(station.threshold, ['umbralCaudal3']),
+      umbral_amarillo: getThresholdValue(station.threshold, ['umbralCaudal1']),
+      umbral_naranja: getThresholdValue(station.threshold, ['umbralCaudal2']),
+      umbral_rojo: getThresholdValue(station.threshold, ['umbralCaudal3']),
       umbral_1_volumen: getThresholdValue(station.threshold, ['umbralVolumen1']),
       umbral_2_volumen: getThresholdValue(station.threshold, ['umbralVolumen2']),
       umbral_3_volumen: getThresholdValue(station.threshold, ['umbralVolumen3']),
+      umbral_nivel_1: getThresholdValue(station.threshold, ['umbralNivel1']),
+      umbral_nivel_2: getThresholdValue(station.threshold, ['umbralNivel2']),
+      umbral_nivel_3: getThresholdValue(station.threshold, ['umbralNivel3']),
     },
   }))
 
