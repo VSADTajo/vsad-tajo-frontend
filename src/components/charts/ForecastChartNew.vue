@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="chart-wrapper" :style="{ height: `${chartHeight}px` }">
     <div
       v-show="thresholdTransitionLoading || (loading && hasRenderableSeries)"
@@ -69,6 +69,16 @@
       height?: number
       thresholds?: Record<string, unknown>
       focusThresholdRequest?: ThresholdFocusRequest | null
+      // Unit label for the primary (non-volume) y-axis and tooltip — most
+      // callers plot caudal (m3/s), but the same axis/threshold-line
+      // machinery is reused for nivel (m).
+      caudalUnit?: string
+      // Which threshold fields the primary-axis annotation lines read from
+      // `thresholds` — 'caudal' (default) reads umbral_caudal_*, 'nivel'
+      // reads the dedicated umbral_nivel_* fields. Kept separate from
+      // caudalUnit so a caller can't accidentally pull the wrong physical
+      // quantity's thresholds just by relabeling the axis.
+      thresholdKind?: 'caudal' | 'nivel'
     }>(),
     {
       isEmbalse: false,
@@ -78,6 +88,8 @@
       height: 550,
       thresholds: undefined,
       focusThresholdRequest: null,
+      caudalUnit: 'm3/s',
+      thresholdKind: 'caudal',
     }
   )
 
@@ -107,9 +119,18 @@
   }
 
   const caudalThresholdAnnotations = computed(() => {
-    const t1 = readNumber(['umbral_caudal_1', 'umbral_cauda_1', 'umbralCaudal1'], props.thresholds)
-    const t2 = readNumber(['umbral_caudal_2', 'umbral_cauda_2', 'umbralCaudal2'], props.thresholds)
-    const t3 = readNumber(['umbral_caudal_3', 'umbral_cauda_3', 'umbralCaudal3'], props.thresholds)
+    const [t1, t2, t3] =
+      props.thresholdKind === 'nivel'
+        ? [
+            readNumber(['umbral_nivel_1', 'umbralNivel1'], props.thresholds),
+            readNumber(['umbral_nivel_2', 'umbralNivel2'], props.thresholds),
+            readNumber(['umbral_nivel_3', 'umbralNivel3'], props.thresholds),
+          ]
+        : [
+            readNumber(['umbral_caudal_1', 'umbral_cauda_1', 'umbralCaudal1'], props.thresholds),
+            readNumber(['umbral_caudal_2', 'umbral_cauda_2', 'umbralCaudal2'], props.thresholds),
+            readNumber(['umbral_caudal_3', 'umbral_cauda_3', 'umbralCaudal3'], props.thresholds),
+          ]
 
     const annotations: NonNullable<NonNullable<ApexOptions['annotations']>['yaxis']> = []
 
@@ -649,7 +670,7 @@
   const dynamicYAxis = computed<ApexOptions['yaxis']>(() => {
     const caudalAxis = {
       min: 0,
-      title: { text: 'm3/s' },
+      title: { text: props.caudalUnit },
       labels: {
         formatter: (value: number) => Number(value).toFixed(2),
       },
@@ -718,7 +739,7 @@
       const unit =
         name === 'Volumen observado' || name === 'Resguardo volumen' || name === 'Volumen minimo'
           ? 'hm3'
-          : 'm3/s'
+          : props.caudalUnit
       const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
 
       if (Array.isArray(raw) && raw.length === 2) {
@@ -824,6 +845,12 @@
   }))
 
   function getThresholdValue(kind: 'caudal' | 'volumen', level: 1 | 2 | 3): number | null {
+    if (kind === 'caudal' && props.thresholdKind === 'nivel') {
+      if (level === 1) return readNumber(['umbral_nivel_1', 'umbralNivel1'], props.thresholds)
+      if (level === 2) return readNumber(['umbral_nivel_2', 'umbralNivel2'], props.thresholds)
+      return readNumber(['umbral_nivel_3', 'umbralNivel3'], props.thresholds)
+    }
+
     if (kind === 'caudal') {
       if (level === 1)
         return readNumber(['umbral_caudal_1', 'umbral_cauda_1', 'umbralCaudal1'], props.thresholds)
