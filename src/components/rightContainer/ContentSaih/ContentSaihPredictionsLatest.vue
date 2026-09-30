@@ -247,7 +247,7 @@
   } from '../utils/precipThresholds'
 
   const props = defineProps<{
-    activeTab?: 'caudal' | 'volumen' | 'precipitaciones'
+    activeTab?: 'caudal' | 'volumen' | 'precipitaciones' | 'nivel'
 
     loading?: boolean
 
@@ -290,6 +290,8 @@
     selectedMikeHarmonieDate?: string
 
     thresholds?: Record<string, unknown>
+
+    nivelUnit?: string
   }>()
 
   const emit = defineEmits<{
@@ -354,19 +356,26 @@
   }
 
   const yellowThreshold = computed(() =>
-    readNumber(['umbral_cauda_1', 'umbral_caudal_1', 'threshold_yellow'], props.thresholds)
+    props.activeTab === 'nivel'
+      ? readNumber(['umbral_nivel_1', 'umbralNivel1'], props.thresholds)
+      : readNumber(['umbral_cauda_1', 'umbral_caudal_1', 'threshold_yellow'], props.thresholds)
   )
 
   const orangeThreshold = computed(() =>
-    readNumber(['umbral_cauda_2', 'umbral_caudal_2', 'threshold_orange'], props.thresholds)
+    props.activeTab === 'nivel'
+      ? readNumber(['umbral_nivel_2', 'umbralNivel2'], props.thresholds)
+      : readNumber(['umbral_cauda_2', 'umbral_caudal_2', 'threshold_orange'], props.thresholds)
   )
 
   const redThreshold = computed(() =>
-    readNumber(['umbral_cauda_3', 'umbral_caudal_3', 'threshold_red'], props.thresholds)
+    props.activeTab === 'nivel'
+      ? readNumber(['umbral_nivel_3', 'umbralNivel3'], props.thresholds)
+      : readNumber(['umbral_cauda_3', 'umbral_caudal_3', 'threshold_red'], props.thresholds)
   )
 
   function getThresholdClass(value: number | undefined): string {
-    if (props.activeTab !== 'caudal' || value == null || !Number.isFinite(value)) return ''
+    const appliesThreshold = props.activeTab === 'caudal' || props.activeTab === 'nivel'
+    if (!appliesThreshold || value == null || !Number.isFinite(value)) return ''
 
     if (redThreshold.value != null && value >= redThreshold.value) return 'red-lighten-3'
 
@@ -409,6 +418,8 @@
 
   const unit = computed(() => {
     if (props.activeTab === 'volumen') return 'hm3'
+
+    if (props.activeTab === 'nivel') return props.nivelUnit ?? 'm'
 
     if (props.activeTab !== 'precipitaciones') return 'm3/s'
 

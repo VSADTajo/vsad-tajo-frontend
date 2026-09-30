@@ -182,7 +182,7 @@
 
   const props = withDefaults(
     defineProps<{
-      activeTab?: 'caudal' | 'precipitaciones'
+      activeTab?: 'caudal' | 'precipitaciones' | 'nivel'
       loading?: boolean
       isEmbalse?: boolean
       caudalHistorical?: StationPrediction
@@ -196,6 +196,9 @@
       // 'caudal' hides Vol., 'volumen' hides the toggle entirely and shows
       // only volumen. Leave unset to keep the old always-all-three toggle.
       embalseSection?: 'caudal' | 'volumen'
+      // Unit label for 'nivel' activeTab — some stations are really COTA
+      // (msnm) rather than plain water level (m). See nivelStations.ts.
+      nivelUnit?: string
     }>(),
 
     {
@@ -209,6 +212,7 @@
       thresholds: undefined,
       accumDays: 10,
       embalseSection: undefined,
+      nivelUnit: 'm',
     }
   )
 
@@ -255,7 +259,7 @@
   function summarizePrediction(
     prediction: StationPrediction | undefined,
 
-    unit: 'm3/s' | 'mm' | 'hm3'
+    unit: 'm3/s' | 'mm' | 'hm3' | 'm' | 'msnm'
   ): PredictionSummary {
     const orderedResults = [...(prediction?.results ?? [])].sort(
       (a, b) => toTimestamp(a.date) - toTimestamp(b.date)
@@ -286,11 +290,13 @@
     }
   }
 
-  const baseSummary = computed(() =>
-    props.activeTab === 'caudal'
-      ? summarizePrediction(props.caudalHistorical, 'm3/s')
-      : summarizePrediction(props.precipitationsHistorical, 'mm')
-  )
+  const baseSummary = computed(() => {
+    if (props.activeTab === 'caudal') return summarizePrediction(props.caudalHistorical, 'm3/s')
+    if (props.activeTab === 'nivel') {
+      return summarizePrediction(props.caudalHistorical, props.nivelUnit as 'm' | 'msnm')
+    }
+    return summarizePrediction(props.precipitationsHistorical, 'mm')
+  })
 
   const outflowSummary = computed(() => summarizePrediction(props.caudalOutflowHistorical, 'm3/s'))
 
@@ -360,6 +366,10 @@
   })
 
   const hasObservedData = computed(() => {
+    if (props.activeTab === 'nivel') {
+      return hasResults(props.caudalHistorical)
+    }
+
     if (props.activeTab !== 'caudal') {
       return hasResults(props.precipitationsHistorical)
     }
