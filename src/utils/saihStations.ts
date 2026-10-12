@@ -214,13 +214,17 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   // A pure precipitation station (tipo P) has no caudal entry, so
   // alertInfo.simulationDate is null — the fields only ever come from the
   // view currently being shown. Observado carries its own simulationDate
-  // too (same response shape as every other source), so it's shown here
-  // regardless of which data source is active.
+  // too (same response shape as every other source) and is shown here for
+  // caudal — but observed precipitation is real measured data, not a model
+  // run, so it has no "simulation" to date and the line is hidden for that
+  // one combination.
   const simulationDate = isPrecipView ? precipInfo.simulationDate : alertInfo.simulationDate
+  const hideSimulationDate = isPrecipView && isObservado
 
-  const simulationDateSection = simulationDate
-    ? `<div style="margin-bottom:6px"><strong>Fecha de Simulación</strong> ${escapeHtml(formatPopupDate(simulationDate))}</div>`
-    : ''
+  const simulationDateSection =
+    simulationDate && !hideSimulationDate
+      ? `<div style="margin-bottom:6px"><strong>Fecha de Simulación</strong> ${escapeHtml(formatPopupDate(simulationDate))}</div>`
+      : ''
 
   // Latest is the most recent single reading (as opposed to maxValue, the
   // peak over the whole forecast horizon) — colored against its own

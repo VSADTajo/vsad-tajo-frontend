@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="map-wrapper">
     <div class="map-area">
       <div ref="mapContainer" class="map-container"></div>
@@ -6,6 +6,8 @@
       <MapAvisosTimeControls v-if="hasSelectedAviso && mdAndUp" :stacked="hasBottomTimeControls" />
       <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
+
+      <MapSimulationDateBadge v-if="!isSimulationsRoute && !hasLocalFileStations" />
 
       <div v-if="!isSimulationsRoute && !hasLocalFileStations" class="map-data-source-toggle">
         <!--
@@ -104,6 +106,7 @@
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import MapTimeRangeControls from '@/components/map/MapTimeRangeControls.vue'
   import MapSimulationButton from '@/components/map/MapSimulationButton.vue'
+  import MapSimulationDateBadge from '@/components/map/MapSimulationDateBadge.vue'
   import MapSimulationsHistorySidebar from '@/components/rightContainer/MapSimulationsHistorySidebar.vue'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import { useAvisosStore } from '@/stores/avisosStore'

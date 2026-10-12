@@ -1,8 +1,15 @@
+import { ref } from 'vue'
 import type { Feature } from 'geojson'
 import { getMaxAndLatestValuesService } from '@/services/predictions'
 import type { StationMaxLatestValue } from '@/types/Predictions'
 import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
 import { useMapModelStore } from '@/stores/mapModelStore'
+
+// Bumped every time a slot's byStation map is (re)populated — the maps
+// themselves are plain (non-reactive) Maps, so a Vue computed reading them
+// (e.g. getCurrentSimulationInfo) needs this as an explicit dependency to
+// know when to re-run.
+export const saihAlertsVersion = ref(0)
 
 const ALERT_YELLOW = '#fde68a'
 const ALERT_ORANGE = '#fdba74'
@@ -121,6 +128,8 @@ function setBestByStation(
     const previous = targetMap.get(stationKey)
     targetMap.set(stationKey, pickBestEntry(previous, item))
   }
+
+  saihAlertsVersion.value++
 }
 
 async function runSlot(
@@ -380,5 +389,67 @@ export function getSaihPrecipMaxInfo(feature: Feature): {
     maxValue: bestEntry.maxValue,
     maxDate: bestEntry.maxDate,
     simulationDate: bestEntry.simulationDate,
+  }
+}
+
+function firstSimulationDate(map: Map<string, StationMaxLatestValue>): string | null {
+  for (const entry of map.values()) {
+    if (entry.simulationDate) return entry.simulationDate
+  }
+  return null
+}
+
+const MODEL_LABELS = {
+  nam: 'Caudal NAM',
+  mike11: 'Caudal MIKE',
+  precipitacion: 'Precipitación',
+} as const
+
+const SOURCE_LABELS = {
+  harmonie: 'Harmonie',
+  epsmedio: 'EPS Medio',
+} as const
+
+// How often the backend refreshes each source's runs — not derivable from
+// the API, fixed per source.
+const UPDATE_FREQUENCY_HOURS = {
+  harmonie: 6,
+  epsmedio: 12,
+} as const
+
+export type CurrentSimulationInfo = {
+  label: string
+  simulationDate: string | null
+  updateFrequencyHours: number
+}
+
+// Drives the bottom-right "last simulation date" map badge. Returns null
+// for Observado — it's real measured data, not a model run, so there's no
+// simulation date or update cadence to show.
+export function getCurrentSimulationInfo(): CurrentSimulationInfo | null {
+  const source = useMapDataSourceStore().selectedDataSource
+  const model = useMapModelStore().selectedModel
+
+  if (source === 'observado') return null
+  if (model !== 'nam' && model !== 'mike11' && model !== 'precipitacion') return null
+
+  let simulationDate: string | null
+
+  if (model === 'precipitacion') {
+    simulationDate = firstSimulationDate(source === 'harmonie' ? bestPHByStation : bestPEByStation)
+  } else if (model === 'nam') {
+    simulationDate =
+      firstSimulationDate(source === 'harmonie' ? bestQNamHByStation : bestQNamEByStation) ??
+      firstSimulationDate(source === 'harmonie' ? bestINamHByStation : bestINamEByStation)
+  } else {
+    simulationDate =
+      firstSimulationDate(source === 'harmonie' ? bestQMk11HByStation : bestQMk11EByStation) ??
+      firstSimulationDate(source === 'harmonie' ? bestIMk11HByStation : bestIMk11EByStation)
+  }
+
+  return {
+    label: `${MODEL_LABELS[model]} ${SOURCE_LABELS[source]}`,
+    simulationDate,
+    updateFrequencyHours: UPDATE_FREQUENCY_HOURS[source],
   }
 }

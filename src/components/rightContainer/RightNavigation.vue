@@ -27,6 +27,7 @@
   import { computed, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
+  import { useNavigation } from '@/composables/useNavigation'
   import RightContentSaih from './RightContentSaih.vue'
   import RightContentSimulationEmbalse from './RightContentSimulationEmbalse.vue'
   import RightContentReporting from './RightContentReporting.vue'
@@ -38,6 +39,7 @@
   const route = useRoute()
   const router = useRouter()
   const { mdAndUp, width } = useDisplay()
+  const { drawerOpen: leftMenuOpen } = useNavigation()
 
   const station = computed(() => route.query.station as string | undefined)
 
@@ -98,6 +100,15 @@
     }
   })
 
+  // Toggling SecondaryDrawer changes drawerWidth above, which Vuetify's
+  // navigation-drawer can report back through update:model-value as if the
+  // drawer itself had been closed — it should only resize/shift, never
+  // close, so swallow that one spurious emission.
+  watch(leftMenuOpen, () => {
+    ignoreNextClose = true
+    setTimeout(() => (ignoreNextClose = false), 350)
+  })
+
   function onDrawerChange(val: boolean) {
     if (!val && !ignoreNextClose) {
       const queryObj = { ...route.query }
@@ -108,6 +119,19 @@
     }
   }
 
+  // Must match DesktopRail.vue's `width="72"` and SecondaryDrawer.vue's
+  // `width="320"` — the chart drawer's left edge lines up with whichever of
+  // those is currently the leftmost visible one, instead of a fixed ratio
+  // of the window that ignored their actual widths.
+  const DESKTOP_RAIL_WIDTH = 72
+  const SECONDARY_DRAWER_WIDTH = 320
+
   // ancho responsive
-  const drawerWidth = computed(() => (mdAndUp.value ? width.value * 0.8 : width.value))
+  const drawerWidth = computed(() => {
+    if (!mdAndUp.value) return width.value
+    const reserved = leftMenuOpen.value
+      ? DESKTOP_RAIL_WIDTH + SECONDARY_DRAWER_WIDTH
+      : DESKTOP_RAIL_WIDTH
+    return width.value - reserved
+  })
 </script>
