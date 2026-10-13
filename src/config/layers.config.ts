@@ -44,7 +44,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     name: 'subcuencas',
     type: 'WFS',
     url: `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/ows`,
-    typeName: 'Tajo:cht_subcuencas',
+    typeName: 'Tajo:cht_subcuencas_simple',
     style: subcuencasStyle,
     highlight: true,
     pane: MAP_PANES.POLYGONS,
