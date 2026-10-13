@@ -1,7 +1,7 @@
 <template>
   <v-card class="bg-surface" elevation="2">
     <v-card-text class="pt-0">
-      <template v-if="activeTab !== 'precipitaciones'">
+      <template v-if="showsThresholds">
         <div class="text-body-2 font-weight-bold text-truncate mb-2 mt-2">
           {{ thresholdsTitle }}
         </div>
@@ -66,9 +66,14 @@
   type ThresholdLevel = 1 | 2 | 3
 
   const props = defineProps<{
-    activeTab:
+    activeTab: // Legacy values, still the (unchanging) default passed for aforo
+      // stations, which don't distinguish entrada/salida.
       | 'caudalNAM'
       | 'caudalMIKE'
+      | 'caudalEntradaNAM'
+      | 'caudalSalidaNAM'
+      | 'caudalEntradaMIKE'
+      | 'caudalSalidaMIKE'
       | 'volumenNAM'
       | 'volumenMIKE'
       | 'precipitaciones'
@@ -82,6 +87,22 @@
     nivelLabel?: string
     nivelUnit?: string
   }>()
+
+  // Embalse thresholds are defined for caudal de salida — Volumen NAM/MIKE
+  // and Caudal Entrada NAM/MIKE don't carry that signal at all, so showing
+  // the salida thresholds there would be both pointless and visually wrong
+  // (ForecastChartNew would plot them against an axis/series they don't
+  // apply to). Only the dedicated Salida tabs (plus aforo's caudalNAM/
+  // caudalMIKE, which have no entrada/salida split to begin with) show them.
+  const HIDDEN_TABS = new Set([
+    'precipitaciones',
+    'volumenNAM',
+    'volumenMIKE',
+    'caudalEntradaNAM',
+    'caudalEntradaMIKE',
+  ])
+
+  const showsThresholds = computed(() => !HIDDEN_TABS.has(props.activeTab))
 
   const emit = defineEmits<{
     (event: 'focus-threshold', payload: { kind: ThresholdType; level: ThresholdLevel } | null): void

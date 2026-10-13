@@ -172,7 +172,6 @@ export function useCaudalPredictions(
   // (resguardoVolume / minimumVolume are added by the caller after merging with useResguardos)
   const caudalBaseChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     historicalVolume: embalseVolumeHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
@@ -184,7 +183,6 @@ export function useCaudalPredictions(
 
   const caudalOnlyBaseChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
     forecastEnsP10: caudalForecastEnsP10.value,
@@ -199,7 +197,6 @@ export function useCaudalPredictions(
 
   const mikeChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     forecastHarmonie: mikeForecastHarmonie.value,
     forecastEpsat: mikeForecastEpsat.value,
     forecastEnsP25: mikeForecastEnsP25.value,

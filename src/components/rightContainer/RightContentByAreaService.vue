@@ -639,7 +639,6 @@
     caudalForecastEnsP25,
     caudalForecastEnsP75,
     caudalForecastEnsP90,
-    caudalOutflowHistorical,
     embalseVolumeHistorical,
     mikeForecastHarmonie,
     mikeForecastEpsat,
@@ -657,7 +656,6 @@
 
   const caudalChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
     forecastEnsP10: caudalForecastEnsP10.value,

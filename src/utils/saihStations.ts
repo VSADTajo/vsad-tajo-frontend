@@ -213,13 +213,11 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
 
   // A pure precipitation station (tipo P) has no caudal entry, so
   // alertInfo.simulationDate is null — the fields only ever come from the
-  // view currently being shown. Observado carries its own simulationDate
-  // too (same response shape as every other source) and is shown here for
-  // caudal — but observed precipitation is real measured data, not a model
-  // run, so it has no "simulation" to date and the line is hidden for that
-  // one combination.
+  // view currently being shown. Observado (caudal or precipitación) is real
+  // measured data, not a model run, so it has no "simulation" to date and
+  // the line is hidden whenever it's the active source.
   const simulationDate = isPrecipView ? precipInfo.simulationDate : alertInfo.simulationDate
-  const hideSimulationDate = isPrecipView && isObservado
+  const hideSimulationDate = isObservado
 
   const simulationDateSection =
     simulationDate && !hideSimulationDate

@@ -79,6 +79,13 @@
       // caudalUnit so a caller can't accidentally pull the wrong physical
       // quantity's thresholds just by relabeling the axis.
       thresholdKind?: 'caudal' | 'nivel'
+      // An embalse's thresholds are defined for caudal de salida — a chart
+      // showing only caudal de entrada (no salida series at all) has
+      // nothing to compare them against, so the caller marks it explicitly
+      // instead of this component guessing from the data shape (entrada
+      // and salida charts have an identical shape: one 'historical' series
+      // plus optional forecasts).
+      hideCaudalThresholds?: boolean
     }>(),
     {
       isEmbalse: false,
@@ -90,6 +97,7 @@
       focusThresholdRequest: null,
       caudalUnit: 'm3/s',
       thresholdKind: 'caudal',
+      hideCaudalThresholds: false,
     }
   )
 
@@ -205,9 +213,10 @@
 
   const observedSeriesName = computed(() => (props.isEmbalse ? 'Observado entrada' : 'Observado'))
 
-  const predictionHarmonieSeriesName = computed(() =>
-    props.isEmbalse ? 'Entrada Predicción Det. Harmonie' : 'Predicción Det. Harmonie'
-  )
+  const predictionHarmonieSeriesName = computed(() => {
+    if (props.volumeOnly) return 'Volumen Predicción Det. Harmonie'
+    return props.isEmbalse ? 'Entrada Predicción Det. Harmonie' : 'Predicción Det. Harmonie'
+  })
 
   const resguardoVolumeData = computed(() => {
     return normalizePredictionResults(props.data.resguardoVolume)
@@ -736,10 +745,7 @@
 
       const name = s.name ?? `Serie ${idx + 1}`
       const color = w.globals?.colors?.[idx] ?? '#ccc'
-      const unit =
-        name === 'Volumen observado' || name === 'Resguardo volumen' || name === 'Volumen minimo'
-          ? 'hm3'
-          : props.caudalUnit
+      const unit = isVolumeSeriesName(name) ? 'hm3' : props.caudalUnit
       const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
 
       if (Array.isArray(raw) && raw.length === 2) {
@@ -827,10 +833,16 @@
     yaxis: dynamicYAxis.value,
     annotations: {
       xaxis: observedEndXAnnotation.value,
-      yaxis: [
-        ...caudalThresholdAnnotations.value,
-        ...(hasVolumeSeries.value ? resolvedVolumeThresholdAnnotations.value : []),
-      ],
+      // A volume-only chart (Volumen NAM/MIKE for an embalse) has no caudal
+      // series at all and no real volumen threshold either (an embalse's
+      // only real thresholds are for caudal de salida) — no threshold line
+      // of any kind applies to its single hm3 axis.
+      yaxis: isVolumeOnlySeries.value
+        ? []
+        : [
+            ...(props.hideCaudalThresholds ? [] : caudalThresholdAnnotations.value),
+            ...(hasVolumeSeries.value ? resolvedVolumeThresholdAnnotations.value : []),
+          ],
     },
     tooltip: {
       enabled: true,

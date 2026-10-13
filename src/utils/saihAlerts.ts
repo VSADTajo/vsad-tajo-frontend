@@ -347,11 +347,19 @@ export function getSaihAlertInfo(feature: Feature): {
   const props = (feature.properties ?? {}) as Record<string, unknown>
   const thresholds = getThresholds(props)
 
+  // Forecasts are evaluated against their peak (maxValue) — the whole point
+  // is to flag a station that WILL exceed a threshold at some point in the
+  // horizon. Observado has no horizon, only a live reading: coloring it by
+  // the historical max would keep a marker red after the river has already
+  // receded below threshold, so it's evaluated against the latest value
+  // instead — color tracks the current state, not a past peak.
+  const comparisonValue = source === 'observado' ? bestEntry.latestValue : bestEntry.maxValue
+
   let backgroundColor: string | null = null
-  if (thresholds.red != null && bestEntry.maxValue >= thresholds.red) backgroundColor = ALERT_RED
-  else if (thresholds.orange != null && bestEntry.maxValue >= thresholds.orange)
+  if (thresholds.red != null && comparisonValue >= thresholds.red) backgroundColor = ALERT_RED
+  else if (thresholds.orange != null && comparisonValue >= thresholds.orange)
     backgroundColor = ALERT_ORANGE
-  else if (thresholds.yellow != null && bestEntry.maxValue >= thresholds.yellow)
+  else if (thresholds.yellow != null && comparisonValue >= thresholds.yellow)
     backgroundColor = ALERT_YELLOW
 
   return {
