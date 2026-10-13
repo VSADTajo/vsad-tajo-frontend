@@ -1,6 +1,7 @@
 import { getSaihAlertInfo, getSaihPrecipMaxInfo } from '@/utils/saihAlerts'
 import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
 import { useMapModelStore } from '@/stores/mapModelStore'
+import { useMapPrecipHorizonStore } from '@/stores/mapPrecipHorizonStore'
 import { useSimulationsStore } from '@/stores/simulationsStore'
 import type { SimulationResultPrediction } from '@/types/Simulations'
 import { formatPopupDate } from './dates'
@@ -215,9 +216,11 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
   // alertInfo.simulationDate is null — the fields only ever come from the
   // view currently being shown. Observado (caudal or precipitación) is real
   // measured data, not a model run, so it has no "simulation" to date and
-  // the line is hidden whenever it's the active source.
+  // the line is hidden whenever it's the active source. Precipitación's
+  // popup now only ever shows the accumulated value + municipio (below),
+  // regardless of source, so this is hidden there too.
   const simulationDate = isPrecipView ? precipInfo.simulationDate : alertInfo.simulationDate
-  const hideSimulationDate = isObservado
+  const hideSimulationDate = isObservado || isPrecipView
 
   const simulationDateSection =
     simulationDate && !hideSimulationDate
@@ -258,10 +261,16 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
         <div style="margin-bottom:6px"><strong>${caudalDateLabel}</strong> ${maxTime}</div>`
       : `<div style="${noDataStyle}">No hay datos de caudal.</div>`
 
+  // precip-accumulated unified observed/forecast into the same "accumulated
+  // mm over the selected horizon" figure — no separate max/date/simulation
+  // framing needed anymore, just the value against the currently selected
+  // hours window (MapPrecipHorizonToggle).
+  const precipHorizonHours = useMapPrecipHorizonStore().selectedHours
+  // Same sign convention as MapPrecipHorizonToggle: Observado looks back
+  // (-Xh), Harmonie/EPS Medio look ahead (+Xh).
+  const precipHorizonSign = isObservado ? '-' : '+'
   const precipValue = precipInfo.maxValue != null ? precipInfo.maxValue.toFixed(1) + ' mm' : '-'
-  const precipTime = escapeHtml(formatPopupDate(precipInfo.maxDate))
-  const precipLabel = isObservado ? 'Precipitacion Max observada' : 'Precipitación Máx. Prevista'
-  const precipDateLabel = isObservado ? 'Fecha Observada' : 'Fecha Prevista'
+  const precipLabel = `Precipitación Acumulada ${precipHorizonSign}${precipHorizonHours}h`
 
   const precipSection = !isPrecipView
     ? ''
@@ -270,8 +279,7 @@ export function buildSaihPopupContent(feature: GeoJSON.Feature): string {
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
           <strong>${precipLabel}</strong>
           <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#bfdbfe;color:#1e3a5f;font-weight:700">${precipValue}</span>
-        </div>
-        <div style="margin-bottom:6px"><strong>${precipDateLabel}</strong> ${precipTime}</div>`
+        </div>`
       : `<div style="${noDataStyle}">No hay datos de precipitación.</div>`
 
   return `

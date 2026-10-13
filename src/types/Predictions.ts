@@ -102,6 +102,30 @@ export type MaxLatestValuesResponse = {
   values: StationMaxLatestValue[]
 }
 
+// GET /predictions/precip-accumulated — replaces max-and-latest-values for
+// precipitación only (caudal keeps using StationMaxLatestValue above).
+export type PrecipAccumulatedSource = 'observed' | 'harmonie' | 'eps'
+export type PrecipAccumulatedHours = 1 | 2 | 4 | 8 | 12 | 24
+
+export type PrecipAccumulatedItem = {
+  stationId: string
+  stationName: string
+  accumulated: number
+  windowStart: string
+  windowEnd: string
+  lastDate: string
+  isStale: boolean
+}
+
+export type PrecipAccumulatedResponse = {
+  source: PrecipAccumulatedSource
+  hours: PrecipAccumulatedHours
+  predictionType: string
+  simulationDate: string | null
+  referenceDate: string
+  items: PrecipAccumulatedItem[]
+}
+
 // Series para el gráfico
 export type RangePoint = { x: string; y: [number | null, number | null] | null }
 export type Point = { x: string; y: number | null }

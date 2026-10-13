@@ -1,9 +1,15 @@
 import { ref } from 'vue'
 import type { Feature } from 'geojson'
-import { getMaxAndLatestValuesService } from '@/services/predictions'
-import type { StationMaxLatestValue } from '@/types/Predictions'
-import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
+import { getMaxAndLatestValuesService, getPrecipAccumulatedService } from '@/services/predictions'
+import type {
+  PrecipAccumulatedHours,
+  PrecipAccumulatedItem,
+  PrecipAccumulatedSource,
+  StationMaxLatestValue,
+} from '@/types/Predictions'
+import { useMapDataSourceStore, type MapDataSource } from '@/stores/mapDataSourceStore'
 import { useMapModelStore } from '@/stores/mapModelStore'
+import { useMapPrecipHorizonStore } from '@/stores/mapPrecipHorizonStore'
 
 // Bumped every time a slot's byStation map is (re)populated — the maps
 // themselves are plain (non-reactive) Maps, so a Vue computed reading them
@@ -20,12 +26,10 @@ const ALERT_FAILURE_COOLDOWN_MS = 60 * 1000
 // NAM Harmonie
 const bestQNamHByStation = new Map<string, StationMaxLatestValue>()
 const bestINamHByStation = new Map<string, StationMaxLatestValue>()
-const bestPHByStation = new Map<string, StationMaxLatestValue>()
 
 // NAM EPS
 const bestQNamEByStation = new Map<string, StationMaxLatestValue>()
 const bestINamEByStation = new Map<string, StationMaxLatestValue>()
-const bestPEByStation = new Map<string, StationMaxLatestValue>()
 
 // MIKE11 Harmonie
 const bestQMk11HByStation = new Map<string, StationMaxLatestValue>()
@@ -38,7 +42,6 @@ const bestIMk11EByStation = new Map<string, StationMaxLatestValue>()
 // Observado
 const bestQObsAforosByStation = new Map<string, StationMaxLatestValue>()
 const bestQObsEmbalseByStation = new Map<string, StationMaxLatestValue>()
-const bestPObsByStation = new Map<string, StationMaxLatestValue>()
 
 type CacheSlot = { loadedAt: number; failedAt: number; inFlight: Promise<void> | null }
 
@@ -46,10 +49,12 @@ function makeSlot(): CacheSlot {
   return { loadedAt: 0, failedAt: 0, inFlight: null }
 }
 
-// Caudal (Q+I) and Precipitación load independently — the map only ever
-// shows one of the two views at a time (MapView's model toggle), so on
-// load only the active view's series get fetched instead of bundling both
-// (plus the model that isn't even selected) into every request.
+// Caudal's models/sources load independently — the map only ever shows one
+// at a time (MapView's model toggle), so on load only the active one's
+// series get fetched instead of bundling all of them into every request.
+// Precipitación has its own cache shape (precipAccumulatedState below) —
+// it's one window-keyed slot, not per-model, since there's no NAM/MIKE11
+// split for precipitación.
 const slots = {
   caudal: {
     namH: makeSlot(),
@@ -57,11 +62,6 @@ const slots = {
     mk11H: makeSlot(),
     mk11E: makeSlot(),
     obs: makeSlot(),
-  },
-  precip: {
-    harmonie: makeSlot(),
-    epsmedio: makeSlot(),
-    observado: makeSlot(),
   },
 }
 
@@ -170,6 +170,41 @@ export function invalidateSaihAlertsCache(): void {
       slot.loadedAt = 0
     }
   }
+  precipAccumulatedState.loadedAt = 0
+}
+
+// precip-accumulated's one cache slot: keyed by `${source}:${hours}` so a
+// change in either the data-source toggle or the horizon toggle forces a
+// refetch instead of silently reusing the previous combination's numbers.
+type PrecipAccumulatedState = {
+  key: string | null
+  byStation: Map<string, PrecipAccumulatedItem>
+  simulationDate: string | null
+  loadedAt: number
+  failedAt: number
+  inFlight: Promise<void> | null
+}
+
+const precipAccumulatedState: PrecipAccumulatedState = {
+  key: null,
+  byStation: new Map(),
+  simulationDate: null,
+  loadedAt: 0,
+  failedAt: 0,
+  inFlight: null,
+}
+
+function toPrecipEndpointSource(source: MapDataSource): PrecipAccumulatedSource {
+  if (source === 'observado') return 'observed'
+  if (source === 'epsmedio') return 'eps'
+  return 'harmonie'
+}
+
+function precipAccumulatedKey(
+  source: PrecipAccumulatedSource,
+  hours: PrecipAccumulatedHours
+): string {
+  return `${source}:${hours}`
 }
 
 async function loadCaudal(
@@ -236,30 +271,43 @@ async function loadCaudal(
   }
 }
 
-async function loadPrecip(
-  source: ReturnType<typeof useMapDataSourceStore>['selectedDataSource']
-): Promise<void> {
-  if (source === 'observado') {
-    await runSlot('precip:observado', slots.precip.observado, bestPObsByStation, async () => {
-      const p = await getMaxAndLatestValuesService('WI__01.historical')
-      setBestByStation(bestPObsByStation, p)
-    })
+async function loadPrecip(source: MapDataSource, hours: PrecipAccumulatedHours): Promise<void> {
+  const endpointSource = toPrecipEndpointSource(source)
+  const key = precipAccumulatedKey(endpointSource, hours)
+  const sameKey = precipAccumulatedState.key === key
+
+  const cacheIsFresh = sameKey && Date.now() - precipAccumulatedState.loadedAt < ALERT_CACHE_TTL_MS
+  const inCooldown =
+    sameKey && Date.now() - precipAccumulatedState.failedAt < ALERT_FAILURE_COOLDOWN_MS
+
+  if (cacheIsFresh && precipAccumulatedState.byStation.size > 0) return
+  if (inCooldown) return
+  if (sameKey && precipAccumulatedState.inFlight) {
+    await precipAccumulatedState.inFlight
     return
   }
 
-  if (source === 'harmonie') {
-    await runSlot('precip:harmonie', slots.precip.harmonie, bestPHByStation, async () => {
-      const p = await getMaxAndLatestValuesService('P.harmonie.forecast')
-      setBestByStation(bestPHByStation, p)
-    })
-    return
-  }
+  const inFlight = (async () => {
+    const response = await getPrecipAccumulatedService(endpointSource, hours)
+    precipAccumulatedState.key = key
+    precipAccumulatedState.byStation = new Map(
+      response.items.map((item) => [normalizeStationKey(item.stationId), item])
+    )
+    precipAccumulatedState.simulationDate = response.simulationDate
+    saihAlertsVersion.value++
+  })()
 
-  if (source === 'epsmedio') {
-    await runSlot('precip:epsmedio', slots.precip.epsmedio, bestPEByStation, async () => {
-      const p = await getMaxAndLatestValuesService('P.ens.forecast')
-      setBestByStation(bestPEByStation, p)
-    })
+  precipAccumulatedState.inFlight = inFlight
+
+  try {
+    await inFlight
+    precipAccumulatedState.loadedAt = Date.now()
+    precipAccumulatedState.failedAt = 0
+  } catch (err) {
+    precipAccumulatedState.failedAt = Date.now()
+    console.warn(`SAIH [precip:${key}] values unavailable. Retrying in 60s.`, err)
+  } finally {
+    precipAccumulatedState.inFlight = null
   }
 }
 
@@ -268,7 +316,7 @@ export async function ensureSaihAlertsLoaded(): Promise<void> {
   const model = useMapModelStore().selectedModel
 
   if (model === 'precipitacion') {
-    await loadPrecip(source)
+    await loadPrecip(source, useMapPrecipHorizonStore().selectedHours)
     return
   }
 
@@ -372,6 +420,10 @@ export function getSaihAlertInfo(feature: Feature): {
   }
 }
 
+// maxValue/maxDate are named for backward compatibility with callers (the
+// map popup) — they now hold precip-accumulated's accumulated value and
+// the end of the window it was measured over, for whichever source+hours
+// combination is currently selected.
 export function getSaihPrecipMaxInfo(feature: Feature): {
   maxValue: number | null
   maxDate: string | null
@@ -381,22 +433,25 @@ export function getSaihPrecipMaxInfo(feature: Feature): {
   if (!stationCode) return { maxValue: null, maxDate: null, simulationDate: null }
 
   const source = useMapDataSourceStore().selectedDataSource
+  const hours = useMapPrecipHorizonStore().selectedHours
+  const expectedKey = precipAccumulatedKey(toPrecipEndpointSource(source), hours)
 
-  let bestEntry: StationMaxLatestValue | undefined
-  if (source === 'harmonie') {
-    bestEntry = bestPHByStation.get(stationCode)
-  } else if (source === 'epsmedio') {
-    bestEntry = bestPEByStation.get(stationCode)
-  } else if (source === 'observado') {
-    bestEntry = bestPObsByStation.get(stationCode)
+  // Guards against showing a stale combination's numbers while the newly
+  // selected one is still in flight — precip-accumulated has only one
+  // shared cache slot (unlike caudal's per-combo maps), so a mid-fetch read
+  // would otherwise return the previous source/hours' data mislabeled as
+  // the new one's.
+  if (precipAccumulatedState.key !== expectedKey) {
+    return { maxValue: null, maxDate: null, simulationDate: null }
   }
 
-  if (!bestEntry) return { maxValue: null, maxDate: null, simulationDate: null }
+  const item = precipAccumulatedState.byStation.get(stationCode)
+  if (!item) return { maxValue: null, maxDate: null, simulationDate: null }
 
   return {
-    maxValue: bestEntry.maxValue,
-    maxDate: bestEntry.maxDate,
-    simulationDate: bestEntry.simulationDate,
+    maxValue: item.accumulated,
+    maxDate: item.windowEnd,
+    simulationDate: precipAccumulatedState.simulationDate,
   }
 }
 
@@ -444,7 +499,10 @@ export function getCurrentSimulationInfo(): CurrentSimulationInfo | null {
   let simulationDate: string | null
 
   if (model === 'precipitacion') {
-    simulationDate = firstSimulationDate(source === 'harmonie' ? bestPHByStation : bestPEByStation)
+    const hours = useMapPrecipHorizonStore().selectedHours
+    const expectedKey = precipAccumulatedKey(toPrecipEndpointSource(source), hours)
+    simulationDate =
+      precipAccumulatedState.key === expectedKey ? precipAccumulatedState.simulationDate : null
   } else if (model === 'nam') {
     simulationDate =
       firstSimulationDate(source === 'harmonie' ? bestQNamHByStation : bestQNamEByStation) ??

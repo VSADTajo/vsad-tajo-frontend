@@ -14,6 +14,7 @@
   import { es } from 'date-fns/locale'
   import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
   import { useMapModelStore } from '@/stores/mapModelStore'
+  import { useMapPrecipHorizonStore } from '@/stores/mapPrecipHorizonStore'
   import { parseDate } from '@/utils/dates'
   import {
     getCurrentSimulationInfo,
@@ -23,6 +24,7 @@
 
   const dataSourceStore = useMapDataSourceStore()
   const modelStore = useMapModelStore()
+  const precipHorizonStore = useMapPrecipHorizonStore()
 
   const info = computed(() => {
     // Read as a reactive dependency — saihAlertsVersion bumps whenever the
@@ -63,7 +65,11 @@
   // happens today when the SAIH stations layer itself syncs on the map, not
   // on every data-source/model change — so make sure it's fetched here too.
   watch(
-    () => [dataSourceStore.selectedDataSource, modelStore.selectedModel],
+    () => [
+      dataSourceStore.selectedDataSource,
+      modelStore.selectedModel,
+      precipHorizonStore.selectedHours,
+    ],
     () => {
       void ensureSaihAlertsLoaded()
     },
