@@ -211,6 +211,38 @@
     return normalizePredictionResults(props.data.historicalVolume)
   })
 
+  // Whichever observed series this chart actually carries (entrada, salida,
+  // or volumen — never more than one of these per chart with the current
+  // tab layout) — the latest date in it is where the forecast is allowed to
+  // start. ISO date strings compare correctly with plain string ops.
+  const lastObservedDate = computed(() => {
+    const sources = [historicalData.value, historicalOutflowData.value, historicalVolumeData.value]
+    let latest: string | null = null
+
+    for (const source of sources) {
+      if (!source) continue
+      for (const point of source) {
+        if (latest === null || point.date > latest) latest = point.date
+      }
+    }
+
+    return latest
+  })
+
+  // Forecast series sometimes carry a point or two before the observed
+  // series' own last reading (the two feeds aren't fetched in perfect
+  // lockstep) — without this, the forecast line visually starts earlier
+  // than where the observed line actually ends, instead of continuing from
+  // it.
+  function clampToForecastStart(
+    data: ReturnType<typeof normalizePredictionResults>
+  ): ReturnType<typeof normalizePredictionResults> {
+    if (!data) return data
+    const cutoff = lastObservedDate.value
+    if (!cutoff) return data
+    return data.filter((point) => point.date >= cutoff)
+  }
+
   const observedSeriesName = computed(() => (props.isEmbalse ? 'Observado entrada' : 'Observado'))
 
   const predictionHarmonieSeriesName = computed(() => {
@@ -227,31 +259,31 @@
   })
 
   const HarmonieData = computed(() => {
-    return normalizePredictionResults(props.data.forecastHarmonie)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastHarmonie))
   })
 
   // Extraer fechas y valores de ens
   const epsatData = computed(() => {
-    return normalizePredictionResults(props.data.forecastEpsat)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEpsat))
   })
 
   // Extraer fechas y valores de p10
   const p10Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP10)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP10))
   })
 
   // Extraer fechas y valores de p75
   const p75Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP75)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP75))
   })
 
   const p25Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP25)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP25))
   })
 
   // Extraer fechas y valores de p90
   const p90Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP90)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP90))
   })
 
   // Todas las fechas únicas ordenadas, rellenando huecos temporales con fechas sintéticas
