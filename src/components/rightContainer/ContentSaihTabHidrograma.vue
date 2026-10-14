@@ -67,12 +67,20 @@
             <v-sheet class="pa-2">
               <template v-if="isEmbalse">
                 <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
-                  <v-tab value="caudalEntradaNAM">Caudal Entr. NAM</v-tab>
-                  <v-tab value="caudalSalidaNAM">Caudal Sal. NAM</v-tab>
-                  <v-tab value="volumenNAM">Volumen NAM</v-tab>
-                  <v-tab value="caudalEntradaMIKE">Caudal Entr. MIKE</v-tab>
-                  <v-tab value="caudalSalidaMIKE">Caudal Sal. MIKE</v-tab>
-                  <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
+                  <v-tab v-if="hasCaudalNamAvailable" value="caudalEntradaNAM">
+                    Caudal Entr. NAM
+                  </v-tab>
+                  <v-tab v-if="hasCaudalNamAvailable" value="caudalSalidaNAM">
+                    Caudal Sal. NAM
+                  </v-tab>
+                  <v-tab v-if="hasCaudalNamAvailable" value="volumenNAM">Volumen NAM</v-tab>
+                  <v-tab v-if="hasCaudalMikeAvailable" value="caudalEntradaMIKE">
+                    Caudal Entr. MIKE
+                  </v-tab>
+                  <v-tab v-if="hasCaudalMikeAvailable" value="caudalSalidaMIKE">
+                    Caudal Sal. MIKE
+                  </v-tab>
+                  <v-tab v-if="hasCaudalMikeAvailable" value="volumenMIKE">Volumen MIKE</v-tab>
                 </v-tabs>
 
                 <div class="chart-tab-root">
@@ -194,9 +202,14 @@
 
               <template v-else>
                 <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
-                  <v-tab value="nam">NAM</v-tab>
-                  <v-tab value="mike">MIKE</v-tab>
-                  <v-tab v-if="hasRole('admin')" value="combined">NAM + MIKE</v-tab>
+                  <v-tab v-if="hasCaudalNamAvailable" value="nam">NAM</v-tab>
+                  <v-tab v-if="hasCaudalMikeAvailable" value="mike">MIKE</v-tab>
+                  <v-tab
+                    v-if="hasRole('admin') && hasCaudalNamAvailable && hasCaudalMikeAvailable"
+                    value="combined"
+                  >
+                    NAM + MIKE
+                  </v-tab>
                 </v-tabs>
                 <div class="chart-tab-root">
                   <div
@@ -425,6 +438,8 @@
     isEmbalse?: boolean
     thresholds?: Record<string, unknown>
     normalizedStationCode: string
+    hasCaudalNam?: boolean
+    hasCaudalMike?: boolean
   }>()
 
   const emit = defineEmits<{
@@ -448,6 +463,47 @@
   const mountedTabs = reactive(new Set<string>(['caudalEntradaNAM', 'nam']))
   watch(selectedEmbalseChartTab, (tab) => mountedTabs.add(tab))
   watch(selectedCaudalTypeChartTab, (tab) => mountedTabs.add(tab))
+
+  // Same hasCaudalNam/hasCaudalMike flags the map uses to show/hide stations
+  // — a tab for a model this station doesn't have is never offered here
+  // either, closing the gap where the map could hide a station for "no NAM"
+  // while the detail view still showed an (empty) NAM tab.
+  const hasCaudalNamAvailable = computed(() => props.hasCaudalNam !== false)
+  const hasCaudalMikeAvailable = computed(() => props.hasCaudalMike !== false)
+
+  function isEmbalseTabAvailable(tab: string): boolean {
+    if (tab.endsWith('NAM')) return hasCaudalNamAvailable.value
+    if (tab.endsWith('MIKE')) return hasCaudalMikeAvailable.value
+    return true
+  }
+
+  // Corrects the selected tab whenever it points at an unavailable model —
+  // on first load (immediate) and whenever the station (and therefore its
+  // availability flags) changes while this component instance stays mounted.
+  watch(
+    [hasCaudalNamAvailable, hasCaudalMikeAvailable, () => props.normalizedStationCode],
+    () => {
+      if (!isEmbalseTabAvailable(selectedEmbalseChartTab.value)) {
+        selectedEmbalseChartTab.value = hasCaudalNamAvailable.value
+          ? 'caudalEntradaNAM'
+          : hasCaudalMikeAvailable.value
+            ? 'caudalEntradaMIKE'
+            : 'caudalEntradaNAM'
+      }
+
+      if (selectedCaudalTypeChartTab.value === 'nam' && !hasCaudalNamAvailable.value) {
+        selectedCaudalTypeChartTab.value = hasCaudalMikeAvailable.value ? 'mike' : 'nam'
+      } else if (selectedCaudalTypeChartTab.value === 'mike' && !hasCaudalMikeAvailable.value) {
+        selectedCaudalTypeChartTab.value = hasCaudalNamAvailable.value ? 'nam' : 'mike'
+      } else if (
+        selectedCaudalTypeChartTab.value === 'combined' &&
+        (!hasCaudalNamAvailable.value || !hasCaudalMikeAvailable.value)
+      ) {
+        selectedCaudalTypeChartTab.value = hasCaudalNamAvailable.value ? 'nam' : 'mike'
+      }
+    },
+    { immediate: true }
+  )
   const selectedThreshold = ref<ThresholdSelection>(null)
   const thresholdFocusRequest = ref<ThresholdFocusRequest | null>(null)
   const thresholdFocusNonce = ref(0)
