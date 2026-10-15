@@ -177,10 +177,22 @@
                     <template v-if="selectedSeries === 'caudal'">
                       <template v-if="isEmbalseForChart">
                         <v-tabs v-model="selectedEmbalseChartTab" density="compact" class="mb-3">
-                          <v-tab value="caudalNAM">Caudal NAM</v-tab>
-                          <v-tab value="caudalMIKE">Caudal MIKE</v-tab>
-                          <v-tab value="volumenNAM">Volumen NAM</v-tab>
-                          <v-tab value="volumenMIKE">Volumen MIKE</v-tab>
+                          <v-tab v-if="hasCaudalNamAvailable" value="caudalEntradaNAM">
+                            Caudal Entr. NAM
+                          </v-tab>
+                          <v-tab v-if="hasCaudalNamAvailable" value="caudalSalidaNAM">
+                            Caudal Sal. NAM
+                          </v-tab>
+                          <v-tab v-if="hasCaudalNamAvailable" value="volumenNAM">Volumen NAM</v-tab>
+                          <v-tab v-if="hasCaudalMikeAvailable" value="caudalEntradaMIKE">
+                            Caudal Entr. MIKE
+                          </v-tab>
+                          <v-tab v-if="hasCaudalMikeAvailable" value="caudalSalidaMIKE">
+                            Caudal Sal. MIKE
+                          </v-tab>
+                          <v-tab v-if="hasCaudalMikeAvailable" value="volumenMIKE">
+                            Volumen MIKE
+                          </v-tab>
                         </v-tabs>
 
                         <div class="chart-tab-root">
@@ -188,17 +200,19 @@
                             :class="[
                               'chart-tab-panel',
                               {
-                                'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalNAM',
+                                'chart-tab-panel--hidden':
+                                  selectedEmbalseChartTab !== 'caudalEntradaNAM',
                               },
                             ]"
                           >
                             <ForecastChartNew
-                              v-if="mountedTabs.has('caudalNAM')"
-                              :data="caudalChartData"
+                              v-if="mountedTabs.has('caudalEntradaNAM')"
+                              :data="caudalEntradaChartData"
                               :is-embalse="true"
                               :height="470"
                               :loading="loadingCaudales"
                               :thresholds="currentStationThresholds"
+                              :hide-caudal-thresholds="true"
                               :focus-threshold-request="thresholdFocusRequest"
                               @focus-threshold-complete="handleThresholdFocusComplete"
                             />
@@ -208,13 +222,14 @@
                               'chart-tab-panel',
                               'chart-tab-overlay',
                               {
-                                'chart-tab-panel--hidden': selectedEmbalseChartTab !== 'caudalMIKE',
+                                'chart-tab-panel--hidden':
+                                  selectedEmbalseChartTab !== 'caudalSalidaNAM',
                               },
                             ]"
                           >
                             <ForecastChartNew
-                              v-if="mountedTabs.has('caudalMIKE')"
-                              :data="mikeChartData"
+                              v-if="mountedTabs.has('caudalSalidaNAM')"
+                              :data="caudalSalidaChartData"
                               :is-embalse="true"
                               :height="470"
                               :loading="loadingCaudales"
@@ -235,6 +250,50 @@
                             <ForecastChartNew
                               v-if="mountedTabs.has('volumenNAM')"
                               :data="volumenOnlyChartData"
+                              :is-embalse="true"
+                              :volume-only="true"
+                              :height="470"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              {
+                                'chart-tab-panel--hidden':
+                                  selectedEmbalseChartTab !== 'caudalEntradaMIKE',
+                              },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('caudalEntradaMIKE')"
+                              :data="mikeChartData"
+                              :is-embalse="true"
+                              :height="470"
+                              :loading="loadingCaudales"
+                              :thresholds="currentStationThresholds"
+                              :hide-caudal-thresholds="true"
+                              :focus-threshold-request="thresholdFocusRequest"
+                              @focus-threshold-complete="handleThresholdFocusComplete"
+                            />
+                          </div>
+                          <div
+                            :class="[
+                              'chart-tab-panel',
+                              'chart-tab-overlay',
+                              {
+                                'chart-tab-panel--hidden':
+                                  selectedEmbalseChartTab !== 'caudalSalidaMIKE',
+                              },
+                            ]"
+                          >
+                            <ForecastChartNew
+                              v-if="mountedTabs.has('caudalSalidaMIKE')"
+                              :data="caudalSalidaChartData"
                               :is-embalse="true"
                               :height="470"
                               :loading="loadingCaudales"
@@ -257,6 +316,7 @@
                               v-if="mountedTabs.has('volumenMIKE')"
                               :data="mikeVolumenChartData"
                               :is-embalse="true"
+                              :volume-only="true"
                               :height="470"
                               :loading="loadingCaudales"
                               :thresholds="currentStationThresholds"
@@ -269,9 +329,16 @@
 
                       <template v-else>
                         <v-tabs v-model="selectedCaudalTypeChartTab" density="compact" class="mb-3">
-                          <v-tab value="nam">NAM</v-tab>
-                          <v-tab value="mike">MIKE</v-tab>
-                          <v-tab v-if="hasRole('admin')" value="combined">NAM + MIKE</v-tab>
+                          <v-tab v-if="hasCaudalNamAvailable" value="nam">NAM</v-tab>
+                          <v-tab v-if="hasCaudalMikeAvailable" value="mike">MIKE</v-tab>
+                          <v-tab
+                            v-if="
+                              hasRole('admin') && hasCaudalNamAvailable && hasCaudalMikeAvailable
+                            "
+                            value="combined"
+                          >
+                            NAM + MIKE
+                          </v-tab>
                         </v-tabs>
                         <div class="chart-tab-root">
                           <div
@@ -488,11 +555,16 @@
   const selectedSeries = ref<SubcuencaSeriesMode>('caudal')
   const selectedPrecipChartTab = ref<'precipitaciones' | 'acumuladas'>('precipitaciones')
   const selectedStationName = ref('')
-  const selectedEmbalseChartTab = ref<'caudalNAM' | 'caudalMIKE' | 'volumenNAM' | 'volumenMIKE'>(
-    'caudalNAM'
-  )
+  const selectedEmbalseChartTab = ref<
+    | 'caudalEntradaNAM'
+    | 'caudalSalidaNAM'
+    | 'caudalEntradaMIKE'
+    | 'caudalSalidaMIKE'
+    | 'volumenNAM'
+    | 'volumenMIKE'
+  >('caudalEntradaNAM')
   const selectedCaudalTypeChartTab = ref<'nam' | 'mike' | 'combined'>('nam')
-  const mountedTabs = reactive(new Set<string>(['caudalNAM', 'nam']))
+  const mountedTabs = reactive(new Set<string>(['caudalEntradaNAM', 'nam']))
   const thresholdFocusRequest = ref<null>(null)
 
   let stationsRequestId = 0
@@ -617,6 +689,25 @@
     return (station?.threshold ?? null) as Record<string, unknown> | undefined
   })
 
+  // Same hasCaudalNam/hasCaudalMike flags the map and RightContentSaih.vue
+  // use to show/hide stations and tabs — a model this station doesn't have
+  // never gets a tab here either.
+  const selectedStationForAvailability = computed(() =>
+    stations.value.find((s) => s.stationCode === selectedStationCode.value)
+  )
+  const hasCaudalNamAvailable = computed(
+    () => selectedStationForAvailability.value?.hasCaudalNam !== false
+  )
+  const hasCaudalMikeAvailable = computed(
+    () => selectedStationForAvailability.value?.hasCaudalMike !== false
+  )
+
+  function isEmbalseTabAvailable(tab: string): boolean {
+    if (tab.endsWith('NAM')) return hasCaudalNamAvailable.value
+    if (tab.endsWith('MIKE')) return hasCaudalMikeAvailable.value
+    return true
+  }
+
   // ── Caudal predictions ────────────────────────────────────────────────────
 
   const isEmbalseForChart = computed(
@@ -639,6 +730,7 @@
     caudalForecastEnsP25,
     caudalForecastEnsP75,
     caudalForecastEnsP90,
+    caudalOutflowHistorical,
     embalseVolumeHistorical,
     mikeForecastHarmonie,
     mikeForecastEpsat,
@@ -647,6 +739,12 @@
     mikeVolumeEpsat,
     mikeVolumeEnsP25,
     mikeVolumeEnsP75,
+    namVolumeHarmonie,
+    namVolumeEpsat,
+    namVolumeEnsP10,
+    namVolumeEnsP25,
+    namVolumeEnsP75,
+    namVolumeEnsP90,
     loading: loadingCaudales,
   } = useCaudalPredictions(
     computed(() => selectedStationCode.value ?? ''),
@@ -654,6 +752,27 @@
     codeTypeForChart
   )
 
+  // Entrada NAM has the full forecast set (Harmonie + EPS percentiles) —
+  // same shape as the aforo "nam" tab's chart data below, minus volumen/
+  // resguardo fields, which don't apply to a caudal-only tab.
+  const caudalEntradaChartData = computed(() => ({
+    historical: caudalHistorical.value,
+    forecastHarmonie: caudalForecastHarmonie.value,
+    forecastEpsat: caudalForecastEpstat.value,
+    forecastEnsP10: caudalForecastEnsP10.value,
+    forecastEnsP25: caudalForecastEnsP25.value,
+    forecastEnsP90: caudalForecastEnsP90.value,
+    forecastEnsP75: caudalForecastEnsP75.value,
+  }))
+
+  // No NAM/MIKE forecast exists for caudal de salida — only the observed
+  // series — so this one chart data object is shared by both the "Caudal
+  // Sal. NAM" and "Caudal Sal. MIKE" tabs.
+  const caudalSalidaChartData = computed(() => ({
+    historicalOutflow: caudalOutflowHistorical.value,
+  }))
+
+  // Kept for the aforo (non-embalse) "NAM" tab below.
   const caudalChartData = computed(() => ({
     historical: caudalHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
@@ -666,6 +785,12 @@
 
   const volumenOnlyChartData = computed(() => ({
     historicalVolume: embalseVolumeHistorical.value,
+    forecastHarmonie: namVolumeHarmonie.value,
+    forecastEpsat: namVolumeEpsat.value,
+    forecastEnsP10: namVolumeEnsP10.value,
+    forecastEnsP25: namVolumeEnsP25.value,
+    forecastEnsP90: namVolumeEnsP90.value,
+    forecastEnsP75: namVolumeEnsP75.value,
   }))
 
   const mikeVolumenChartData = computed(() => ({
@@ -812,12 +937,41 @@
   watch(selectedCaudalTypeChartTab, (tab) => mountedTabs.add(tab))
 
   watch(selectedStationCode, () => {
-    selectedEmbalseChartTab.value = 'caudalNAM'
+    selectedEmbalseChartTab.value = 'caudalEntradaNAM'
     selectedCaudalTypeChartTab.value = 'nam'
     mountedTabs.clear()
-    mountedTabs.add('caudalNAM')
+    mountedTabs.add('caudalEntradaNAM')
     mountedTabs.add('nam')
   })
+
+  // Corrects the selected tab whenever it points at an unavailable model —
+  // runs right after the reset above (registration order), so a station
+  // with no NAM (or no MIKE) data lands on whichever model it does have
+  // instead of the plain default.
+  watch(
+    [hasCaudalNamAvailable, hasCaudalMikeAvailable, selectedStationCode],
+    () => {
+      if (!isEmbalseTabAvailable(selectedEmbalseChartTab.value)) {
+        selectedEmbalseChartTab.value = hasCaudalNamAvailable.value
+          ? 'caudalEntradaNAM'
+          : hasCaudalMikeAvailable.value
+            ? 'caudalEntradaMIKE'
+            : 'caudalEntradaNAM'
+      }
+
+      if (selectedCaudalTypeChartTab.value === 'nam' && !hasCaudalNamAvailable.value) {
+        selectedCaudalTypeChartTab.value = hasCaudalMikeAvailable.value ? 'mike' : 'nam'
+      } else if (selectedCaudalTypeChartTab.value === 'mike' && !hasCaudalMikeAvailable.value) {
+        selectedCaudalTypeChartTab.value = hasCaudalNamAvailable.value ? 'nam' : 'mike'
+      } else if (
+        selectedCaudalTypeChartTab.value === 'combined' &&
+        (!hasCaudalNamAvailable.value || !hasCaudalMikeAvailable.value)
+      ) {
+        selectedCaudalTypeChartTab.value = hasCaudalNamAvailable.value ? 'nam' : 'mike'
+      }
+    },
+    { immediate: true }
+  )
 
   watch(
     selectedRouteValue,
