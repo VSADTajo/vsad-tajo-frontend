@@ -4,6 +4,7 @@ import { useLayersStore } from '@/stores/layersStore'
 import { useMapStore } from '@/stores/mapStore'
 import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
 import { useMapModelStore } from '@/stores/mapModelStore'
+import { useMapPrecipHorizonStore } from '@/stores/mapPrecipHorizonStore'
 import { invalidateSaihAlertsCache } from '@/utils/saihAlerts'
 import { MapLayerManager } from '@/mapManager/MapLayerManager'
 import L from 'leaflet'
@@ -13,6 +14,7 @@ export function useDynamicLayers(map: L.Map) {
   const mapStore = useMapStore()
   const dataSourceStore = useMapDataSourceStore()
   const modelStore = useMapModelStore()
+  const precipHorizonStore = useMapPrecipHorizonStore()
   const manager = new MapLayerManager(map)
 
   const applyPendingSelection = () => {
@@ -55,4 +57,7 @@ export function useDynamicLayers(map: L.Map) {
 
   watch(() => dataSourceStore.selectedDataSource, reloadSaih)
   watch(() => modelStore.selectedModel, reloadSaih)
+  // Only relevant while precipitación is active, but cheap to always
+  // watch — reloadSaih() is a no-op resync if "saih" isn't visible.
+  watch(() => precipHorizonStore.selectedHours, reloadSaih)
 }

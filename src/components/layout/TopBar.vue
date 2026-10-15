@@ -42,9 +42,20 @@
       @update:model-value="onSelectResult"
     >
       <template #item="{ props, item }">
-        <v-list-item v-bind="props" :title="item.raw.display">
+        <v-list-item
+          v-bind="props"
+          :title="item.raw.display"
+          :class="{ 'search-item--unavailable': !isVisibleOnMap(item.raw) }"
+        >
           <template #append>
             <div class="d-flex align-center ga-2">
+              <v-tooltip v-if="!isVisibleOnMap(item.raw)" location="top" max-width="220">
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon v-bind="tooltipProps" size="16" color="grey">mdi-map-marker-off</v-icon>
+                </template>
+                No visible en el mapa con el modelo actualmente seleccionado
+              </v-tooltip>
+
               <v-chip
                 v-if="item.raw.originType === 'punto_saih'"
                 size="x-small"
@@ -90,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue'
+  import { computed, onMounted, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
   import { searchService } from '@/services/general'
@@ -98,6 +109,8 @@
   import { useMapStore } from '@/stores/mapStore'
   import { useLayersStore } from '@/stores/layersStore'
   import { useSimulationsStore } from '@/stores/simulationsStore'
+  import { useMapModelStore } from '@/stores/mapModelStore'
+  import { useStationAvailabilityStore } from '@/stores/stationAvailabilityStore'
   import UserMenu from '@/components/basics/UserMenu.vue'
   import MobileNavigationMenu from './mobile/MobileNavigationMenu.vue'
   import logo from '@/assets/img/logo_saih-6.png'
@@ -110,6 +123,12 @@
   const mapStore = useMapStore()
   const layersStore = useLayersStore()
   const simulationsStore = useSimulationsStore()
+  const mapModelStore = useMapModelStore()
+  const stationAvailabilityStore = useStationAvailabilityStore()
+
+  onMounted(() => {
+    stationAvailabilityStore.ensureLoaded()
+  })
 
   const isSimulationsRoute = computed(() => route.name === 'simulaciones')
 
@@ -312,6 +331,24 @@
     return Number.isFinite(result.x) && Number.isFinite(result.y)
   }
 
+  // The map hides a punto_saih station when the active Caudal NAM/MIKE
+  // model has no data for it (see geoserver.ts's applyModelAvailabilityFilter)
+  // — the search autocomplete still lets you find and fly to it, but it's
+  // dimmed here so it's clear why it won't actually be visible on the map.
+  function isVisibleOnMap(item: SearchAutocompleteItem): boolean {
+    if (item.originType !== 'punto_saih') return true
+
+    const model = mapModelStore.selectedModel
+    if (model === 'precipitacion') return true
+
+    const availability = stationAvailabilityStore.getAvailability(item.codigo ?? '')
+    if (!availability) return true
+
+    if (model === 'nam') return availability.hasCaudalNam
+    if (model === 'mike11') return availability.hasCaudalMike
+    return availability.hasCaudalNam || availability.hasCaudalMike
+  }
+
   function getFlyToZoom(result: SearchResult): number {
     const originType = getOriginType(result.origen)
 
@@ -423,4 +460,8 @@
   }
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+  .search-item--unavailable {
+    opacity: 0.45;
+  }
+</style>

@@ -1,8 +1,21 @@
+import { ref } from 'vue'
 import type { Feature } from 'geojson'
-import { getMaxAndLatestValuesService } from '@/services/predictions'
-import type { StationMaxLatestValue } from '@/types/Predictions'
-import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
+import { getMaxAndLatestValuesService, getPrecipAccumulatedService } from '@/services/predictions'
+import type {
+  PrecipAccumulatedHours,
+  PrecipAccumulatedItem,
+  PrecipAccumulatedSource,
+  StationMaxLatestValue,
+} from '@/types/Predictions'
+import { useMapDataSourceStore, type MapDataSource } from '@/stores/mapDataSourceStore'
 import { useMapModelStore } from '@/stores/mapModelStore'
+import { useMapPrecipHorizonStore } from '@/stores/mapPrecipHorizonStore'
+
+// Bumped every time a slot's byStation map is (re)populated — the maps
+// themselves are plain (non-reactive) Maps, so a Vue computed reading them
+// (e.g. getCurrentSimulationInfo) needs this as an explicit dependency to
+// know when to re-run.
+export const saihAlertsVersion = ref(0)
 
 const ALERT_YELLOW = '#fde68a'
 const ALERT_ORANGE = '#fdba74'
@@ -10,15 +23,29 @@ const ALERT_RED = '#fca5a5'
 const ALERT_CACHE_TTL_MS = 5 * 60 * 1000
 const ALERT_FAILURE_COOLDOWN_MS = 60 * 1000
 
+// Fixed AEMET-style precipitation alert levels (mm accumulated), one table
+// per duration — unlike caudal/nivel, precipitación has no per-station
+// umbral_* thresholds from the backend, so this single table is applied to
+// every precipitation station regardless of which one it is.
+const PRECIP_ALERT_THRESHOLDS: Record<
+  PrecipAccumulatedHours,
+  { yellow: number; orange: number; red: number }
+> = {
+  1: { yellow: 15, orange: 30, red: 60 },
+  2: { yellow: 17, orange: 35, red: 65 },
+  4: { yellow: 22, orange: 44, red: 76 },
+  8: { yellow: 31, orange: 62, red: 98 },
+  12: { yellow: 40, orange: 80, red: 120 },
+  24: { yellow: 67, orange: 135, red: 185 },
+}
+
 // NAM Harmonie
 const bestQNamHByStation = new Map<string, StationMaxLatestValue>()
 const bestINamHByStation = new Map<string, StationMaxLatestValue>()
-const bestPHByStation = new Map<string, StationMaxLatestValue>()
 
 // NAM EPS
 const bestQNamEByStation = new Map<string, StationMaxLatestValue>()
 const bestINamEByStation = new Map<string, StationMaxLatestValue>()
-const bestPEByStation = new Map<string, StationMaxLatestValue>()
 
 // MIKE11 Harmonie
 const bestQMk11HByStation = new Map<string, StationMaxLatestValue>()
@@ -31,7 +58,6 @@ const bestIMk11EByStation = new Map<string, StationMaxLatestValue>()
 // Observado
 const bestQObsAforosByStation = new Map<string, StationMaxLatestValue>()
 const bestQObsEmbalseByStation = new Map<string, StationMaxLatestValue>()
-const bestPObsByStation = new Map<string, StationMaxLatestValue>()
 
 type CacheSlot = { loadedAt: number; failedAt: number; inFlight: Promise<void> | null }
 
@@ -39,10 +65,12 @@ function makeSlot(): CacheSlot {
   return { loadedAt: 0, failedAt: 0, inFlight: null }
 }
 
-// Caudal (Q+I) and Precipitación load independently — the map only ever
-// shows one of the two views at a time (MapView's model toggle), so on
-// load only the active view's series get fetched instead of bundling both
-// (plus the model that isn't even selected) into every request.
+// Caudal's models/sources load independently — the map only ever shows one
+// at a time (MapView's model toggle), so on load only the active one's
+// series get fetched instead of bundling all of them into every request.
+// Precipitación has its own cache shape (precipAccumulatedState below) —
+// it's one window-keyed slot, not per-model, since there's no NAM/MIKE11
+// split for precipitación.
 const slots = {
   caudal: {
     namH: makeSlot(),
@@ -50,11 +78,6 @@ const slots = {
     mk11H: makeSlot(),
     mk11E: makeSlot(),
     obs: makeSlot(),
-  },
-  precip: {
-    harmonie: makeSlot(),
-    epsmedio: makeSlot(),
-    observado: makeSlot(),
   },
 }
 
@@ -121,6 +144,8 @@ function setBestByStation(
     const previous = targetMap.get(stationKey)
     targetMap.set(stationKey, pickBestEntry(previous, item))
   }
+
+  saihAlertsVersion.value++
 }
 
 async function runSlot(
@@ -161,6 +186,41 @@ export function invalidateSaihAlertsCache(): void {
       slot.loadedAt = 0
     }
   }
+  precipAccumulatedState.loadedAt = 0
+}
+
+// precip-accumulated's one cache slot: keyed by `${source}:${hours}` so a
+// change in either the data-source toggle or the horizon toggle forces a
+// refetch instead of silently reusing the previous combination's numbers.
+type PrecipAccumulatedState = {
+  key: string | null
+  byStation: Map<string, PrecipAccumulatedItem>
+  simulationDate: string | null
+  loadedAt: number
+  failedAt: number
+  inFlight: Promise<void> | null
+}
+
+const precipAccumulatedState: PrecipAccumulatedState = {
+  key: null,
+  byStation: new Map(),
+  simulationDate: null,
+  loadedAt: 0,
+  failedAt: 0,
+  inFlight: null,
+}
+
+function toPrecipEndpointSource(source: MapDataSource): PrecipAccumulatedSource {
+  if (source === 'observado') return 'observed'
+  if (source === 'epsmedio') return 'eps'
+  return 'harmonie'
+}
+
+function precipAccumulatedKey(
+  source: PrecipAccumulatedSource,
+  hours: PrecipAccumulatedHours
+): string {
+  return `${source}:${hours}`
 }
 
 async function loadCaudal(
@@ -227,30 +287,43 @@ async function loadCaudal(
   }
 }
 
-async function loadPrecip(
-  source: ReturnType<typeof useMapDataSourceStore>['selectedDataSource']
-): Promise<void> {
-  if (source === 'observado') {
-    await runSlot('precip:observado', slots.precip.observado, bestPObsByStation, async () => {
-      const p = await getMaxAndLatestValuesService('WI__01.historical')
-      setBestByStation(bestPObsByStation, p)
-    })
+async function loadPrecip(source: MapDataSource, hours: PrecipAccumulatedHours): Promise<void> {
+  const endpointSource = toPrecipEndpointSource(source)
+  const key = precipAccumulatedKey(endpointSource, hours)
+  const sameKey = precipAccumulatedState.key === key
+
+  const cacheIsFresh = sameKey && Date.now() - precipAccumulatedState.loadedAt < ALERT_CACHE_TTL_MS
+  const inCooldown =
+    sameKey && Date.now() - precipAccumulatedState.failedAt < ALERT_FAILURE_COOLDOWN_MS
+
+  if (cacheIsFresh && precipAccumulatedState.byStation.size > 0) return
+  if (inCooldown) return
+  if (sameKey && precipAccumulatedState.inFlight) {
+    await precipAccumulatedState.inFlight
     return
   }
 
-  if (source === 'harmonie') {
-    await runSlot('precip:harmonie', slots.precip.harmonie, bestPHByStation, async () => {
-      const p = await getMaxAndLatestValuesService('P.harmonie.forecast')
-      setBestByStation(bestPHByStation, p)
-    })
-    return
-  }
+  const inFlight = (async () => {
+    const response = await getPrecipAccumulatedService(endpointSource, hours)
+    precipAccumulatedState.key = key
+    precipAccumulatedState.byStation = new Map(
+      response.items.map((item) => [normalizeStationKey(item.stationId), item])
+    )
+    precipAccumulatedState.simulationDate = response.simulationDate
+    saihAlertsVersion.value++
+  })()
 
-  if (source === 'epsmedio') {
-    await runSlot('precip:epsmedio', slots.precip.epsmedio, bestPEByStation, async () => {
-      const p = await getMaxAndLatestValuesService('P.ens.forecast')
-      setBestByStation(bestPEByStation, p)
-    })
+  precipAccumulatedState.inFlight = inFlight
+
+  try {
+    await inFlight
+    precipAccumulatedState.loadedAt = Date.now()
+    precipAccumulatedState.failedAt = 0
+  } catch (err) {
+    precipAccumulatedState.failedAt = Date.now()
+    console.warn(`SAIH [precip:${key}] values unavailable. Retrying in 60s.`, err)
+  } finally {
+    precipAccumulatedState.inFlight = null
   }
 }
 
@@ -259,49 +332,85 @@ export async function ensureSaihAlertsLoaded(): Promise<void> {
   const model = useMapModelStore().selectedModel
 
   if (model === 'precipitacion') {
-    await loadPrecip(source)
+    await loadPrecip(source, useMapPrecipHorizonStore().selectedHours)
     return
   }
 
   await loadCaudal(source, model)
 }
 
-export function getSaihAlertInfo(feature: Feature): {
+type SaihAlertInfo = {
   maxValue: number | null
   latestValue: number | null
   latestDate: string | null
   maxDate: string | null
   simulationDate: string | null
   backgroundColor: string | null
-} {
-  const stationCode = getStationCode(feature)
-  if (!stationCode) {
-    return {
-      maxValue: null,
-      latestValue: null,
-      latestDate: null,
-      maxDate: null,
-      simulationDate: null,
-      backgroundColor: null,
-    }
+}
+
+const EMPTY_ALERT_INFO: SaihAlertInfo = {
+  maxValue: null,
+  latestValue: null,
+  latestDate: null,
+  maxDate: null,
+  simulationDate: null,
+  backgroundColor: null,
+}
+
+// Harmonie/EPS Medio accumulate forward from the simulation's reference
+// date (the precipitation still forecast to fall in the next N hours), so
+// precip-accumulated's single `accumulated` figure already is that
+// window's peak total. Observado accumulates backward (the last N hours
+// actually measured) — there's no separate "max" to pick either. Either
+// way, the one accumulated value is exactly what the pasted alert table is
+// meant to be compared against.
+function getPrecipAlertInfo(stationCode: string, source: MapDataSource): SaihAlertInfo {
+  const hours = useMapPrecipHorizonStore().selectedHours
+  const expectedKey = precipAccumulatedKey(toPrecipEndpointSource(source), hours)
+
+  // Same staleness guard as getSaihPrecipMaxInfo — precip-accumulated has
+  // only one shared cache slot, so a mid-fetch read for a just-switched
+  // source/hours combination must not color markers using the previous
+  // combination's numbers.
+  if (precipAccumulatedState.key !== expectedKey) return EMPTY_ALERT_INFO
+
+  const item = precipAccumulatedState.byStation.get(stationCode)
+  if (!item) return EMPTY_ALERT_INFO
+
+  const thresholds = PRECIP_ALERT_THRESHOLDS[hours]
+
+  let backgroundColor: string | null = null
+  if (item.accumulated >= thresholds.red) backgroundColor = ALERT_RED
+  else if (item.accumulated >= thresholds.orange) backgroundColor = ALERT_ORANGE
+  else if (item.accumulated >= thresholds.yellow) backgroundColor = ALERT_YELLOW
+
+  return {
+    maxValue: item.accumulated,
+    latestValue: item.accumulated,
+    latestDate: item.lastDate,
+    maxDate: item.windowEnd,
+    simulationDate: precipAccumulatedState.simulationDate,
+    backgroundColor,
   }
+}
+
+export function getSaihAlertInfo(feature: Feature): SaihAlertInfo {
+  const stationCode = getStationCode(feature)
+  if (!stationCode) return EMPTY_ALERT_INFO
 
   const source = useMapDataSourceStore().selectedDataSource
   const model = useMapModelStore().selectedModel
+
+  if (model === 'precipitacion') return getPrecipAlertInfo(stationCode, source)
+
   const isEmbalse = isEmbalseStation(feature)
 
   let bestEntry: StationMaxLatestValue | undefined
 
   if (source === 'observado') {
-    // Observado only distinguishes Caudal vs Precipitación (no NAM/MIKE11
-    // split) — when Precipitación is the active view there's no caudal
-    // entry to report here, same as the harmonie/epsmedio branches below.
-    bestEntry =
-      model === 'precipitacion'
-        ? undefined
-        : isEmbalse
-          ? bestQObsEmbalseByStation.get(stationCode)
-          : bestQObsAforosByStation.get(stationCode)
+    bestEntry = isEmbalse
+      ? bestQObsEmbalseByStation.get(stationCode)
+      : bestQObsAforosByStation.get(stationCode)
   } else if (source === 'harmonie') {
     if (model === 'nam') {
       bestEntry = isEmbalse
@@ -324,25 +433,24 @@ export function getSaihAlertInfo(feature: Feature): {
     }
   }
 
-  if (!bestEntry) {
-    return {
-      maxValue: null,
-      latestValue: null,
-      latestDate: null,
-      maxDate: null,
-      simulationDate: null,
-      backgroundColor: null,
-    }
-  }
+  if (!bestEntry) return EMPTY_ALERT_INFO
 
   const props = (feature.properties ?? {}) as Record<string, unknown>
   const thresholds = getThresholds(props)
 
+  // Forecasts are evaluated against their peak (maxValue) — the whole point
+  // is to flag a station that WILL exceed a threshold at some point in the
+  // horizon. Observado has no horizon, only a live reading: coloring it by
+  // the historical max would keep a marker red after the river has already
+  // receded below threshold, so it's evaluated against the latest value
+  // instead — color tracks the current state, not a past peak.
+  const comparisonValue = source === 'observado' ? bestEntry.latestValue : bestEntry.maxValue
+
   let backgroundColor: string | null = null
-  if (thresholds.red != null && bestEntry.maxValue >= thresholds.red) backgroundColor = ALERT_RED
-  else if (thresholds.orange != null && bestEntry.maxValue >= thresholds.orange)
+  if (thresholds.red != null && comparisonValue >= thresholds.red) backgroundColor = ALERT_RED
+  else if (thresholds.orange != null && comparisonValue >= thresholds.orange)
     backgroundColor = ALERT_ORANGE
-  else if (thresholds.yellow != null && bestEntry.maxValue >= thresholds.yellow)
+  else if (thresholds.yellow != null && comparisonValue >= thresholds.yellow)
     backgroundColor = ALERT_YELLOW
 
   return {
@@ -355,6 +463,10 @@ export function getSaihAlertInfo(feature: Feature): {
   }
 }
 
+// maxValue/maxDate are named for backward compatibility with callers (the
+// map popup) — they now hold precip-accumulated's accumulated value and
+// the end of the window it was measured over, for whichever source+hours
+// combination is currently selected.
 export function getSaihPrecipMaxInfo(feature: Feature): {
   maxValue: number | null
   maxDate: string | null
@@ -364,21 +476,89 @@ export function getSaihPrecipMaxInfo(feature: Feature): {
   if (!stationCode) return { maxValue: null, maxDate: null, simulationDate: null }
 
   const source = useMapDataSourceStore().selectedDataSource
+  const hours = useMapPrecipHorizonStore().selectedHours
+  const expectedKey = precipAccumulatedKey(toPrecipEndpointSource(source), hours)
 
-  let bestEntry: StationMaxLatestValue | undefined
-  if (source === 'harmonie') {
-    bestEntry = bestPHByStation.get(stationCode)
-  } else if (source === 'epsmedio') {
-    bestEntry = bestPEByStation.get(stationCode)
-  } else if (source === 'observado') {
-    bestEntry = bestPObsByStation.get(stationCode)
+  // Guards against showing a stale combination's numbers while the newly
+  // selected one is still in flight — precip-accumulated has only one
+  // shared cache slot (unlike caudal's per-combo maps), so a mid-fetch read
+  // would otherwise return the previous source/hours' data mislabeled as
+  // the new one's.
+  if (precipAccumulatedState.key !== expectedKey) {
+    return { maxValue: null, maxDate: null, simulationDate: null }
   }
 
-  if (!bestEntry) return { maxValue: null, maxDate: null, simulationDate: null }
+  const item = precipAccumulatedState.byStation.get(stationCode)
+  if (!item) return { maxValue: null, maxDate: null, simulationDate: null }
 
   return {
-    maxValue: bestEntry.maxValue,
-    maxDate: bestEntry.maxDate,
-    simulationDate: bestEntry.simulationDate,
+    maxValue: item.accumulated,
+    maxDate: item.windowEnd,
+    simulationDate: precipAccumulatedState.simulationDate,
+  }
+}
+
+function firstSimulationDate(map: Map<string, StationMaxLatestValue>): string | null {
+  for (const entry of map.values()) {
+    if (entry.simulationDate) return entry.simulationDate
+  }
+  return null
+}
+
+const MODEL_LABELS = {
+  nam: 'Caudal NAM',
+  mike11: 'Caudal MIKE',
+  precipitacion: 'Precipitación',
+} as const
+
+const SOURCE_LABELS = {
+  harmonie: 'Harmonie',
+  epsmedio: 'EPS Medio',
+} as const
+
+// How often the backend refreshes each source's runs — not derivable from
+// the API, fixed per source.
+const UPDATE_FREQUENCY_HOURS = {
+  harmonie: 6,
+  epsmedio: 12,
+} as const
+
+export type CurrentSimulationInfo = {
+  label: string
+  simulationDate: string | null
+  updateFrequencyHours: number
+}
+
+// Drives the bottom-right "last simulation date" map badge. Returns null
+// for Observado — it's real measured data, not a model run, so there's no
+// simulation date or update cadence to show.
+export function getCurrentSimulationInfo(): CurrentSimulationInfo | null {
+  const source = useMapDataSourceStore().selectedDataSource
+  const model = useMapModelStore().selectedModel
+
+  if (source === 'observado') return null
+  if (model !== 'nam' && model !== 'mike11' && model !== 'precipitacion') return null
+
+  let simulationDate: string | null
+
+  if (model === 'precipitacion') {
+    const hours = useMapPrecipHorizonStore().selectedHours
+    const expectedKey = precipAccumulatedKey(toPrecipEndpointSource(source), hours)
+    simulationDate =
+      precipAccumulatedState.key === expectedKey ? precipAccumulatedState.simulationDate : null
+  } else if (model === 'nam') {
+    simulationDate =
+      firstSimulationDate(source === 'harmonie' ? bestQNamHByStation : bestQNamEByStation) ??
+      firstSimulationDate(source === 'harmonie' ? bestINamHByStation : bestINamEByStation)
+  } else {
+    simulationDate =
+      firstSimulationDate(source === 'harmonie' ? bestQMk11HByStation : bestQMk11EByStation) ??
+      firstSimulationDate(source === 'harmonie' ? bestIMk11HByStation : bestIMk11EByStation)
+  }
+
+  return {
+    label: `${MODEL_LABELS[model]} ${SOURCE_LABELS[source]}`,
+    simulationDate,
+    updateFrequencyHours: UPDATE_FREQUENCY_HOURS[source],
   }
 }

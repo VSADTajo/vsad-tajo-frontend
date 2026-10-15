@@ -84,6 +84,11 @@
     caudalForecastEnsP90?: StationPrediction
     thresholds?: Record<string, unknown>
     title: string
+    // Locks the observed embalse summary to match the caller's own chart
+    // tab (Entrada/Salida/Volumen) instead of always listing both entrada
+    // and salida exceedances regardless of which one is actually shown.
+    // Leave unset to keep the old always-both behavior.
+    embalseSection?: 'entrada' | 'salida' | 'volumen'
   }>()
 
   function readNumber(keys: string[], source?: Record<string, unknown>): number | null {
@@ -214,21 +219,26 @@
     }
 
     if (props.isEmbalse) {
-      // No source for embalseVolumeHistorical here: there is no real
-      // volumen threshold to compare it against (thresholds only exist for
-      // caudal), so a volumen series can never be evaluated for exceedance.
-      return [
-        {
-          id: 'entrada',
-          label: 'Entrada observada',
-          series: normalizeSeries(props.caudalHistorical),
-        },
-        {
-          id: 'salida',
-          label: 'Salida observada',
-          series: normalizeSeries(props.caudalOutflowHistorical),
-        },
-      ]
+      // An embalse's thresholds (umbral_caudal_*) are defined for caudal de
+      // salida only — entrada has nothing valid to compare against (same
+      // reasoning as volumen just below), so evaluating it would just be
+      // checking entrada values against salida's numbers, which can never
+      // mean anything. Both fall through to an empty list.
+      const entradaSource: SummarySource = {
+        id: 'entrada',
+        label: 'Entrada observada',
+        series: normalizeSeries(props.caudalHistorical),
+      }
+      const salidaSource: SummarySource = {
+        id: 'salida',
+        label: 'Salida observada',
+        series: normalizeSeries(props.caudalOutflowHistorical),
+      }
+
+      if (props.embalseSection === 'entrada') return []
+      if (props.embalseSection === 'salida') return [salidaSource]
+      if (props.embalseSection === 'volumen') return []
+      return [entradaSource, salidaSource]
     }
 
     return [

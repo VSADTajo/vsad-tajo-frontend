@@ -13,11 +13,11 @@
       <v-btn icon="mdi-close" variant="text" size="small" color="white" @click="closeDrawer" />
     </v-card-title>
 
-    <v-divider class="my-3" />
+    <v-divider class="my-1" />
 
     <v-progress-linear v-if="loading" indeterminate class="mb-2" />
 
-    <v-card-text>
+    <v-card-text class="pa-0">
       <!-- Información de ubicación -->
       <v-sheet class="pa-3 mb-4 rounded" elevation="1">
         <v-row v-if="loading" dense>
@@ -77,21 +77,6 @@
               {{ locationInfo.zona || '-' }}
             </div>
           </v-col>
-
-          <v-col cols="12" sm="3" class="mb-2">
-            <v-chip
-              prepend-icon="mdi-shape"
-              variant="tonal"
-              size="small"
-              class="font-weight-bold"
-              style="background-color: #976363; color: #fff"
-            >
-              Comarca
-            </v-chip>
-            <div class="text-body-2 font-weight-medium mt-1">
-              {{ locationInfo.comarca || '-' }}
-            </div>
-          </v-col>
         </v-row>
       </v-sheet>
 
@@ -124,6 +109,8 @@
 <script lang="ts" setup>
   import { computed, ref, watch } from 'vue'
   import type { ApexOptions } from 'apexcharts'
+  import { format, startOfDay } from 'date-fns'
+  import { es } from 'date-fns/locale'
   import { useRoute, useRouter } from 'vue-router'
   import { usePrecipitacionLocationInfo } from '@/composables/usePrecipitacionLocationInfo'
   import { useLayersStore } from '@/stores/layersStore'
@@ -203,7 +190,11 @@
 
   const chartLoading = ref(false)
   const chartSeries = ref<Array<{ name: string; data: Array<{ x: string; y: number | null }> }>>([])
-  const chartTemporalStepHours = ref(1)
+  // Parallel to chartSeries[0].data, in the same order — the category axis
+  // needs each point's label as a plain string, but day/hour grouping below
+  // needs the real timestamp, so it's tracked alongside rather than parsed
+  // back out of the formatted string.
+  const chartPointTimestamps = ref<number[]>([])
   const temporalFallbackByLayer = ref<
     Record<string, { start: string; end: string; stepHours: number }>
   >({})
@@ -212,11 +203,75 @@
     chartSeries.value.some((serie) => serie.data.some((point) => Number.isFinite(point.y)))
   )
 
-  const xAxisCategories = computed(() => chartSeries.value[0]?.data.map((point) => point.x) ?? [])
+  const chartCategories = computed(() => chartSeries.value[0]?.data.map((point) => point.x) ?? [])
 
-  const xAxisLabelStep = computed(() => {
-    const stepHours = chartTemporalStepHours.value
-    return Math.max(1, Math.ceil(12 / stepHours))
+  const DAY_BAND_COLORS = ['#e9ecef', '#ffffff']
+  const HOUR_TICKS = new Set([6, 12, 18])
+
+  type DayGroup = { dayStart: number; firstIndex: number; lastIndex: number }
+
+  // Groups of consecutive point indices belonging to the same calendar day.
+  const dayGroups = computed<DayGroup[]>(() => {
+    const groups: DayGroup[] = []
+
+    chartPointTimestamps.value.forEach((timestamp, index) => {
+      const dayStart = startOfDay(new Date(timestamp)).getTime()
+      const current = groups[groups.length - 1]
+
+      if (current && current.dayStart === dayStart) {
+        current.lastIndex = index
+      } else {
+        groups.push({ dayStart, firstIndex: index, lastIndex: index })
+      }
+    })
+
+    return groups
+  })
+
+  // One tinted background band per calendar day the data spans, each
+  // labeled with its date at the top — makes day boundaries unambiguous
+  // without needing a date on every single x-axis tick. ApexCharts always
+  // paints xaxis range annotations AFTER the bar series regardless of
+  // `position` (tried at both the top level and per-annotation, no effect
+  // in this version), so a fully opaque band would hide every bar under
+  // it — kept semi-transparent instead so the bars (and their alert
+  // colors) stay readable through the tint.
+  const dayBandAnnotations = computed<NonNullable<ApexOptions['annotations']>['xaxis']>(() => {
+    const categories = chartCategories.value
+    if (!categories.length) return []
+
+    const fills = dayGroups.value.map((group, index) => {
+      const color = DAY_BAND_COLORS[index % DAY_BAND_COLORS.length]
+      return {
+        x: categories[group.firstIndex],
+        x2: categories[group.lastIndex],
+        fillColor: color,
+        opacity: color === '#ffffff' ? 0 : 0.35,
+      }
+    })
+
+    const labels = dayGroups.value.map((group) => {
+      const midIndex = Math.round((group.firstIndex + group.lastIndex) / 2)
+      return {
+        x: categories[midIndex],
+        borderColor: 'transparent',
+        label: {
+          text: format(new Date(group.dayStart), "dd MMM'.'", { locale: es }),
+          orientation: 'horizontal' as const,
+          textAnchor: 'middle' as const,
+          offsetY: 14,
+          style: {
+            color: '#374151',
+            fontSize: '12px',
+            fontWeight: 600,
+            background: 'transparent',
+          },
+          borderWidth: 0,
+        },
+      }
+    })
+
+    return [...fills, ...labels]
   })
 
   const chartOptions = computed<ApexOptions>(() => ({
@@ -249,16 +304,25 @@
     },
     xaxis: {
       type: 'category',
-      categories: xAxisCategories.value,
+      categories: chartCategories.value,
       labels: {
-        rotate: -30,
+        rotate: -45,
         hideOverlappingLabels: true,
+        // Only the three reference hours get a label — a tick per data
+        // point (hourly) would overcrowd the axis, and the day bands above
+        // already make the date unambiguous without repeating it here.
         formatter: (value: string) => {
-          const index = xAxisCategories.value.indexOf(value)
-          if (index < 0) return value
-          return index % xAxisLabelStep.value === 0 ? value : ''
+          const categories = chartCategories.value
+          const index = categories.indexOf(value)
+          const timestamp = index >= 0 ? chartPointTimestamps.value[index] : undefined
+          if (timestamp == null) return ''
+          const hour = new Date(timestamp).getHours()
+          return HOUR_TICKS.has(hour) ? format(new Date(timestamp), 'HH:mm') : ''
         },
       },
+    },
+    annotations: {
+      xaxis: dayBandAnnotations.value,
     },
     yaxis: {
       min: 0,
@@ -268,9 +332,26 @@
       },
     },
     tooltip: {
-      x: { show: true },
-      y: {
-        formatter: (value: number) => `${Number(value).toFixed(2)} mm`,
+      custom: ({
+        series,
+        seriesIndex,
+        dataPointIndex,
+      }: {
+        series: number[][]
+        seriesIndex: number
+        dataPointIndex: number
+      }) => {
+        const timestamp = chartPointTimestamps.value[dataPointIndex]
+        const date = new Date(timestamp)
+        const value = series[seriesIndex][dataPointIndex]
+
+        return `
+          <div style="padding:8px 10px;font-size:12px;line-height:1.6">
+            <div><strong>Día:</strong> ${format(date, "dd MMM'.'", { locale: es })}</div>
+            <div><strong>Hora:</strong> ${format(date, 'HH:mm')}</div>
+            <div><strong>P:</strong> ${Number(value).toFixed(2)} mm</div>
+          </div>
+        `
       },
     },
     noData: {
@@ -352,14 +433,13 @@
 
     if (!currentCoords || !layerConfig || !temporal) {
       chartSeries.value = []
+      chartPointTimestamps.value = []
       return
     }
 
     chartLoading.value = true
 
     try {
-      chartTemporalStepHours.value = temporal.stepHours
-
       const timeSeries = await fetchGeoServerLayerPointTimeSeries({
         url: layerConfig.url,
         layerName: layerConfig.layers,
@@ -372,16 +452,20 @@
 
       const isAccumulated = isAccumulatedLayer.value
       let runningTotal = 0
+      const timestamps: number[] = []
       const chartData = timeSeries.map((entry) => {
         const value = entry.value ?? 0
         runningTotal += value
+        const timestamp = new Date(entry.time).getTime()
+        timestamps.push(timestamp)
 
         return {
-          x: dateFormattedWithHours(new Date(entry.time).getTime()),
+          x: dateFormattedWithHours(timestamp),
           y: isAccumulated ? runningTotal : value,
         }
       })
 
+      chartPointTimestamps.value = timestamps
       chartSeries.value = [
         {
           name: layerName.value ?? 'Precipitación',
@@ -391,6 +475,7 @@
     } catch {
       console.error('[RightContentPrecipitacion] loadChartData failed')
       chartSeries.value = []
+      chartPointTimestamps.value = []
     } finally {
       chartLoading.value = false
     }

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="simulations-container">
     <v-snackbar
       v-model="snackbar.visible"
@@ -101,10 +101,12 @@
   import SimulationsEmbalseList from './simulationsPanel/SimulationsEmbalseList.vue'
   import SimulationsSimulateForm from './simulationsPanel/SimulationsSimulateForm.vue'
   import SimulationsOperationsList from './simulationsPanel/SimulationsOperationsList.vue'
+  import { useNavigation } from '@/composables/useNavigation'
 
   const { mdAndUp } = useDisplay()
   const route = useRoute()
   const router = useRouter()
+  const { closeSection } = useNavigation()
   const layersStore = useLayersStore()
   const mapStore = useMapStore()
   const simulationsStore = useSimulationsStore()
@@ -233,7 +235,7 @@
   }
 
   function goBack() {
-    router.push('/')
+    closeSection()
   }
 </script>
 

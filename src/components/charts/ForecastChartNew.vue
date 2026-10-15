@@ -79,6 +79,13 @@
       // caudalUnit so a caller can't accidentally pull the wrong physical
       // quantity's thresholds just by relabeling the axis.
       thresholdKind?: 'caudal' | 'nivel'
+      // An embalse's thresholds are defined for caudal de salida — a chart
+      // showing only caudal de entrada (no salida series at all) has
+      // nothing to compare them against, so the caller marks it explicitly
+      // instead of this component guessing from the data shape (entrada
+      // and salida charts have an identical shape: one 'historical' series
+      // plus optional forecasts).
+      hideCaudalThresholds?: boolean
     }>(),
     {
       isEmbalse: false,
@@ -90,6 +97,7 @@
       focusThresholdRequest: null,
       caudalUnit: 'm3/s',
       thresholdKind: 'caudal',
+      hideCaudalThresholds: false,
     }
   )
 
@@ -203,11 +211,44 @@
     return normalizePredictionResults(props.data.historicalVolume)
   })
 
+  // Whichever observed series this chart actually carries (entrada, salida,
+  // or volumen — never more than one of these per chart with the current
+  // tab layout) — the latest date in it is where the forecast is allowed to
+  // start. ISO date strings compare correctly with plain string ops.
+  const lastObservedDate = computed(() => {
+    const sources = [historicalData.value, historicalOutflowData.value, historicalVolumeData.value]
+    let latest: string | null = null
+
+    for (const source of sources) {
+      if (!source) continue
+      for (const point of source) {
+        if (latest === null || point.date > latest) latest = point.date
+      }
+    }
+
+    return latest
+  })
+
+  // Forecast series sometimes carry a point or two before the observed
+  // series' own last reading (the two feeds aren't fetched in perfect
+  // lockstep) — without this, the forecast line visually starts earlier
+  // than where the observed line actually ends, instead of continuing from
+  // it.
+  function clampToForecastStart(
+    data: ReturnType<typeof normalizePredictionResults>
+  ): ReturnType<typeof normalizePredictionResults> {
+    if (!data) return data
+    const cutoff = lastObservedDate.value
+    if (!cutoff) return data
+    return data.filter((point) => point.date >= cutoff)
+  }
+
   const observedSeriesName = computed(() => (props.isEmbalse ? 'Observado entrada' : 'Observado'))
 
-  const predictionHarmonieSeriesName = computed(() =>
-    props.isEmbalse ? 'Entrada Predicción Det. Harmonie' : 'Predicción Det. Harmonie'
-  )
+  const predictionHarmonieSeriesName = computed(() => {
+    if (props.volumeOnly) return 'Volumen Predicción Det. Harmonie'
+    return props.isEmbalse ? 'Entrada Predicción Det. Harmonie' : 'Predicción Det. Harmonie'
+  })
 
   const resguardoVolumeData = computed(() => {
     return normalizePredictionResults(props.data.resguardoVolume)
@@ -218,31 +259,31 @@
   })
 
   const HarmonieData = computed(() => {
-    return normalizePredictionResults(props.data.forecastHarmonie)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastHarmonie))
   })
 
   // Extraer fechas y valores de ens
   const epsatData = computed(() => {
-    return normalizePredictionResults(props.data.forecastEpsat)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEpsat))
   })
 
   // Extraer fechas y valores de p10
   const p10Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP10)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP10))
   })
 
   // Extraer fechas y valores de p75
   const p75Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP75)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP75))
   })
 
   const p25Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP25)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP25))
   })
 
   // Extraer fechas y valores de p90
   const p90Data = computed(() => {
-    return normalizePredictionResults(props.data.forecastEnsP90)
+    return clampToForecastStart(normalizePredictionResults(props.data.forecastEnsP90))
   })
 
   // Todas las fechas únicas ordenadas, rellenando huecos temporales con fechas sintéticas
@@ -736,10 +777,7 @@
 
       const name = s.name ?? `Serie ${idx + 1}`
       const color = w.globals?.colors?.[idx] ?? '#ccc'
-      const unit =
-        name === 'Volumen observado' || name === 'Resguardo volumen' || name === 'Volumen minimo'
-          ? 'hm3'
-          : props.caudalUnit
+      const unit = isVolumeSeriesName(name) ? 'hm3' : props.caudalUnit
       const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px;"></span>`
 
       if (Array.isArray(raw) && raw.length === 2) {
@@ -827,10 +865,16 @@
     yaxis: dynamicYAxis.value,
     annotations: {
       xaxis: observedEndXAnnotation.value,
-      yaxis: [
-        ...caudalThresholdAnnotations.value,
-        ...(hasVolumeSeries.value ? resolvedVolumeThresholdAnnotations.value : []),
-      ],
+      // A volume-only chart (Volumen NAM/MIKE for an embalse) has no caudal
+      // series at all and no real volumen threshold either (an embalse's
+      // only real thresholds are for caudal de salida) — no threshold line
+      // of any kind applies to its single hm3 axis.
+      yaxis: isVolumeOnlySeries.value
+        ? []
+        : [
+            ...(props.hideCaudalThresholds ? [] : caudalThresholdAnnotations.value),
+            ...(hasVolumeSeries.value ? resolvedVolumeThresholdAnnotations.value : []),
+          ],
     },
     tooltip: {
       enabled: true,

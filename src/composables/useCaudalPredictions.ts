@@ -1,4 +1,4 @@
-﻿import { computed, ref, watch, type ComputedRef } from 'vue'
+import { computed, ref, watch, type ComputedRef } from 'vue'
 import type {
   DataStationPrediction,
   PredictionTypeName,
@@ -50,6 +50,14 @@ export function useCaudalPredictions(
   const mikeVolumeEnsP25 = ref<StationPrediction>()
   const mikeVolumeEnsP75 = ref<StationPrediction>()
 
+  // ── NAM volume refs (embalse only) ────────────────────────────────────────
+  const namVolumeHarmonie = ref<StationPrediction>()
+  const namVolumeEpsat = ref<StationPrediction>()
+  const namVolumeEnsP10 = ref<StationPrediction>()
+  const namVolumeEnsP25 = ref<StationPrediction>()
+  const namVolumeEnsP75 = ref<StationPrediction>()
+  const namVolumeEnsP90 = ref<StationPrediction>()
+
   // ── Refs maps (for bulk clear / apply) ───────────────────────────────────
   const caudalRefs: ForecastRefsMap = {
     historical: caudalHistorical,
@@ -73,6 +81,15 @@ export function useCaudalPredictions(
     forecastEpsat: mikeVolumeEpsat,
     forecastEnsP25: mikeVolumeEnsP25,
     forecastEnsP75: mikeVolumeEnsP75,
+  }
+
+  const namVolumeRefs = {
+    forecastHarmonie: namVolumeHarmonie,
+    forecastEpsat: namVolumeEpsat,
+    forecastEnsP10: namVolumeEnsP10,
+    forecastEnsP25: namVolumeEnsP25,
+    forecastEnsP75: namVolumeEnsP75,
+    forecastEnsP90: namVolumeEnsP90,
   }
 
   // ── Dates ─────────────────────────────────────────────────────────────────
@@ -172,7 +189,6 @@ export function useCaudalPredictions(
   // (resguardoVolume / minimumVolume are added by the caller after merging with useResguardos)
   const caudalBaseChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     historicalVolume: embalseVolumeHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
@@ -184,7 +200,6 @@ export function useCaudalPredictions(
 
   const caudalOnlyBaseChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     forecastHarmonie: caudalForecastHarmonie.value,
     forecastEpsat: caudalForecastEpstat.value,
     forecastEnsP10: caudalForecastEnsP10.value,
@@ -199,7 +214,6 @@ export function useCaudalPredictions(
 
   const mikeChartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     forecastHarmonie: mikeForecastHarmonie.value,
     forecastEpsat: mikeForecastEpsat.value,
     forecastEnsP25: mikeForecastEnsP25.value,
@@ -336,12 +350,12 @@ export function useCaudalPredictions(
           },
           {
             key: 'forecastEnsP25',
-            predictionType: 'V.MIKE11.25.medio_acum',
+            predictionType: 'V.MIKE11.ens.25_acum',
             simulationDate: selectedMikeDate.value,
           },
           {
             key: 'forecastEnsP75',
-            predictionType: 'V.MIKE11.75.medio_acum',
+            predictionType: 'V.MIKE11.ens.75_acum',
             simulationDate: selectedMikeDate.value,
           },
         ]
@@ -354,6 +368,51 @@ export function useCaudalPredictions(
           mikeVolumeEnsP75.value = mikeVolumeData.forecastEnsP75
         } catch {
           clearForecasts(mikeVolumeRefs)
+        }
+
+        const namVolumeRequestDefs: ForecastRequestDef[] = [
+          {
+            key: 'forecastHarmonie',
+            predictionType: 'V.NAM.harmonie_acum',
+            simulationDate: selectedHarmonieCaudalDate.value,
+          },
+          {
+            key: 'forecastEpsat',
+            predictionType: 'V.NAM.ens.medio_acum',
+            simulationDate: selectedEpsCaudalDate.value,
+          },
+          {
+            key: 'forecastEnsP10',
+            predictionType: 'V.NAM.ens.10_acum',
+            simulationDate: selectedEpsCaudalDate.value,
+          },
+          {
+            key: 'forecastEnsP25',
+            predictionType: 'V.NAM.ens.25_acum',
+            simulationDate: selectedEpsCaudalDate.value,
+          },
+          {
+            key: 'forecastEnsP75',
+            predictionType: 'V.NAM.ens.75_acum',
+            simulationDate: selectedEpsCaudalDate.value,
+          },
+          {
+            key: 'forecastEnsP90',
+            predictionType: 'V.NAM.ens.90_acum',
+            simulationDate: selectedEpsCaudalDate.value,
+          },
+        ]
+        try {
+          const namVolumeData = await fetchPredictionBatch(code, namVolumeRequestDefs)
+          if (requestId !== fetchRequestId) return
+          namVolumeHarmonie.value = namVolumeData.forecastHarmonie
+          namVolumeEpsat.value = namVolumeData.forecastEpsat
+          namVolumeEnsP10.value = namVolumeData.forecastEnsP10
+          namVolumeEnsP25.value = namVolumeData.forecastEnsP25
+          namVolumeEnsP75.value = namVolumeData.forecastEnsP75
+          namVolumeEnsP90.value = namVolumeData.forecastEnsP90
+        } catch {
+          clearForecasts(namVolumeRefs)
         }
       } else {
         caudalOutflowHistorical.value = undefined
@@ -399,6 +458,7 @@ export function useCaudalPredictions(
       clearForecasts(caudalRefs)
       clearForecasts(mikeRefs)
       clearForecasts(mikeVolumeRefs)
+      clearForecasts(namVolumeRefs)
       caudalOutflowHistorical.value = undefined
       embalseVolumeHistorical.value = undefined
     }
@@ -412,6 +472,7 @@ export function useCaudalPredictions(
       clearForecasts(caudalRefs)
       clearForecasts(mikeRefs)
       clearForecasts(mikeVolumeRefs)
+      clearForecasts(namVolumeRefs)
       caudalOutflowHistorical.value = undefined
       embalseVolumeHistorical.value = undefined
       harmonieCaudalDates.value = []
@@ -499,6 +560,14 @@ export function useCaudalPredictions(
     mikeVolumeEpsat,
     mikeVolumeEnsP25,
     mikeVolumeEnsP75,
+
+    // NAM volume refs (embalse only, caller merges resguardos)
+    namVolumeHarmonie,
+    namVolumeEpsat,
+    namVolumeEnsP10,
+    namVolumeEnsP25,
+    namVolumeEnsP75,
+    namVolumeEnsP90,
 
     // Chart data (without resguardos — caller merges them in)
     caudalBaseChartData,

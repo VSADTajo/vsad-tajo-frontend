@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="map-wrapper">
     <div class="map-area">
       <div ref="mapContainer" class="map-container"></div>
@@ -7,50 +7,10 @@
       <MapTimeRangeControls v-if="hasTemporalRangeLayers && mdAndUp" />
       <MapTimeControls v-else-if="hasTemporalLayers && mdAndUp" />
 
-      <div v-if="!isSimulationsRoute && !hasLocalFileStations" class="map-data-source-toggle">
-        <!--
-          The model toggle's width changes with its button count (2 for
-          Observado, 3 otherwise) — it goes first so that resizing only
-          shifts its own left edge, never the data-source toggle next to it.
-        -->
-        <v-btn-toggle
-          v-model="selectedModel"
-          mandatory
-          density="compact"
-          divided
-          variant="flat"
-          color="primary"
-          rounded="lg"
-          elevation="4"
-          class="bg-primary"
-        >
-          <template v-if="selectedDataSource === 'observado'">
-            <v-btn value="caudal" size="small">Caudal</v-btn>
-            <v-btn value="precipitacion" size="small">Precipitación</v-btn>
-          </template>
-          <template v-else>
-            <v-btn value="nam" size="small">Caudal NAM</v-btn>
-            <v-btn value="mike11" size="small">Caudal MIKE</v-btn>
-            <v-btn value="precipitacion" size="small">Precipitaciones</v-btn>
-          </template>
-        </v-btn-toggle>
+      <MapSimulationDateBadge v-if="!isSimulationsRoute && !hasLocalFileStations" />
 
-        <v-btn-toggle
-          v-model="selectedDataSource"
-          mandatory
-          density="compact"
-          divided
-          variant="flat"
-          color="primary"
-          rounded="lg"
-          elevation="4"
-          class="bg-primary"
-        >
-          <v-btn value="observado" size="small">Observado</v-btn>
-          <v-btn value="harmonie" size="small">Harmonie</v-btn>
-          <v-btn value="epsmedio" size="small">EPS Medio</v-btn>
-        </v-btn-toggle>
-      </div>
+      <MapDataSourceToggle v-if="!isSimulationsRoute && !hasLocalFileStations" />
+      <MapPrecipHorizonToggle v-if="!isSimulationsRoute && !hasLocalFileStations" />
 
       <div v-if="isSimulationsRoute" class="simulation-controls">
         <MapSimulationButton />
@@ -104,6 +64,9 @@
   import MapTimeControls from '@/components/map/MapTimeControls.vue'
   import MapTimeRangeControls from '@/components/map/MapTimeRangeControls.vue'
   import MapSimulationButton from '@/components/map/MapSimulationButton.vue'
+  import MapSimulationDateBadge from '@/components/map/MapSimulationDateBadge.vue'
+  import MapDataSourceToggle from '@/components/map/MapDataSourceToggle.vue'
+  import MapPrecipHorizonToggle from '@/components/map/MapPrecipHorizonToggle.vue'
   import MapSimulationsHistorySidebar from '@/components/rightContainer/MapSimulationsHistorySidebar.vue'
   import { dynamicLayersConfig } from '@/config/layers.config'
   import { useAvisosStore } from '@/stores/avisosStore'
@@ -112,8 +75,6 @@
   import { useSimulationsStore } from '@/stores/simulationsStore'
   import { useDisplay } from 'vuetify'
   import { useRoute } from 'vue-router'
-  import { useMapDataSourceStore } from '@/stores/mapDataSourceStore'
-  import { useMapModelStore } from '@/stores/mapModelStore'
   import { useLocalFileStore } from '@/stores/localFileStore'
 
   const route = useRoute()
@@ -121,41 +82,12 @@
   const avisosStore = useAvisosStore()
   const mapStore = useMapStore()
   const simulationsStore = useSimulationsStore()
-  const dataSourceStore = useMapDataSourceStore()
-  const modelStore = useMapModelStore()
   const localFileStore = useLocalFileStore()
   const { mdAndUp } = useDisplay()
 
   const isSimulationsRoute = computed(() => route.name === 'simulaciones')
   const hasLocalFileStations = computed(() => localFileStore.stationsWithPredictions.length > 0)
-  const selectedDataSource = computed({
-    get: () => dataSourceStore.selectedDataSource,
-    set: (v) => {
-      dataSourceStore.selectedDataSource = v
-    },
-  })
-  const selectedModel = computed({
-    get: () => modelStore.selectedModel,
-    set: (v) => {
-      modelStore.selectedModel = v
-    },
-  })
   const simulationHistoryOpen = computed(() => simulationsStore.historyOpen)
-
-  // The model toggle's button set changes with the data source (Observado
-  // only has Caudal/Precipitación, no NAM vs MIKE11 split) — keep the
-  // selection valid for whichever set is currently shown instead of
-  // leaving it pointing at a button that no longer exists.
-  watch(selectedDataSource, (source) => {
-    if (
-      source === 'observado' &&
-      (selectedModel.value === 'nam' || selectedModel.value === 'mike11')
-    ) {
-      selectedModel.value = 'caudal'
-    } else if (source !== 'observado' && selectedModel.value === 'caudal') {
-      selectedModel.value = 'nam'
-    }
-  })
 
   const temporalRangeLayerIds = new Set(
     dynamicLayersConfig
@@ -272,16 +204,6 @@
   .map-container {
     width: 100%;
     height: 100%;
-  }
-
-  .map-data-source-toggle {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    gap: 16px;
   }
 
   .simulation-controls {
