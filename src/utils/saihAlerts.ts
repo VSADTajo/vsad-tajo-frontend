@@ -23,6 +23,22 @@ const ALERT_RED = '#fca5a5'
 const ALERT_CACHE_TTL_MS = 5 * 60 * 1000
 const ALERT_FAILURE_COOLDOWN_MS = 60 * 1000
 
+// Fixed AEMET-style precipitation alert levels (mm accumulated), one table
+// per duration — unlike caudal/nivel, precipitación has no per-station
+// umbral_* thresholds from the backend, so this single table is applied to
+// every precipitation station regardless of which one it is.
+const PRECIP_ALERT_THRESHOLDS: Record<
+  PrecipAccumulatedHours,
+  { yellow: number; orange: number; red: number }
+> = {
+  1: { yellow: 15, orange: 30, red: 60 },
+  2: { yellow: 17, orange: 35, red: 65 },
+  4: { yellow: 22, orange: 44, red: 76 },
+  8: { yellow: 31, orange: 62, red: 98 },
+  12: { yellow: 40, orange: 80, red: 120 },
+  24: { yellow: 67, orange: 135, red: 185 },
+}
+
 // NAM Harmonie
 const bestQNamHByStation = new Map<string, StationMaxLatestValue>()
 const bestINamHByStation = new Map<string, StationMaxLatestValue>()
@@ -323,42 +339,78 @@ export async function ensureSaihAlertsLoaded(): Promise<void> {
   await loadCaudal(source, model)
 }
 
-export function getSaihAlertInfo(feature: Feature): {
+type SaihAlertInfo = {
   maxValue: number | null
   latestValue: number | null
   latestDate: string | null
   maxDate: string | null
   simulationDate: string | null
   backgroundColor: string | null
-} {
-  const stationCode = getStationCode(feature)
-  if (!stationCode) {
-    return {
-      maxValue: null,
-      latestValue: null,
-      latestDate: null,
-      maxDate: null,
-      simulationDate: null,
-      backgroundColor: null,
-    }
+}
+
+const EMPTY_ALERT_INFO: SaihAlertInfo = {
+  maxValue: null,
+  latestValue: null,
+  latestDate: null,
+  maxDate: null,
+  simulationDate: null,
+  backgroundColor: null,
+}
+
+// Harmonie/EPS Medio accumulate forward from the simulation's reference
+// date (the precipitation still forecast to fall in the next N hours), so
+// precip-accumulated's single `accumulated` figure already is that
+// window's peak total. Observado accumulates backward (the last N hours
+// actually measured) — there's no separate "max" to pick either. Either
+// way, the one accumulated value is exactly what the pasted alert table is
+// meant to be compared against.
+function getPrecipAlertInfo(stationCode: string, source: MapDataSource): SaihAlertInfo {
+  const hours = useMapPrecipHorizonStore().selectedHours
+  const expectedKey = precipAccumulatedKey(toPrecipEndpointSource(source), hours)
+
+  // Same staleness guard as getSaihPrecipMaxInfo — precip-accumulated has
+  // only one shared cache slot, so a mid-fetch read for a just-switched
+  // source/hours combination must not color markers using the previous
+  // combination's numbers.
+  if (precipAccumulatedState.key !== expectedKey) return EMPTY_ALERT_INFO
+
+  const item = precipAccumulatedState.byStation.get(stationCode)
+  if (!item) return EMPTY_ALERT_INFO
+
+  const thresholds = PRECIP_ALERT_THRESHOLDS[hours]
+
+  let backgroundColor: string | null = null
+  if (item.accumulated >= thresholds.red) backgroundColor = ALERT_RED
+  else if (item.accumulated >= thresholds.orange) backgroundColor = ALERT_ORANGE
+  else if (item.accumulated >= thresholds.yellow) backgroundColor = ALERT_YELLOW
+
+  return {
+    maxValue: item.accumulated,
+    latestValue: item.accumulated,
+    latestDate: item.lastDate,
+    maxDate: item.windowEnd,
+    simulationDate: precipAccumulatedState.simulationDate,
+    backgroundColor,
   }
+}
+
+export function getSaihAlertInfo(feature: Feature): SaihAlertInfo {
+  const stationCode = getStationCode(feature)
+  if (!stationCode) return EMPTY_ALERT_INFO
 
   const source = useMapDataSourceStore().selectedDataSource
   const model = useMapModelStore().selectedModel
+
+  if (model === 'precipitacion') return getPrecipAlertInfo(stationCode, source)
+
   const isEmbalse = isEmbalseStation(feature)
 
   let bestEntry: StationMaxLatestValue | undefined
 
   if (source === 'observado') {
-    // Observado only distinguishes Caudal vs Precipitación (no NAM/MIKE11
-    // split) — when Precipitación is the active view there's no caudal
-    // entry to report here, same as the harmonie/epsmedio branches below.
-    bestEntry =
-      model === 'precipitacion'
-        ? undefined
-        : isEmbalse
-          ? bestQObsEmbalseByStation.get(stationCode)
-          : bestQObsAforosByStation.get(stationCode)
+    bestEntry = isEmbalse
+      ? bestQObsEmbalseByStation.get(stationCode)
+      : bestQObsAforosByStation.get(stationCode)
   } else if (source === 'harmonie') {
     if (model === 'nam') {
       bestEntry = isEmbalse
@@ -381,16 +433,7 @@ export function getSaihAlertInfo(feature: Feature): {
     }
   }
 
-  if (!bestEntry) {
-    return {
-      maxValue: null,
-      latestValue: null,
-      latestDate: null,
-      maxDate: null,
-      simulationDate: null,
-      backgroundColor: null,
-    }
-  }
+  if (!bestEntry) return EMPTY_ALERT_INFO
 
   const props = (feature.properties ?? {}) as Record<string, unknown>
   const thresholds = getThresholds(props)

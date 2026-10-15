@@ -4,7 +4,6 @@ import type { LayerStyle } from '@/types/Layers'
 import { getSaihTypeColor } from '@/utils/saihStations'
 import { MAP_PANES } from '@/config/panes/mapPanes'
 import { getSaihAlertInfo } from '@/utils/saihAlerts'
-import { useMapModelStore } from '@/stores/mapModelStore'
 
 function getFeatureKey(feature: Feature): string {
   const props = feature.properties ?? {}
@@ -19,13 +18,12 @@ function getFeatureKey(feature: Feature): string {
 }
 
 function getAlertBackground(feature: Feature): string | null {
-  // Precipitación has no defined thresholds — only caudal does — so the
-  // marker never gets an alert-level halo while that view is active.
-  if (useMapModelStore().selectedModel === 'precipitacion') return null
-
   const featureKey = getFeatureKey(feature)
   if (!featureKey) return null
 
+  // getSaihAlertInfo branches internally on the active model — caudal
+  // against each station's own umbral_* thresholds, precipitación against
+  // the fixed per-duration alert table (PRECIP_ALERT_THRESHOLDS).
   return getSaihAlertInfo(feature).backgroundColor
 }
 
