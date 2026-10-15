@@ -487,7 +487,6 @@
   // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = computed(() => ({
     historical: caudalHistorical.value,
-    historicalOutflow: caudalOutflowHistorical.value,
     historicalVolume: undefined,
     resguardoVolume: undefined,
     minimumVolume: undefined,

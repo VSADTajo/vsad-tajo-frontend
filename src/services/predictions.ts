@@ -5,6 +5,9 @@ import type {
   HistoricalPredictionTypeName,
   HistoricalTimelineResponse,
   MaxLatestValuesResponse,
+  PrecipAccumulatedHours,
+  PrecipAccumulatedResponse,
+  PrecipAccumulatedSource,
   PredictionsResponse,
   PredictionTypeName,
   StationMaxLatestValue,
@@ -120,17 +123,16 @@ export async function getHistoricalPredictionService(
   }
 }
 
+// Precipitación no longer uses this (see getPrecipAccumulatedService below)
+// — only caudal types remain.
 export async function getMaxAndLatestValuesService(
   typeName:
     | 'Q.NAM.harmonie'
     | 'Q.NAM.ens'
     | 'I.NAM.harmonie'
     | 'I.nam.ens'
-    | 'P.harmonie.forecast'
-    | 'P.ens.forecast'
     | 'FICT98.historical'
     | 'FICT99.historical'
-    | 'WI__01.historical'
     | 'Q.mk11.forecast'
     | 'I.mk11.forecast'
     | 'Q.mk11.EPSforecast'
@@ -149,4 +151,21 @@ export async function getMaxAndLatestValuesService(
     .json<MaxLatestValuesResponse>()
 
   return Array.isArray(response.values) ? response.values : []
+}
+
+export async function getPrecipAccumulatedService(
+  source: PrecipAccumulatedSource,
+  hours: PrecipAccumulatedHours
+): Promise<PrecipAccumulatedResponse> {
+  return api
+    .get('predictions/precip-accumulated', {
+      searchParams: { source, hours },
+      retry: {
+        limit: 0,
+      },
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+    .json<PrecipAccumulatedResponse>()
 }

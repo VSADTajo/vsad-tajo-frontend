@@ -38,6 +38,8 @@
           :is-embalse="isEmbalse"
           :normalized-station-code="normalizedStationCode"
           :thresholds="feature?.properties as Record<string, unknown>"
+          :has-caudal-nam="hasCaudalNam"
+          :has-caudal-mike="hasCaudalMike"
         />
       </div>
 
@@ -145,6 +147,14 @@
   // clear "no data" message instead of the Precipitaciones tab's full
   // (empty) chart/card grid, which is what happened before this check.
   const hasPrecip = ref(false)
+  // Per-model availability (same hasCaudalNam/hasCaudalMike flags the map
+  // already uses to show/hide stations) — kept in sync so the Hidrogramas
+  // sub-tabs (NAM/MIKE/NAM+MIKE for aforos; Entrada/Salida/Volumen × NAM/MIKE
+  // for embalses) never offer a model the map itself says this station
+  // doesn't have. Default to true (visible) until the station loads, and
+  // when the field is absent, so stations missing it keep today's behavior.
+  const hasCaudalNam = ref(true)
+  const hasCaudalMike = ref(true)
   const isEmbalse = computed(() => codeType.value === 'E')
   const hasNivel = computed(() => hasNivelTab(normalizedStationCode.value))
   const nivelLabel = computed(
@@ -277,6 +287,8 @@
       }
 
       feature.value = result
+      hasCaudalNam.value = station.hasCaudalNam !== false
+      hasCaudalMike.value = station.hasCaudalMike !== false
 
       const [hasCaudalResult, hasPrecipResult] = await Promise.all([
         checkStationHasCaudal(normalizedStationCode.value, codeType.value === 'E'),
@@ -296,6 +308,8 @@
       feature.value = null
       hasCaudal.value = false
       hasPrecip.value = false
+      hasCaudalNam.value = true
+      hasCaudalMike.value = true
       return false
     } finally {
       if (requestId === featureRequestId) {
@@ -311,6 +325,8 @@
       error.value = null
       hasCaudal.value = false
       hasPrecip.value = false
+      hasCaudalNam.value = true
+      hasCaudalMike.value = true
       if (!code) {
         loadingFeature.value = false
         return

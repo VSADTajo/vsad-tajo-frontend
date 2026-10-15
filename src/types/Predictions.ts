@@ -53,8 +53,14 @@ export type PredictionTypeName =
   | 'I.mk11.EPS75forecast'
   | 'V.MIKE11.harmonie_acum'
   | 'V.MIKE11.ens.medio_acum'
-  | 'V.MIKE11.25.medio_acum'
-  | 'V.MIKE11.75.medio_acum'
+  | 'V.MIKE11.ens.25_acum'
+  | 'V.MIKE11.ens.75_acum'
+  | 'V.NAM.harmonie_acum'
+  | 'V.NAM.ens.medio_acum'
+  | 'V.NAM.ens.10_acum'
+  | 'V.NAM.ens.25_acum'
+  | 'V.NAM.ens.75_acum'
+  | 'V.NAM.ens.90_acum'
 
 export type HistoricalPredictionTypeName = string
 
@@ -100,6 +106,30 @@ export type StationMaxLatestValue = {
 
 export type MaxLatestValuesResponse = {
   values: StationMaxLatestValue[]
+}
+
+// GET /predictions/precip-accumulated — replaces max-and-latest-values for
+// precipitación only (caudal keeps using StationMaxLatestValue above).
+export type PrecipAccumulatedSource = 'observed' | 'harmonie' | 'eps'
+export type PrecipAccumulatedHours = 1 | 2 | 4 | 8 | 12 | 24
+
+export type PrecipAccumulatedItem = {
+  stationId: string
+  stationName: string
+  accumulated: number
+  windowStart: string
+  windowEnd: string
+  lastDate: string
+  isStale: boolean
+}
+
+export type PrecipAccumulatedResponse = {
+  source: PrecipAccumulatedSource
+  hours: PrecipAccumulatedHours
+  predictionType: string
+  simulationDate: string | null
+  referenceDate: string
+  items: PrecipAccumulatedItem[]
 }
 
 // Series para el gráfico

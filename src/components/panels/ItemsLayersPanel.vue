@@ -216,17 +216,19 @@
   import { setSaihMarkerSelected } from '@/utils/saihMarkersRegistry'
   import { createScenarioService, uploadScenarioFilesService } from '@/services/scenarios'
   import { useAuth } from '@/composables/useAuth'
+  import { useNavigation } from '@/composables/useNavigation'
 
   const { mdAndUp } = useDisplay()
 
   const route = useRoute()
   const router = useRouter()
   const { hasRole } = useAuth()
+  const { closeSection } = useNavigation()
   const localFileStore = useLocalFileStore()
   const localArealFileStore = useLocalArealFileStore()
 
   const goBack = () => {
-    router.push('/')
+    closeSection()
   }
 
   const activeCodes = ref<Set<string>>(new Set())

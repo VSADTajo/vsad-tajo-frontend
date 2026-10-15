@@ -24,7 +24,7 @@
 
     <v-card-text v-else class="observed-content">
       <template v-if="hasObservedData && activeTab === 'caudal'">
-        <div v-if="isEmbalse && embalseSection !== 'volumen'" class="d-flex justify-center mb-3">
+        <div v-if="isEmbalse && showsEmbalseToggle" class="d-flex justify-center mb-3">
           <v-btn-toggle
             v-model="embalseObservedMode"
             mandatory
@@ -191,11 +191,13 @@
       precipitationsHistorical?: StationPrediction
       thresholds?: Record<string, unknown>
       accumDays?: number
-      // When the caller has its own Caudal/Volumen tabs (e.g. an embalse
-      // hidrograma view), this locks the Entr./Sal./Vol. toggle to match:
-      // 'caudal' hides Vol., 'volumen' hides the toggle entirely and shows
-      // only volumen. Leave unset to keep the old always-all-three toggle.
-      embalseSection?: 'caudal' | 'volumen'
+      // When the caller has its own chart tabs (e.g. an embalse hidrograma
+      // view with separate Entrada/Salida/Volumen tabs), this locks the
+      // card to match instead of letting it pick independently via its own
+      // toggle: 'entrada'/'salida'/'volumen' hide the toggle entirely and
+      // show only that section; 'caudal' keeps the Entr./Sal. toggle but
+      // hides Vol. Leave unset to keep the old always-all-three toggle.
+      embalseSection?: 'caudal' | 'volumen' | 'entrada' | 'salida'
       // Unit label for 'nivel' activeTab — some stations are really COTA
       // (msnm) rather than plain water level (m). See nivelStations.ts.
       nivelUnit?: string
@@ -314,11 +316,24 @@
 
   const embalseObservedMode = ref<EmbalseObservedMode>('entrada')
 
+  // 'entrada'/'salida'/'volumen' are a definitive lock from the caller's
+  // own chart tab — no toggle needed since there's nothing left to pick.
+  const showsEmbalseToggle = computed(
+    () =>
+      props.embalseSection !== 'volumen' &&
+      props.embalseSection !== 'entrada' &&
+      props.embalseSection !== 'salida'
+  )
+
   watchEffect(() => {
     if (!props.isEmbalse || props.activeTab !== 'caudal') return
 
-    if (props.embalseSection === 'volumen') {
-      embalseObservedMode.value = 'volumen'
+    if (
+      props.embalseSection === 'volumen' ||
+      props.embalseSection === 'entrada' ||
+      props.embalseSection === 'salida'
+    ) {
+      embalseObservedMode.value = props.embalseSection
       return
     }
 

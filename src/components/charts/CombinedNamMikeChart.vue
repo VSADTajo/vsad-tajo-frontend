@@ -91,10 +91,31 @@
   }
 
   const historicalData = computed(() => normalizeResults(props.historical))
-  const namHData = computed(() => normalizeResults(props.namHarmonie))
-  const namEData = computed(() => normalizeResults(props.namEps))
-  const mk11HData = computed(() => normalizeResults(props.mikeHarmonie))
-  const mk11EData = computed(() => normalizeResults(props.mikeEps))
+
+  // Forecasts sometimes carry a point or two before the observed series'
+  // own last reading (the feeds aren't fetched in perfect lockstep) —
+  // without this, a forecast line would visually start earlier than where
+  // the observed line actually ends instead of continuing from it.
+  const lastObservedDate = computed(() => {
+    const points = historicalData.value
+    if (!points?.length) return null
+    return points.reduce(
+      (latest, point) => (point.date > latest ? point.date : latest),
+      points[0].date
+    )
+  })
+
+  function clampToForecastStart(data: NormalizedPoint[] | null): NormalizedPoint[] | null {
+    if (!data) return data
+    const cutoff = lastObservedDate.value
+    if (!cutoff) return data
+    return data.filter((point) => point.date >= cutoff)
+  }
+
+  const namHData = computed(() => clampToForecastStart(normalizeResults(props.namHarmonie)))
+  const namEData = computed(() => clampToForecastStart(normalizeResults(props.namEps)))
+  const mk11HData = computed(() => clampToForecastStart(normalizeResults(props.mikeHarmonie)))
+  const mk11EData = computed(() => clampToForecastStart(normalizeResults(props.mikeEps)))
 
   const allDates = computed(() => {
     const dateSet = new Set<string>()

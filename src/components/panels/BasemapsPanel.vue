@@ -48,16 +48,15 @@
   import { basemapsLayers } from '@/constants/basemaps'
 
   import { useBasemap } from '@/composables/useBasemaps'
-  import { useRouter } from 'vue-router'
   import { useDisplay } from 'vuetify'
+  import { useNavigation } from '@/composables/useNavigation'
 
   const { selectedBasemap, setBasemap } = useBasemap()
   const { mdAndUp } = useDisplay()
-
-  const router = useRouter()
+  const { closeSection } = useNavigation()
 
   const goBack = () => {
-    router.push('/')
+    closeSection()
   }
 </script>
 

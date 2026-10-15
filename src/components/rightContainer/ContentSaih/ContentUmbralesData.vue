@@ -1,51 +1,69 @@
 <template>
   <v-card class="bg-surface" elevation="2">
     <v-card-text class="pt-0">
-      <template v-if="activeTab !== 'precipitaciones'">
+      <template v-if="showsThresholds">
         <div class="text-body-2 font-weight-bold text-truncate mb-2 mt-2">
           {{ thresholdsTitle }}
         </div>
         <div v-if="hasAnyThreshold" class="thresholds-row">
           <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 1) }]"
-              color="#fde68a"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('caudal', 1)"
-              @click="focusThreshold('caudal', 1)"
-            >
-              Amarillo
-            </v-chip>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 1) }]"
+                  color="#fde68a"
+                  size="x-small"
+                  variant="flat"
+                  clickable
+                  :aria-pressed="isSelected('caudal', 1)"
+                  @click="focusThreshold('caudal', 1)"
+                >
+                  Amarillo
+                </v-chip>
+              </template>
+              {{ threshold1PreciseLabel }}
+            </v-tooltip>
             <span class="threshold-value">{{ threshold1Label }}</span>
           </div>
           <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 2) }]"
-              color="#fdba74"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('caudal', 2)"
-              @click="focusThreshold('caudal', 2)"
-            >
-              Naranja
-            </v-chip>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 2) }]"
+                  color="#fdba74"
+                  size="x-small"
+                  variant="flat"
+                  clickable
+                  :aria-pressed="isSelected('caudal', 2)"
+                  @click="focusThreshold('caudal', 2)"
+                >
+                  Naranja
+                </v-chip>
+              </template>
+              {{ threshold2PreciseLabel }}
+            </v-tooltip>
             <span class="threshold-value">{{ threshold2Label }}</span>
           </div>
           <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 3) }]"
-              color="#fca5a5"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('caudal', 3)"
-              @click="focusThreshold('caudal', 3)"
-            >
-              Rojo
-            </v-chip>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 3) }]"
+                  color="#fca5a5"
+                  size="x-small"
+                  variant="flat"
+                  clickable
+                  :aria-pressed="isSelected('caudal', 3)"
+                  @click="focusThreshold('caudal', 3)"
+                >
+                  Rojo
+                </v-chip>
+              </template>
+              {{ threshold3PreciseLabel }}
+            </v-tooltip>
             <span class="threshold-value">{{ threshold3Label }}</span>
           </div>
         </div>
@@ -66,9 +84,14 @@
   type ThresholdLevel = 1 | 2 | 3
 
   const props = defineProps<{
-    activeTab:
+    activeTab: // Legacy values, still the (unchanging) default passed for aforo
+      // stations, which don't distinguish entrada/salida.
       | 'caudalNAM'
       | 'caudalMIKE'
+      | 'caudalEntradaNAM'
+      | 'caudalSalidaNAM'
+      | 'caudalEntradaMIKE'
+      | 'caudalSalidaMIKE'
       | 'volumenNAM'
       | 'volumenMIKE'
       | 'precipitaciones'
@@ -82,6 +105,22 @@
     nivelLabel?: string
     nivelUnit?: string
   }>()
+
+  // Embalse thresholds are defined for caudal de salida — Volumen NAM/MIKE
+  // and Caudal Entrada NAM/MIKE don't carry that signal at all, so showing
+  // the salida thresholds there would be both pointless and visually wrong
+  // (ForecastChartNew would plot them against an axis/series they don't
+  // apply to). Only the dedicated Salida tabs (plus aforo's caudalNAM/
+  // caudalMIKE, which have no entrada/salida split to begin with) show them.
+  const HIDDEN_TABS = new Set([
+    'precipitaciones',
+    'volumenNAM',
+    'volumenMIKE',
+    'caudalEntradaNAM',
+    'caudalEntradaMIKE',
+  ])
+
+  const showsThresholds = computed(() => !HIDDEN_TABS.has(props.activeTab))
 
   const emit = defineEmits<{
     (event: 'focus-threshold', payload: { kind: ThresholdType; level: ThresholdLevel } | null): void
@@ -150,6 +189,19 @@
   const threshold1Label = computed(() => formatThreshold(threshold1.value))
   const threshold2Label = computed(() => formatThreshold(threshold2.value))
   const threshold3Label = computed(() => formatThreshold(threshold3.value))
+
+  // The chip's own label rounds to a whole number for a cleaner read — this
+  // tooltip keeps the decimals so the exact backend value is still one
+  // hover away.
+  function formatThresholdPrecise(value: number | null): string {
+    if (value == null) return '--'
+    const formattedValue = props.activeTab === 'nivel' ? value.toFixed(3) : value.toFixed(2)
+    return `${formattedValue} ${thresholdUnit.value}`
+  }
+
+  const threshold1PreciseLabel = computed(() => formatThresholdPrecise(threshold1.value))
+  const threshold2PreciseLabel = computed(() => formatThresholdPrecise(threshold2.value))
+  const threshold3PreciseLabel = computed(() => formatThresholdPrecise(threshold3.value))
 
   const hasAnyThreshold = computed(
     () => threshold1.value != null || threshold2.value != null || threshold3.value != null

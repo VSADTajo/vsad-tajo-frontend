@@ -25,6 +25,7 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import type { StationPrediction } from '@/types/Predictions'
+  import { toTimestamp } from '@/utils/dates'
 
   type AlertLevel = 'NORMAL' | 'LEVE' | 'MODERADO' | 'GRAVE'
 
@@ -74,6 +75,18 @@
     return Number.isFinite(num) ? num : null
   }
 
+  // Mirrors the map marker's own rule (saihAlerts.ts's getSaihAlertInfo):
+  // Observado has no forecast horizon, only a live reading, so its alert
+  // level tracks the latest value instead of the historical max — otherwise
+  // this card could still read "Rojo" after the map marker (and the river)
+  // have already dropped back below threshold.
+  function latestResultValue(prediction?: StationPrediction): number | null {
+    if (!prediction?.results?.length) return null
+    const sorted = [...prediction.results].sort((a, b) => toTimestamp(a.date) - toTimestamp(b.date))
+    const num = Number(sorted[sorted.length - 1].value)
+    return Number.isFinite(num) ? num : null
+  }
+
   const maxPredictionValue = computed<number | null>(() => {
     const harmonieMax = maxResultValue(props.caudalForecastHarmonie)
     const epsMax = maxResultValue(props.caudalForecastEpsat)
@@ -88,20 +101,20 @@
     () => props.thresholds?.threshold as Record<string, unknown> | undefined
   )
 
-  const maxObservedValue = computed<number | null>(() => {
+  const latestObservedValue = computed<number | null>(() => {
     if (props.activeTab === 'caudal' || props.activeTab === 'nivel') {
-      return maxResultValue(props.caudalHistorical)
+      return latestResultValue(props.caudalHistorical)
     }
-    return maxResultValue(props.precipitationsHistorical)
+    return latestResultValue(props.precipitationsHistorical)
   })
 
   const referenceValue = computed<number | null>(() => {
     if (props.mode === 'predictions') return maxPredictionValue.value
-    return maxObservedValue.value
+    return latestObservedValue.value
   })
 
   const cardTitle = computed(() =>
-    props.mode === 'predictions' ? 'Estado Según Predicciones' : 'Estado Máximo Observado'
+    props.mode === 'predictions' ? 'Estado Según Predicciones' : 'Último Estado Observado'
   )
 
   const threshold1 = computed<number | null>(() => {
