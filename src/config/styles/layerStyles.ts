@@ -54,6 +54,7 @@ export const contornoStyle: LayerStyle = {
   normal: {
     color: '#203d1c',
     weight: 2,
+    fill: true,
     fillColor: '#203d1c85',
     fillOpacity: 0.38,
   },
@@ -73,6 +74,13 @@ export const contornoOutlineOnlyStyle: L.PathOptions = {
   weight: contornoStyle.normal.weight,
   fill: false,
 }
+
+// Leaflet's Path.setStyle() merges options onto the layer rather than
+// replacing them, so restoring contornoStyle.normal alone (no `fill` key)
+// left the `fill: false` from contornoOutlineOnlyStyle in place — the
+// basin outline came back with no fill after toggling a "zonas" layer off.
+// contornoStyle.normal now sets `fill: true` explicitly so this restore
+// actually clears it.
 
 export const subcuencasStyle: LayerStyle = {
   normal: {
