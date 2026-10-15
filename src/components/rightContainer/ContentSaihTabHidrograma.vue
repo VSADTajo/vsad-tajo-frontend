@@ -274,7 +274,7 @@
 
         <v-card class="mt-2 pa-2 bg-background" elevation="2">
           <ContentUmbralesData
-            :active-tab="selectedEmbalseChartTab"
+            :active-tab="umbralesActiveTab"
             :is-embalse="isEmbalse"
             :thresholds="thresholds"
             :selected-threshold="selectedThreshold"
@@ -533,6 +533,12 @@
     mikeVolumeEpsat,
     mikeVolumeEnsP25,
     mikeVolumeEnsP75,
+    namVolumeHarmonie,
+    namVolumeEpsat,
+    namVolumeEnsP10,
+    namVolumeEnsP25,
+    namVolumeEnsP75,
+    namVolumeEnsP90,
     harmonieCaudalDates,
     epsCaudalDates,
     mikeDates,
@@ -610,12 +616,12 @@
     historicalVolume: embalseVolumeHistorical.value,
     resguardoVolume: effectiveResguardoPrediction.value,
     minimumVolume: effectiveMinimoPrediction.value,
-    forecastHarmonie: undefined,
-    forecastEpsat: undefined,
-    forecastEnsP10: undefined,
-    forecastEnsP25: undefined,
-    forecastEnsP90: undefined,
-    forecastEnsP75: undefined,
+    forecastHarmonie: namVolumeHarmonie.value,
+    forecastEpsat: namVolumeEpsat.value,
+    forecastEnsP10: namVolumeEnsP10.value,
+    forecastEnsP25: namVolumeEnsP25.value,
+    forecastEnsP90: namVolumeEnsP90.value,
+    forecastEnsP75: namVolumeEnsP75.value,
   }))
 
   const mikeVolumenChartData = computed(() => ({
@@ -699,6 +705,19 @@
     isVolumeTab.value ? 'volumen' : 'caudal'
   )
 
+  // ContentUmbralesData's activeTab prop expects embalse's own
+  // caudalEntradaNAM/caudalSalidaNAM/etc. values, but for an aforo (non-
+  // embalse) station the real selected tab lives in
+  // selectedCaudalTypeChartTab ('nam'/'mike'/'combined') — passing
+  // selectedEmbalseChartTab unconditionally left it stuck at its embalse
+  // default ('caudalEntradaNAM'), which happens to be one of
+  // ContentUmbralesData's hidden tabs, silently suppressing the threshold
+  // chips for every aforo station.
+  const umbralesActiveTab = computed(() => {
+    if (props.isEmbalse) return selectedEmbalseChartTab.value
+    return selectedCaudalTypeChartTab.value === 'mike' ? 'caudalMIKE' : 'caudalNAM'
+  })
+
   // An embalse's real thresholds (umbral_caudal_*) are defined for caudal
   // de salida only — volumen has no populated threshold at all, and
   // entrada has nothing valid to compare against (same numbers, wrong
@@ -724,6 +743,7 @@
     if (props.isEmbalse) {
       if (selectedEmbalseChartTab.value === 'caudalEntradaNAM') return caudalForecastHarmonie.value
       if (selectedEmbalseChartTab.value === 'caudalEntradaMIKE') return mikeForecastHarmonie.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return namVolumeHarmonie.value
       if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeHarmonie.value
       return undefined
     }
@@ -733,6 +753,7 @@
     if (props.isEmbalse) {
       if (selectedEmbalseChartTab.value === 'caudalEntradaNAM') return caudalForecastEpstat.value
       if (selectedEmbalseChartTab.value === 'caudalEntradaMIKE') return mikeForecastEpsat.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return namVolumeEpsat.value
       if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEpsat.value
       return undefined
     }
@@ -740,9 +761,9 @@
   })
   const activeEnsP10 = computed(() => {
     if (props.isEmbalse) {
-      return selectedEmbalseChartTab.value === 'caudalEntradaNAM'
-        ? caudalForecastEnsP10.value
-        : undefined
+      if (selectedEmbalseChartTab.value === 'caudalEntradaNAM') return caudalForecastEnsP10.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return namVolumeEnsP10.value
+      return undefined
     }
     return isMikeTab.value ? undefined : caudalForecastEnsP10.value
   })
@@ -750,6 +771,7 @@
     if (props.isEmbalse) {
       if (selectedEmbalseChartTab.value === 'caudalEntradaNAM') return caudalForecastEnsP25.value
       if (selectedEmbalseChartTab.value === 'caudalEntradaMIKE') return mikeForecastEnsP25.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return namVolumeEnsP25.value
       if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEnsP25.value
       return undefined
     }
@@ -759,6 +781,7 @@
     if (props.isEmbalse) {
       if (selectedEmbalseChartTab.value === 'caudalEntradaNAM') return caudalForecastEnsP75.value
       if (selectedEmbalseChartTab.value === 'caudalEntradaMIKE') return mikeForecastEnsP75.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return namVolumeEnsP75.value
       if (selectedEmbalseChartTab.value === 'volumenMIKE') return mikeVolumeEnsP75.value
       return undefined
     }
@@ -766,9 +789,9 @@
   })
   const activeEnsP90 = computed(() => {
     if (props.isEmbalse) {
-      return selectedEmbalseChartTab.value === 'caudalEntradaNAM'
-        ? caudalForecastEnsP90.value
-        : undefined
+      if (selectedEmbalseChartTab.value === 'caudalEntradaNAM') return caudalForecastEnsP90.value
+      if (selectedEmbalseChartTab.value === 'volumenNAM') return namVolumeEnsP90.value
+      return undefined
     }
     return isMikeTab.value ? undefined : caudalForecastEnsP90.value
   })

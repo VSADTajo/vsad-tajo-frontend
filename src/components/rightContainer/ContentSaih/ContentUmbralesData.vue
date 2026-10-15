@@ -7,45 +7,63 @@
         </div>
         <div v-if="hasAnyThreshold" class="thresholds-row">
           <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 1) }]"
-              color="#fde68a"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('caudal', 1)"
-              @click="focusThreshold('caudal', 1)"
-            >
-              Amarillo
-            </v-chip>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 1) }]"
+                  color="#fde68a"
+                  size="x-small"
+                  variant="flat"
+                  clickable
+                  :aria-pressed="isSelected('caudal', 1)"
+                  @click="focusThreshold('caudal', 1)"
+                >
+                  Amarillo
+                </v-chip>
+              </template>
+              {{ threshold1PreciseLabel }}
+            </v-tooltip>
             <span class="threshold-value">{{ threshold1Label }}</span>
           </div>
           <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 2) }]"
-              color="#fdba74"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('caudal', 2)"
-              @click="focusThreshold('caudal', 2)"
-            >
-              Naranja
-            </v-chip>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 2) }]"
+                  color="#fdba74"
+                  size="x-small"
+                  variant="flat"
+                  clickable
+                  :aria-pressed="isSelected('caudal', 2)"
+                  @click="focusThreshold('caudal', 2)"
+                >
+                  Naranja
+                </v-chip>
+              </template>
+              {{ threshold2PreciseLabel }}
+            </v-tooltip>
             <span class="threshold-value">{{ threshold2Label }}</span>
           </div>
           <div class="threshold-item">
-            <v-chip
-              :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 3) }]"
-              color="#fca5a5"
-              size="x-small"
-              variant="flat"
-              clickable
-              :aria-pressed="isSelected('caudal', 3)"
-              @click="focusThreshold('caudal', 3)"
-            >
-              Rojo
-            </v-chip>
+            <v-tooltip location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-chip
+                  v-bind="tooltipProps"
+                  :class="['threshold-chip', { 'threshold-chip--active': isSelected('caudal', 3) }]"
+                  color="#fca5a5"
+                  size="x-small"
+                  variant="flat"
+                  clickable
+                  :aria-pressed="isSelected('caudal', 3)"
+                  @click="focusThreshold('caudal', 3)"
+                >
+                  Rojo
+                </v-chip>
+              </template>
+              {{ threshold3PreciseLabel }}
+            </v-tooltip>
             <span class="threshold-value">{{ threshold3Label }}</span>
           </div>
         </div>
@@ -171,6 +189,19 @@
   const threshold1Label = computed(() => formatThreshold(threshold1.value))
   const threshold2Label = computed(() => formatThreshold(threshold2.value))
   const threshold3Label = computed(() => formatThreshold(threshold3.value))
+
+  // The chip's own label rounds to a whole number for a cleaner read — this
+  // tooltip keeps the decimals so the exact backend value is still one
+  // hover away.
+  function formatThresholdPrecise(value: number | null): string {
+    if (value == null) return '--'
+    const formattedValue = props.activeTab === 'nivel' ? value.toFixed(3) : value.toFixed(2)
+    return `${formattedValue} ${thresholdUnit.value}`
+  }
+
+  const threshold1PreciseLabel = computed(() => formatThresholdPrecise(threshold1.value))
+  const threshold2PreciseLabel = computed(() => formatThresholdPrecise(threshold2.value))
+  const threshold3PreciseLabel = computed(() => formatThresholdPrecise(threshold3.value))
 
   const hasAnyThreshold = computed(
     () => threshold1.value != null || threshold2.value != null || threshold3.value != null
