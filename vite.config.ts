@@ -27,6 +27,15 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      // GeoServer sends no Access-Control-Allow-Origin header at all, so any
+      // direct fetch() to it (WFS GetFeature) fails CORS from the Vite dev
+      // origin — proxied the same way /api already is, instead of hitting
+      // it directly like VITE_GEOSERVER_URL does in production.
+      '/geoserver': {
+        target: 'http://65.21.97.113:443/',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
