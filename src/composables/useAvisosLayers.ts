@@ -12,7 +12,12 @@ export function useAvisosLayers(map: L.Map) {
   let lastFeatureInteractionAt = 0
 
   const AVISO_WEIGHT = 2
-  const SELECTED_AVISO_WEIGHT = 3
+  const SELECTED_AVISO_WEIGHT = 4
+  // Blue contrasts against all four level colors (verde/amarillo/naranja/
+  // rojo) — picking a selected aviso used to recolor it to the same red as
+  // "rojo" severity, making a selected rojo zone indistinguishable from an
+  // unselected one.
+  const SELECTED_AVISO_COLOR = '#1d4ed8'
 
   function escapeHtml(value: unknown): string {
     return String(value ?? '-')
@@ -45,6 +50,22 @@ export function useAvisosLayers(map: L.Map) {
     return `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#e5e7eb;color:#374151;font-weight:700">${escapeHtml(level || 'N/A')}</span>`
   }
 
+  // Rain avisos carry their headline accumulated-precip figure only inside
+  // the free-text `description` (e.g. "Precipitación acumulada en 12
+  // horas: 40 mm. Durante el episodio..."), not as its own property — pull
+  // just that lead figure out so the popup can show it as a short "Precip
+  // Acum 12hs: 40mm" line instead of the whole paragraph.
+  function extractAccumulatedPrecipLabel(description: string): string | null {
+    const match = description.match(
+      /Precipitaci[oó]n acumulada en (\d+)\s*horas?:\s*([\d.,]+)\s*mm/i
+    )
+    if (!match) return null
+
+    const hours = match[1]
+    const value = match[2].replace(',', '.')
+    return `Precip Acum ${hours}hs: ${value}mm`
+  }
+
   function buildAvisoTooltipContent(props: Record<string, unknown>): string {
     const areaDesc = escapeHtml(props.areaDesc ?? '-')
     const level = String(props.level ?? 'N/A')
@@ -65,6 +86,11 @@ export function useAvisosLayers(map: L.Map) {
     const expiresDate = expires ? new Date(expires).toLocaleString('es-ES') : '-'
     const levelBadge = getLevelBadge(level)
 
+    const accumulatedPrecipLabel = extractAccumulatedPrecipLabel(String(props.description ?? ''))
+    const accumulatedPrecipSection = accumulatedPrecipLabel
+      ? `<div style="margin-bottom:4px"><strong>${escapeHtml(accumulatedPrecipLabel)}</strong></div>`
+      : ''
+
     return `
       <div style="position:relative;display:inline-block;width:max-content;max-width:calc(100vw - 48px);padding-bottom:10px;font-family:Montserrat,sans-serif;white-space:normal;">
         <div style="border-radius:12px;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.16)">
@@ -77,6 +103,7 @@ export function useAvisosLayers(map: L.Map) {
               ${levelBadge}
             </div>
             <div style="margin-bottom:4px"><strong>Severidad:</strong> ${severity}</div>
+            ${accumulatedPrecipSection}
             <div style="margin-bottom:4px"><strong>Desde:</strong> ${escapeHtml(effectiveDate)}</div>
             <div><strong>Hasta:</strong> ${escapeHtml(expiresDate)}</div>
           </div>
@@ -91,11 +118,11 @@ export function useAvisosLayers(map: L.Map) {
     const levelColor = getLevelColor(String(properties.level ?? ''))
 
     return {
-      color: isSelected ? '#FF0000' : levelColor,
+      color: isSelected ? SELECTED_AVISO_COLOR : levelColor,
       weight: isSelected ? SELECTED_AVISO_WEIGHT : AVISO_WEIGHT,
-      opacity: 0.8,
+      opacity: isSelected ? 1 : 0.8,
       fillOpacity: 0.2,
-      fillColor: isSelected ? '#FF0000' : levelColor,
+      fillColor: levelColor,
     }
   }
 
@@ -109,9 +136,53 @@ export function useAvisosLayers(map: L.Map) {
     return colorMap[level?.toLowerCase()] || '#FFA500'
   }
 
+  // AEMET frequently issues separate features for the same zone at
+  // different severity levels with overlapping validity windows — drawing
+  // every one of them means a lower-severity polygon can sit right next to
+  // (or peek out from under) the higher one for the same zone. Only the
+  // single highest-severity feature per zone should ever reach the map.
+  const LEVEL_SEVERITY: Record<string, number> = {
+    verde: 0,
+    amarillo: 1,
+    naranja: 2,
+    rojo: 3,
+  }
+
+  const getLevelSeverity = (level: string): number => LEVEL_SEVERITY[level?.toLowerCase()] ?? 0
+
   const getAvisoFeatureId = (properties: Record<string, unknown>): string | null => {
     const areaDesc = String(properties.areaDesc ?? '').trim()
     return areaDesc || null
+  }
+
+  // Keeps, per zone (areaDesc, falling back to identifier when absent), only
+  // the feature with the highest active severity — the rest are discarded
+  // rather than merely drawn underneath, so there's never more than one
+  // polygon per zone on the map.
+  const pickTopSeverityPerZone = (features: AvisoFeature[]): AvisoFeature[] => {
+    const byZone = new Map<string, AvisoFeature>()
+    let unkeyedIndex = 0
+
+    for (const feature of features) {
+      const properties = (feature.properties || {}) as Record<string, unknown>
+      const zoneKey = getAvisoFeatureId(properties) ?? String(properties.identifier ?? '')
+      const key = zoneKey || `__unkeyed-${unkeyedIndex++}`
+
+      const current = byZone.get(key)
+      if (!current) {
+        byZone.set(key, feature)
+        continue
+      }
+
+      const currentLevel = String((current.properties as Record<string, unknown>)?.level ?? '')
+      const nextLevel = String(properties.level ?? '')
+
+      if (getLevelSeverity(nextLevel) > getLevelSeverity(currentLevel)) {
+        byZone.set(key, feature)
+      }
+    }
+
+    return Array.from(byZone.values())
   }
 
   const isAvisoInInterval = (aviso: AvisoFeature): boolean => {
@@ -188,10 +259,23 @@ export function useAvisosLayers(map: L.Map) {
       return
     }
 
+    const avisosTopSeverity = pickTopSeverityPerZone(avisosInInterval)
+
+    // Adjacent zones share a border edge — Leaflet paints each feature's
+    // stroke in array order, so whichever one comes last "wins" that shared
+    // edge. Without this, the selected zone's blue outline could be partly
+    // painted over by a neighboring (unselected) zone's own border,
+    // leaving only part of its perimeter visibly highlighted.
+    const avisosByDrawOrder = [...avisosTopSeverity].sort((a, b) => {
+      const aIsSelected = getAvisoFeatureId(a.properties || {}) === avisosStore.selectedAvisoId
+      const bIsSelected = getAvisoFeatureId(b.properties || {}) === avisosStore.selectedAvisoId
+      return Number(aIsSelected) - Number(bIsSelected)
+    })
+
     // Crear GeoJSON FeatureCollection con todos los avisos
     const featureCollection = {
       type: 'FeatureCollection' as const,
-      features: avisosInInterval,
+      features: avisosByDrawOrder,
     }
 
     // Crear una sola capa GeoJSON con todos los avisos

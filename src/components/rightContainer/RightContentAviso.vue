@@ -1,6 +1,6 @@
 <template>
   <v-card class="pa-2 bg-background" elevation="2">
-    <template v-if="selectedAviso">
+    <template v-if="hasAvisoData">
       <v-card-title class="d-flex justify-space-between align-start pa-6" :style="headerStyle">
         <div>
           <div class="text-h6 font-weight-bold" style="color: white">
@@ -19,18 +19,42 @@
       </v-card-title>
 
       <v-card-text class="bg-surface">
-        <!-- Chip severidad -->
-        <div class="d-flex align-center ga-2 mb-4 pt-4">
+        <!-- Chips severidad / urgencia del tramo seleccionado -->
+        <div class="d-flex align-center ga-2 mb-3 pt-4 flex-wrap">
           <span class="text-body-2 font-weight-medium">Severidad:</span>
           <v-chip :color="severityChipColor" variant="tonal" size="small" class="font-weight-bold">
             {{ severityLabel }}
           </v-chip>
+
+          <span class="text-body-2 font-weight-medium ml-4">Urgencia:</span>
+          <v-chip variant="tonal" size="small" class="font-weight-bold">
+            {{ urgencyLabel }}
+          </v-chip>
+
+          <v-chip
+            variant="outlined"
+            size="small"
+            class="font-weight-bold ml-auto"
+            prepend-icon="mdi-clock-outline"
+          >
+            {{ selectedSlotLabel }}
+          </v-chip>
+        </div>
+
+        <div v-if="descriptionText" class="mb-3">
+          <div class="text-body-2 font-weight-medium mb-1">Descripción</div>
+          <div class="text-body-2 text-medium-emphasis">{{ descriptionText }}</div>
+        </div>
+
+        <div v-if="instructionText" class="mb-4">
+          <div class="text-body-2 font-weight-medium mb-1">Instrucciones</div>
+          <div class="text-body-2 text-medium-emphasis">{{ instructionText }}</div>
         </div>
 
         <!-- Gráfica de barras -->
         <v-card variant="outlined" class="pa-2">
           <div class="text-subtitle-2 font-weight-bold px-2 pb-1">Nivel por intervalo (72h)</div>
-          <apexchart type="bar" height="500" :options="chartOptions" :series="chartSeries" />
+          <apexchart type="bar" height="470" :options="chartOptions" :series="chartSeries" />
         </v-card>
       </v-card-text>
     </template>
@@ -42,9 +66,9 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
-  import { useAvisosStore } from '@/stores/avisosStore'
+  import { useAvisosStore, type AvisoFeature } from '@/stores/avisosStore'
   import type { ApexOptions } from 'apexcharts'
 
   const route = useRoute()
@@ -120,39 +144,109 @@
   }
 
   // ── aviso seleccionado ────────────────────────────────────────────────────
+  // AEMET issues a separate feature per time window/severity for the same
+  // zone, so one areaDesc can map to several features — each 6h slot in the
+  // chart may therefore belong to a different feature, with its own
+  // severity/description/instruction/urgency, not just a different reading
+  // of a single feature.
 
   const avisoQuery = computed(() => {
     const value = route.query.aviso
     return typeof value === 'string' ? value : undefined
   })
 
-  const selectedAviso = computed(() => {
-    if (!avisoQuery.value) return null
-    return (
-      avisosStore.avisos.find((feature) => {
-        const areaDesc = String(feature.properties?.areaDesc ?? '').trim()
-        return areaDesc === avisoQuery.value
-      }) ?? null
-    )
+  const avisosForZone = computed<AvisoFeature[]>(() => {
+    if (!avisoQuery.value) return []
+    return avisosStore.avisos.filter((feature) => {
+      const areaDesc = String(feature.properties?.areaDesc ?? '').trim()
+      return areaDesc === avisoQuery.value
+    })
   })
 
-  const displayArea = computed(() => String(selectedAviso.value?.properties?.areaDesc ?? 'Aviso'))
+  const hasAvisoData = computed(() => avisosForZone.value.length > 0)
+  const displayArea = computed(() => avisoQuery.value ?? 'Aviso')
 
-  // ── severity chip ─────────────────────────────────────────────────────────
+  /** Para cada slot, la feature de mayor severidad que lo solapa (si alguna) */
+  const slotFeatures = computed<(AvisoFeature | null)[]>(() => {
+    return slots.value.map(({ start, end }) => {
+      const slotStart = start.getTime()
+      const slotEnd = end.getTime()
+
+      let best: AvisoFeature | null = null
+      let bestLevel = 0
+
+      for (const feature of avisosForZone.value) {
+        const props = feature.properties as Record<string, unknown>
+        const effective = Date.parse(String(props.effective ?? ''))
+        const expires = Date.parse(String(props.expires ?? ''))
+        if (!Number.isFinite(effective) || !Number.isFinite(expires)) continue
+
+        const overlaps = effective < slotEnd && expires > slotStart
+        if (!overlaps) continue
+
+        const level = levelToValue[String(props.level ?? '').toLowerCase()] ?? 0
+        if (level > bestLevel) {
+          bestLevel = level
+          best = feature
+        }
+      }
+
+      return best
+    })
+  })
+
+  const slotValues = computed(() =>
+    slotFeatures.value.map((feature) => {
+      const props = feature?.properties as Record<string, unknown> | undefined
+      return levelToValue[String(props?.level ?? '').toLowerCase()] ?? 0
+    })
+  )
+
+  /** Primer slot con la severidad más alta — selección por defecto */
+  const defaultSlotIndex = computed(() => {
+    let maxValue = 0
+    let maxIndex = 0
+
+    slotValues.value.forEach((value, index) => {
+      if (value > maxValue) {
+        maxValue = value
+        maxIndex = index
+      }
+    })
+
+    return maxIndex
+  })
+
+  const manualSlotIndex = ref<number | null>(null)
+
+  watch(avisoQuery, () => {
+    manualSlotIndex.value = null
+  })
+
+  const selectedSlotIndex = computed(() => manualSlotIndex.value ?? defaultSlotIndex.value)
+  const selectedFeature = computed<AvisoFeature | null>(
+    () => slotFeatures.value[selectedSlotIndex.value] ?? null
+  )
+  const selectedProperties = computed<Record<string, unknown>>(
+    () => (selectedFeature.value?.properties ?? {}) as Record<string, unknown>
+  )
+  const selectedSlotLabel = computed(() => slots.value[selectedSlotIndex.value]?.label ?? '')
+
+  // ── severity / urgency chips ──────────────────────────────────────────────
 
   const severityLabel = computed(() => {
-    const s = String(selectedAviso.value?.properties?.severity ?? '').toLowerCase()
+    const s = String(selectedProperties.value.severity ?? '').toLowerCase()
     const translations: Record<string, string> = {
       extreme: 'Extremo',
       severe: 'Severo',
       moderate: 'Moderado',
       minor: 'Menor',
     }
-    return translations[s] ?? (s ? String(selectedAviso.value?.properties?.severity) : 'N/A')
+    return translations[s] ?? (s ? String(selectedProperties.value.severity) : 'N/A')
   })
 
   const severityChipColor = computed(() => {
-    const s = String(selectedAviso.value?.properties?.severity ?? '').toLowerCase()
+    const s = String(selectedProperties.value.severity ?? '').toLowerCase()
     switch (s) {
       case 'extreme':
         return 'error'
@@ -167,36 +261,41 @@
     }
   })
 
-  // ── datos de gráfica ──────────────────────────────────────────────────────
-
-  /** Para cada slot devuelve el nivel máximo del aviso actual que solape */
-  const slotValues = computed(() => {
-    const aviso = selectedAviso.value
-    if (!aviso) return slots.value.map(() => 0)
-
-    const props = aviso.properties as Record<string, unknown>
-    const avisoEffective = Date.parse(String(props.effective ?? ''))
-    const avisoExpires = Date.parse(String(props.expires ?? ''))
-    const avisoLevel = String(props.level ?? '').toLowerCase()
-    const numericLevel = levelToValue[avisoLevel] ?? 0
-
-    return slots.value.map(({ start, end }) => {
-      const slotStart = start.getTime()
-      const slotEnd = end.getTime()
-      const overlaps =
-        Number.isFinite(avisoEffective) &&
-        Number.isFinite(avisoExpires) &&
-        avisoEffective < slotEnd &&
-        avisoExpires > slotStart
-      return overlaps ? numericLevel : 0
-    })
+  const urgencyLabel = computed(() => {
+    const u = String(selectedProperties.value.urgency ?? '').toLowerCase()
+    const translations: Record<string, string> = {
+      immediate: 'Inmediata',
+      expected: 'Prevista',
+      future: 'Futura',
+      past: 'Pasada',
+      unknown: 'Desconocida',
+    }
+    return translations[u] ?? (u ? String(selectedProperties.value.urgency) : 'N/A')
   })
 
-  /** Color de cada barra según el valor */
+  const descriptionText = computed(() => String(selectedProperties.value.description ?? '').trim())
+  const instructionText = computed(() => String(selectedProperties.value.instruction ?? '').trim())
+
+  function selectSlot(index: number): void {
+    manualSlotIndex.value = index
+  }
+
+  function withAlpha(hex: string, alpha: number): string {
+    const value = Number.parseInt(hex.slice(1), 16)
+    const r = (value >> 16) & 255
+    const g = (value >> 8) & 255
+    const b = value & 255
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  /** Color de cada barra según el valor — la barra seleccionada va a color
+   *  completo, el resto atenuadas para marcar cuál describen los datos de
+   *  arriba. */
   const barColors = computed(() =>
-    slotValues.value.map((v) => {
+    slotValues.value.map((v, index) => {
       const level = Object.entries(levelToValue).find(([, val]) => val === v)?.[0] ?? ''
-      return levelToColor[level] ?? '#e5e7eb'
+      const color = levelToColor[level] ?? '#e5e7eb'
+      return index === selectedSlotIndex.value ? color : withAlpha(color, 0.45)
     })
   )
 
@@ -212,6 +311,11 @@
       type: 'bar',
       toolbar: { show: false },
       animations: { enabled: false },
+      events: {
+        dataPointSelection: (_event, _chartContext, config) => {
+          selectSlot(config.dataPointIndex)
+        },
+      },
     },
     plotOptions: {
       bar: {
