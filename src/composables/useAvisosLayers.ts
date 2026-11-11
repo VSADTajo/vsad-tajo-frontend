@@ -5,6 +5,88 @@ import type { AvisoFeature } from '@/stores/avisosStore'
 import { MAP_PANES } from '@/config/panes/mapPanes'
 import router from '@/router'
 
+type LonLat = [number, number]
+
+// CAP's `polygon` field is a space-separated list of "lat,lon" pairs. Some
+// avisos arrive with it corrupted in two ways we've seen in practice: a
+// missing space merges two pairs into one 4-number token (silently losing
+// a vertex if naively parsed by taking only the first two numbers per
+// token), or two entirely separate, disjoint loops end up concatenated
+// into a single point list with no boundary marker between them, leaving
+// the shared "bridge" vertex where they joined repeated verbatim. Both
+// turn into a long spurious edge that crosses the rest of the shape when
+// rendered as one ring — this recovers the original loop(s) from the raw
+// text instead of trusting whatever ring the upstream feed/backend built.
+function parseCapPolygonPoints(raw: string): LonLat[] | null {
+  const numbers = raw
+    .trim()
+    .split(/\s+/)
+    .flatMap((token) => token.split(','))
+    .map(Number)
+
+  if (numbers.length < 6 || numbers.length % 2 !== 0 || numbers.some((n) => !Number.isFinite(n))) {
+    return null
+  }
+
+  const points: LonLat[] = []
+  for (let i = 0; i < numbers.length; i += 2) {
+    // CAP is lat,lon — GeoJSON wants [lon, lat].
+    points.push([numbers[i + 1], numbers[i]])
+  }
+
+  return points
+}
+
+// Splits a point list into one or more closed loops wherever a point
+// exactly repeats its own loop's starting vertex — the signature left by
+// two originally-separate polygons being concatenated without a
+// separator. A normal, uncorrupted ring either never repeats a vertex
+// (single loop, left as-is — Leaflet closes it implicitly) or only
+// repeats its own first point at the very end (still a single loop).
+function splitIntoClosedLoops(points: LonLat[]): LonLat[][] {
+  const loops: LonLat[][] = []
+  let loopStart = 0
+  let i = loopStart + 1
+
+  while (i < points.length) {
+    const [lon, lat] = points[i]
+    const [startLon, startLat] = points[loopStart]
+
+    if (lon === startLon && lat === startLat) {
+      loops.push(points.slice(loopStart, i + 1))
+      loopStart = i + 1
+      i = loopStart + 1
+      continue
+    }
+
+    i++
+  }
+
+  if (loopStart < points.length - 1) {
+    loops.push(points.slice(loopStart))
+  }
+
+  return loops.filter((loop) => loop.length >= 4)
+}
+
+function repairAvisoGeometry(feature: AvisoFeature): AvisoFeature {
+  const polygonText = feature.properties?.polygon
+  if (typeof polygonText !== 'string' || !polygonText.trim()) return feature
+
+  const points = parseCapPolygonPoints(polygonText)
+  if (!points) return feature
+
+  const loops = splitIntoClosedLoops(points)
+  if (loops.length === 0) return feature
+
+  const geometry =
+    loops.length === 1
+      ? { type: 'Polygon', coordinates: [loops[0]] }
+      : { type: 'MultiPolygon', coordinates: loops.map((loop) => [loop]) }
+
+  return { ...feature, geometry }
+}
+
 export function useAvisosLayers(map: L.Map) {
   const avisosStore = useAvisosStore()
 
@@ -56,14 +138,37 @@ export function useAvisosLayers(map: L.Map) {
   // just that lead figure out so the popup can show it as a short "Precip
   // Acum 12hs: 40mm" line instead of the whole paragraph.
   function extractAccumulatedPrecipLabel(description: string): string | null {
-    const match = description.match(
-      /Precipitaci[oó]n acumulada en (\d+)\s*horas?:\s*([\d.,]+)\s*mm/i
+    // Some upstream feeds serialize accented characters in NFD (decomposed:
+    // "o" + a separate combining accent mark) instead of NFC (precomposed
+    // "ó") — invisible everywhere the text is displayed or pasted, but it
+    // silently breaks a character class like [oó], which only matches the
+    // precomposed form. Normalizing first makes the match independent of
+    // whichever form the source happened to use.
+    // AEMET writes a single hour as the word "una" instead of the digit
+    // "1" (e.g. "acumulada en una hora: 15 mm"), unlike every other count
+    // ("12 horas", "24 horas"...) — a plain \d+ never matches "una", which
+    // is why some rain avisos' popups showed the figure and others didn't.
+    const normalized = description.normalize('NFC')
+    const match = normalized.match(
+      /Precipitaci[oó]n acumulada en (?:(\d+)|una)\s*horas?:\s*([\d.,]+)\s*mm/i
     )
     if (!match) return null
 
-    const hours = match[1]
+    const hours = match[1] ?? '1'
     const value = match[2].replace(',', '.')
     return `Precip Acum ${hours}hs: ${value}mm`
+  }
+
+  // Wind avisos carry their headline gust figure the same way rain avisos
+  // carry accumulated precip — only inside the free-text `description`
+  // (e.g. "Rachas máximas: 80 km/h."), never as its own property.
+  function extractWindGustLabel(description: string): string | null {
+    const normalized = description.normalize('NFC')
+    const match = normalized.match(/Rachas?\s*m[aá]ximas?:\s*([\d.,]+)\s*km\/h/i)
+    if (!match) return null
+
+    const value = match[1].replace(',', '.')
+    return `Racha Máx: ${value}km/h`
   }
 
   function buildAvisoTooltipContent(props: Record<string, unknown>): string {
@@ -86,9 +191,14 @@ export function useAvisosLayers(map: L.Map) {
     const expiresDate = expires ? new Date(expires).toLocaleString('es-ES') : '-'
     const levelBadge = getLevelBadge(level)
 
-    const accumulatedPrecipLabel = extractAccumulatedPrecipLabel(String(props.description ?? ''))
+    const description = String(props.description ?? '')
+    const accumulatedPrecipLabel = extractAccumulatedPrecipLabel(description)
+    const windGustLabel = extractWindGustLabel(description)
     const accumulatedPrecipSection = accumulatedPrecipLabel
       ? `<div style="margin-bottom:4px"><strong>${escapeHtml(accumulatedPrecipLabel)}</strong></div>`
+      : ''
+    const windGustSection = windGustLabel
+      ? `<div style="margin-bottom:4px"><strong>${escapeHtml(windGustLabel)}</strong></div>`
       : ''
 
     return `
@@ -104,6 +214,7 @@ export function useAvisosLayers(map: L.Map) {
             </div>
             <div style="margin-bottom:4px"><strong>Severidad:</strong> ${severity}</div>
             ${accumulatedPrecipSection}
+            ${windGustSection}
             <div style="margin-bottom:4px"><strong>Desde:</strong> ${escapeHtml(effectiveDate)}</div>
             <div><strong>Hasta:</strong> ${escapeHtml(expiresDate)}</div>
           </div>
@@ -174,11 +285,31 @@ export function useAvisosLayers(map: L.Map) {
         continue
       }
 
-      const currentLevel = String((current.properties as Record<string, unknown>)?.level ?? '')
+      const currentProps = current.properties as Record<string, unknown>
+      const currentLevel = String(currentProps?.level ?? '')
       const nextLevel = String(properties.level ?? '')
+      const currentSeverity = getLevelSeverity(currentLevel)
+      const nextSeverity = getLevelSeverity(nextLevel)
 
-      if (getLevelSeverity(nextLevel) > getLevelSeverity(currentLevel)) {
+      if (nextSeverity > currentSeverity) {
         byZone.set(key, feature)
+        continue
+      }
+
+      // Same severity for the same zone (e.g. two overlapping "amarillo"
+      // CAP entries) — prefer the more recently issued one rather than
+      // whichever happened to come first in the API response, so the
+      // feature actually shown is the current one, not a stale duplicate.
+      if (nextSeverity === currentSeverity) {
+        const currentEffective = Date.parse(String(currentProps?.effective ?? ''))
+        const nextEffective = Date.parse(String(properties.effective ?? ''))
+
+        if (
+          Number.isFinite(nextEffective) &&
+          (!Number.isFinite(currentEffective) || nextEffective > currentEffective)
+        ) {
+          byZone.set(key, feature)
+        }
       }
     }
 
@@ -259,7 +390,8 @@ export function useAvisosLayers(map: L.Map) {
       return
     }
 
-    const avisosTopSeverity = pickTopSeverityPerZone(avisosInInterval)
+    const avisosRepaired = avisosInInterval.map(repairAvisoGeometry)
+    const avisosTopSeverity = pickTopSeverityPerZone(avisosRepaired)
 
     // Adjacent zones share a border edge — Leaflet paints each feature's
     // stroke in array order, so whichever one comes last "wins" that shared
