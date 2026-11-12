@@ -225,6 +225,12 @@ export const efasLayers: LayerNode[] = [
     opacityEnabled: true,
     opacity: 1,
   },
+  {
+    id: 'landslideSusceptibility',
+    title: 'Suscep. Deslizamientos',
+    opacityEnabled: true,
+    opacity: 1,
+  },
 ]
 
 export const avisosLayers: LayerNode[] = [
