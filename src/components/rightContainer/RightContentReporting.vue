@@ -3,7 +3,7 @@
     <v-progress-linear v-if="loading" indeterminate />
 
     <template v-if="route.query.reportingPoint">
-      <v-card-title class="d-flex justify-space-between align-start">
+      <v-card-title class="d-flex justify-space-between align-start bg-primary">
         <div>
           <div class="text-h6 font-weight-bold">
             {{ route.query.reportingPoint }}
@@ -15,7 +15,7 @@
 
       <v-divider class="my-3" />
 
-      <v-card-text>
+      <v-card-text class="pt-0">
         <v-sheet elevation="2">
           <v-tabs v-model="tab" color="primary">
             <v-tab value="basica">Informacion Básica</v-tab>
@@ -30,8 +30,20 @@
               <div class="pa-4" v-html="basicInfoHtml" />
             </v-tabs-window-item>
             <v-tabs-window-item value="graficas" class="overflow-y-auto" style="height: 73vh">
-              <v-progress-linear v-if="chartsLoading" indeterminate color="primary" class="mt-2" />
-              <div ref="chartsContainerRef" class="pa-4" v-html="chartsHtml" />
+              <div
+                v-if="chartsLoading"
+                class="d-flex flex-column align-center justify-center text-medium-emphasis"
+                style="height: 73vh"
+              >
+                <v-progress-circular indeterminate color="primary" size="40" width="4" />
+                <div class="mt-3 text-body-2">Cargando gráficas...</div>
+              </div>
+              <div
+                v-show="!chartsLoading"
+                ref="chartsContainerRef"
+                class="pa-4"
+                v-html="chartsHtml"
+              />
             </v-tabs-window-item>
             <v-tabs-window-item value="tablas" class="overflow-y-auto" style="height: 73vh">
               <div class="pa-4" v-html="tablesHtml" />
@@ -56,7 +68,10 @@
   const reportingPointStore = useReportingPointStore()
 
   const loading = ref(false)
-  const chartsLoading = ref(false)
+  // Starts hidden so the "graficas" tab never flashes titles before their
+  // images — trackChartsImagesLoading flips this back to false once it has
+  // actually checked whether there's anything to wait for.
+  const chartsLoading = ref(true)
   const chartsContainerRef = ref<HTMLElement | null>(null)
 
   let clearImageListeners: (() => void) | null = null
@@ -125,6 +140,11 @@
     clearImageListeners?.()
     clearImageListeners = null
 
+    // Set synchronously, before the DOM patch that reveals this tab, so the
+    // container stays hidden from the very first paint instead of showing
+    // titles for a tick while images are still being measured below.
+    chartsLoading.value = true
+
     await nextTick()
 
     const container = chartsContainerRef.value
@@ -140,8 +160,6 @@
       chartsLoading.value = false
       return
     }
-
-    chartsLoading.value = true
 
     let remaining = pendingImages.length
 
@@ -169,16 +187,20 @@
     }
   }
 
-  watch([chartsHtml, tab], async ([_, activeTab]) => {
-    if (activeTab !== 'graficas') {
-      chartsLoading.value = false
-      clearImageListeners?.()
-      clearImageListeners = null
-      return
-    }
+  watch(
+    [chartsHtml, tab],
+    async ([_, activeTab]) => {
+      if (activeTab !== 'graficas') {
+        chartsLoading.value = false
+        clearImageListeners?.()
+        clearImageListeners = null
+        return
+      }
 
-    await trackChartsImagesLoading()
-  })
+      await trackChartsImagesLoading()
+    },
+    { immediate: true }
+  )
 
   onBeforeUnmount(() => {
     clearImageListeners?.()

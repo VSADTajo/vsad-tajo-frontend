@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="avisos-time-controls" :class="{ 'avisos-time-controls--stacked': stacked }">
     <v-card elevation="8" class="pa-4 bg-primary opacity-90 avisos-time-card">
       <div class="d-flex align-center justify-space-between mb-3 ga-4 flex-wrap">
@@ -211,7 +211,7 @@
     bottom: 25px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
+    z-index: 1001;
     width: min(760px, calc(100% - 48px));
   }
 
