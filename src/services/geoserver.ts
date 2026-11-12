@@ -144,6 +144,10 @@ export function createWMSLayer(config: WMSLayerConfig, params?: Record<string, s
     updateWhenZooming: false,
     updateWhenIdle: true,
     keepBuffer: 2,
+    // EFAS rejects GetMap requests for recent dates when unauthenticated
+    // (same embargo window as GetCapabilities) — the token must ride along
+    // on every tile request, not just on capabilities/legend calls.
+    ...(config.token ? { token: config.token } : {}),
     ...wmsParams,
   } as WMSOptionsExtended)
 

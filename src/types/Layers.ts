@@ -49,7 +49,10 @@ interface BaseLayerConfig {
   pane?: string
   temporal?: boolean
   temporalControlMode?: 'instant' | 'range'
-  start?: string
+  // A plain string here would be baked in once, when the config module
+  // loads — a function lets it be resolved fresh each time a layer
+  // activates instead (see getLayerStartEFAS in constants/mapConfig.ts).
+  start?: string | (() => string)
   legend?: string
   interactive?: boolean
 }

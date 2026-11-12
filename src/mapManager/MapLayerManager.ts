@@ -257,7 +257,7 @@ export class MapLayerManager {
           if (config.legend === 'efas') {
             const legendUrl = getLayerLegendUrl(wmsConfig.layers)
 
-            this.legendManager.addLegend(config.id, legendUrl)
+            this.legendManager.addLegend(config.id, legendUrl, 'bottomleft')
           } else {
             const customLegend = getCustomLegendInfo(wmsConfig)
 
@@ -293,6 +293,7 @@ export class MapLayerManager {
               title: config.name,
               legendUrl: meteoConfig.legendUrl,
               units: 'mm',
+              position: 'bottomleft',
             })
           }
         }

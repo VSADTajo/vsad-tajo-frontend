@@ -400,7 +400,11 @@ export class TemporalLayerManager {
         return
       }
 
-      const startDate = config.start ? parseISO(config.start) : parseISO(timeDimension.start)
+      // config.start may be a function (e.g. getLayerStartEFAS) so "now
+      // minus N days" is resolved fresh here, at activation time, rather
+      // than baked into the config once when the module first loaded.
+      const resolvedStart = typeof config.start === 'function' ? config.start() : config.start
+      const startDate = resolvedStart ? parseISO(resolvedStart) : parseISO(timeDimension.start)
       const endDate = parseISO(timeDimension.end)
       const safeStart = isAfter(startDate, endDate)
         ? subHours(endDate, 10 * timeDimension.stepHours)
