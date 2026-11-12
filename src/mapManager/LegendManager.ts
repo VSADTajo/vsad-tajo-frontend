@@ -4,6 +4,7 @@ type GradientLegendOptions = {
   title: string
   legendUrl: string
   units?: string
+  position?: L.ControlPosition
 }
 
 export class LegendManager {
@@ -14,10 +15,10 @@ export class LegendManager {
     this.map = map
   }
 
-  addLegend(layerId: string, url: string) {
+  addLegend(layerId: string, url: string, position: L.ControlPosition = 'bottomright') {
     if (this.legends[layerId]) return
 
-    const legend = new L.Control({ position: 'bottomright' })
+    const legend = new L.Control({ position })
 
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'leaflet-control custom-legend')
@@ -38,7 +39,7 @@ export class LegendManager {
   async addGradientLegend(layerId: string, options: GradientLegendOptions) {
     if (this.legends[layerId]) return
 
-    const legend = new L.Control({ position: 'bottomright' })
+    const legend = new L.Control({ position: options.position ?? 'bottomright' })
 
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'leaflet-control custom-legend custom-legend-gradient')

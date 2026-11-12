@@ -10,7 +10,7 @@ import {
 } from './styles/layerStyles'
 import { MAP_PANES } from '@/config/panes/mapPanes'
 import L from 'leaflet'
-import { layerStartEFAS } from '@/constants/mapConfig'
+import { getLayerStartEFAS } from '@/constants/mapConfig'
 import { efas_token, efas_url } from './efasConfig'
 
 const geoserverTajoWmsUrl = `${import.meta.env.VITE_GEOSERVER_URL}/Tajo/wms`
@@ -345,7 +345,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     opacity: 1,
     legend: 'efas',
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.REPORTING,
     mask: 'contorno',
     interactive: true,
@@ -370,7 +370,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
       [44, 5],
     ],
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
@@ -394,7 +394,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     ],
     legend: 'efas',
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
@@ -418,7 +418,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
       [44, 5],
     ],
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
@@ -442,7 +442,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
       [44, 5],
     ],
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
@@ -463,7 +463,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     legend: 'efas',
     mask: 'contorno',
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
@@ -484,7 +484,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     legend: 'efas',
     mask: 'contorno',
     temporal: true,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
@@ -504,7 +504,7 @@ export const dynamicLayersConfig: LayerConfig[] = [
     opacity: 1,
     mask: 'contorno',
     temporal: false,
-    start: layerStartEFAS,
+    start: getLayerStartEFAS,
     pane: MAP_PANES.POLYGONS,
     interactive: false,
   },
