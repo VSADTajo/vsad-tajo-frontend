@@ -42,7 +42,6 @@
                 class="mt-6"
                 :loading="loading"
                 :disabled="!password || !email"
-                @click="login"
               >
                 Entrar
               </v-btn>
@@ -55,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+  import { HTTPError, TimeoutError } from 'ky'
   import router from '@/router'
   import { loginService } from '@/services/auth'
   import { ref } from 'vue'
@@ -80,10 +80,25 @@
       await loginService(email.value, password.value)
       router.push({ name: 'dashboard' })
     } catch (e) {
-      error.value = 'Usuario o contraseña incorrectos'
+      error.value = loginErrorMessage(e)
       console.error(e)
     } finally {
       loading.value = false
     }
+  }
+
+  // Only a 401/403 means wrong credentials; anything else is the network or
+  // the server, and saying "wrong password" there hides the real problem.
+  function loginErrorMessage(e: unknown): string {
+    if (e instanceof HTTPError) {
+      const status = e.response.status
+      if (status === 401 || status === 403) return 'Usuario o contraseña incorrectos'
+      if (status === 400) return 'Revisa el correo electrónico y la contraseña'
+      return `Error del servidor (${status}). Inténtalo de nuevo más tarde`
+    }
+    if (e instanceof TimeoutError) {
+      return 'El servidor no responde. Inténtalo de nuevo más tarde'
+    }
+    return 'No se pudo conectar con el servidor. Comprueba tu conexión'
   }
 </script>
